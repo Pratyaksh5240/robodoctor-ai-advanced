@@ -1,13 +1,21 @@
 import os
+import sys
 import re
 import joblib
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-app = FastAPI(title="RoboDoctor Vital Risk ML Service", version="1.0.0")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
+from ml.recommendations.recommendation_engine import (
+    build_patient_vector,
+    get_orchestrated_recommendations
+)
+
+app = FastAPI(title="RoboDoctor Vital Risk ML Service & Safety Orchestrator", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load trained model artifact
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_vital_risk_model.joblib")
 
 if not os.path.exists(MODEL_PATH):
@@ -65,11 +72,27 @@ class VitalPredictRequest(BaseModel):
             raise ValueError("Blood pressure must be in format '120/80'")
         return v
 
+class RecommendationItem(BaseModel):
+    id: str
+    title: str
+    description: str
+    category: str
+    reason: str
+    score: float
+    priority: Optional[str] = "P4"
+
+class PriorityFinding(BaseModel):
+    title: str
+    detail: str
+    explanation: str
+    severity: str
+
 class VitalPredictResponse(BaseModel):
     risk: str
     probabilities: Dict[str, float]
     bmi: float
-    recommendations: List[str]
+    priorityFinding: Optional[PriorityFinding] = None
+    recommendations: List[RecommendationItem]
     urgent: bool
     message: str
 
@@ -86,50 +109,9 @@ def extract_symptoms(text: str) -> Dict[str, int]:
         flags[feature_col] = 1 if any(kw in normalized for kw in keywords) else 0
     return flags
 
-def generate_recommendations_and_safety(
-    risk: str,
-    systolic: float,
-    diastolic: float,
-    sugar: float,
-    heart_rate: float,
-    bmi: float,
-    symptoms_text: str
-):
-    recommendations = []
-    norm_symptoms = (symptoms_text or "").lower()
-
-    urgent_triggers = ["chest pain", "shortness of breath", "breathlessness", "difficulty breathing", "saans ki dikkat"]
-    urgent = any(trigger in norm_symptoms for trigger in urgent_triggers)
-
-    if risk == "High":
-        recommendations.append("Arrange medical evaluation promptly.")
-    elif risk == "Moderate":
-        recommendations.append("Consider discussing these readings with a healthcare professional.")
-    else:
-        recommendations.append("Continue routine health monitoring and maintain healthy habits.")
-
-    if systolic >= 140 or diastolic >= 90:
-        recommendations.append("Blood pressure reading is elevated and should be reviewed.")
-    elif systolic < 90 or diastolic < 60:
-        recommendations.append("Blood pressure reading is low; ensure adequate hydration.")
-
-    if sugar >= 140:
-        recommendations.append("Blood glucose may require further evaluation by a physician.")
-
-    if heart_rate > 100 or heart_rate < 60:
-        recommendations.append("Heart rate is outside standard resting range; consider context.")
-
-    if bmi >= 30:
-        recommendations.append("Elevated BMI indicated; consider discussing weight and nutrition with a care provider.")
-
-    if urgent:
-        recommendations.append("Urgent symptoms detected. Do not rely on ML screening result for an emergency; seek immediate care.")
-
-    return recommendations, urgent
-
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "RoboDoctor Vital Risk ML Inference"}
+    return {"status": "ok", "service": "RoboDoctor Vital Risk ML Service & Safety Orchestrator"}
 
 @app.post("/predict", response_model=VitalPredictResponse)
 def predict_vital_risk(request: VitalPredictRequest):
@@ -153,20 +135,37 @@ def predict_vital_risk(request: VitalPredictRequest):
 
         X_input = pd.DataFrame([feature_dict])[FEATURE_COLS]
 
-        predicted_risk = model_pipeline.predict(X_input)[0]
+        predicted_risk = str(model_pipeline.predict(X_input)[0])
         probabilities_raw = model_pipeline.predict_proba(X_input)[0]
 
         proba_dict = {}
         for idx, cls_name in enumerate(CLASSES):
             proba_dict[cls_name] = round(float(probabilities_raw[idx]) * 100.0, 1)
 
-        # Ensure Low, Moderate, High are all present in output
         for cls_name in ["Low", "Moderate", "High"]:
             if cls_name not in proba_dict:
                 proba_dict[cls_name] = 0.0
 
-        recommendations, urgent = generate_recommendations_and_safety(
-            predicted_risk, systolic, diastolic, request.bloodSugar, request.heartRate, bmi, request.symptoms
+        patient_vector = build_patient_vector(
+            bmi=bmi,
+            systolic=systolic,
+            diastolic=diastolic,
+            sugar=request.bloodSugar,
+            heart_rate=request.heartRate,
+            symptom_flags=symptom_flags,
+            ml_risk=predicted_risk
+        )
+
+        orch_result = get_orchestrated_recommendations(
+            patient_vector=patient_vector,
+            systolic=systolic,
+            diastolic=diastolic,
+            sugar=request.bloodSugar,
+            heart_rate=request.heartRate,
+            symptoms_text=request.symptoms,
+            ml_risk=predicted_risk,
+            min_threshold=0.15,
+            top_n=4
         )
 
         if predicted_risk == "High":
@@ -180,8 +179,9 @@ def predict_vital_risk(request: VitalPredictRequest):
             risk=predicted_risk,
             probabilities=proba_dict,
             bmi=bmi,
-            recommendations=recommendations,
-            urgent=urgent,
+            priorityFinding=orch_result["priorityFinding"],
+            recommendations=orch_result["recommendations"],
+            urgent=orch_result["urgent"],
             message=msg
         )
     except Exception as e:

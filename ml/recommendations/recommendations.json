@@ -1,0 +1,344 @@
+[
+  {
+    "id": "blood_pressure_evaluation",
+    "title": "Blood Pressure Evaluation",
+    "description": "Consider discussing elevated blood-pressure readings with a healthcare professional for a formal clinical assessment.",
+    "category": "Clinical Follow-up",
+    "reason": "Your blood pressure is elevated and your ML risk assessment profile indicates a higher concern pattern.",
+    "tags": ["elevated_bp", "high_bp", "monitoring"],
+    "feature_profile": {
+      "low_bmi": 0, "high_bmi": 0.3, "obese_bmi": 0.5,
+      "elevated_bp": 0.8, "high_bp": 1.0, "low_bp": 0,
+      "high_glucose": 0.3, "very_high_glucose": 0.4,
+      "high_heart_rate": 0.4, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.3,
+      "headache": 0.4, "dizziness": 0.5, "chest_pain": 0.6,
+      "shortness_of_breath": 0.5, "nausea": 0, "vomiting": 0,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0, "moderate_risk": 0.6, "high_risk": 1.0
+    }
+  },
+  {
+    "id": "blood_glucose_evaluation",
+    "title": "Blood Glucose Evaluation",
+    "description": "Your blood-glucose reading may require further evaluation by a physician to determine fasting vs random context.",
+    "category": "Clinical Follow-up",
+    "reason": "Elevated blood glucose readings interact with overall metabolic health and risk level.",
+    "tags": ["high_glucose", "diabetes_risk", "metabolic"],
+    "feature_profile": {
+      "low_bmi": 0, "high_bmi": 0.4, "obese_bmi": 0.6,
+      "elevated_bp": 0.3, "high_bp": 0.4, "low_bp": 0,
+      "high_glucose": 1.0, "very_high_glucose": 1.0,
+      "high_heart_rate": 0.3, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.5,
+      "headache": 0.2, "dizziness": 0.3, "chest_pain": 0.2,
+      "shortness_of_breath": 0.2, "nausea": 0.3, "vomiting": 0.3,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0, "moderate_risk": 0.6, "high_risk": 0.9
+    }
+  },
+  {
+    "id": "general_physician_consultation",
+    "title": "General Physician Consultation",
+    "description": "Arrange an in-person or virtual consultation with a primary care doctor to review overall health parameters.",
+    "category": "Clinical Follow-up",
+    "reason": "Multiple vital parameter elevations and ML risk indicators suggest benefit from a primary care review.",
+    "tags": ["physician", "checkup", "general_health"],
+    "feature_profile": {
+      "low_bmi": 0.2, "high_bmi": 0.4, "obese_bmi": 0.6,
+      "elevated_bp": 0.6, "high_bp": 0.8, "low_bp": 0.4,
+      "high_glucose": 0.6, "very_high_glucose": 0.8,
+      "high_heart_rate": 0.5, "low_heart_rate": 0.4,
+      "fever": 0.4, "cough": 0.3, "cold": 0.2, "fatigue": 0.5,
+      "headache": 0.4, "dizziness": 0.5, "chest_pain": 0.5,
+      "shortness_of_breath": 0.5, "nausea": 0.4, "vomiting": 0.4,
+      "body_ache": 0.3, "sore_throat": 0.2,
+      "low_risk": 0.1, "moderate_risk": 0.8, "high_risk": 1.0
+    }
+  },
+  {
+    "id": "cardiology_evaluation",
+    "title": "Cardiology Evaluation",
+    "description": "Consider consulting a cardiology specialist for detailed cardiovascular risk assessment and heart rhythm review.",
+    "category": "Specialist Referral",
+    "reason": "Significantly elevated blood pressure or heart rate combined with higher risk factors warrants cardiac review.",
+    "tags": ["cardiology", "heart_health", "blood_pressure"],
+    "feature_profile": {
+      "low_bmi": 0, "high_bmi": 0.4, "obese_bmi": 0.7,
+      "elevated_bp": 0.7, "high_bp": 1.0, "low_bp": 0.5,
+      "high_glucose": 0.3, "very_high_glucose": 0.4,
+      "high_heart_rate": 0.8, "low_heart_rate": 0.6,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.4,
+      "headache": 0.4, "dizziness": 0.6, "chest_pain": 0.9,
+      "shortness_of_breath": 0.8, "nausea": 0, "vomiting": 0,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0, "moderate_risk": 0.5, "high_risk": 1.0
+    }
+  },
+  {
+    "id": "nutrition_weight_review",
+    "title": "Nutrition & Weight Management Review",
+    "description": "Discuss nutrition, dietary habits, and weight management goals with a qualified dietitian or care provider.",
+    "category": "Lifestyle & Wellness",
+    "reason": "Your BMI and metabolic profile suggest health benefits from tailored dietary and lifestyle guidance.",
+    "tags": ["bmi", "nutrition", "diet", "lifestyle"],
+    "feature_profile": {
+      "low_bmi": 0.9, "high_bmi": 0.9, "obese_bmi": 1.0,
+      "elevated_bp": 0.5, "high_bp": 0.5, "low_bp": 0,
+      "high_glucose": 0.6, "very_high_glucose": 0.6,
+      "high_heart_rate": 0.2, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.4,
+      "headache": 0, "dizziness": 0.2, "chest_pain": 0,
+      "shortness_of_breath": 0.2, "nausea": 0, "vomiting": 0,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0.4, "moderate_risk": 0.7, "high_risk": 0.6
+    }
+  },
+  {
+    "id": "routine_vital_monitoring",
+    "title": "Routine Vital Monitoring",
+    "description": "Continue routine health tracking and periodically measure your blood pressure, pulse, and weight.",
+    "category": "Monitoring",
+    "reason": "Your vital parameters and lower risk screening profile indicate stable overall health suitable for standard monitoring.",
+    "tags": ["monitoring", "prevention", "wellness"],
+    "feature_profile": {
+      "low_bmi": 0.3, "high_bmi": 0.2, "obese_bmi": 0,
+      "elevated_bp": 0.2, "high_bp": 0, "low_bp": 0.2,
+      "high_glucose": 0.1, "very_high_glucose": 0,
+      "high_heart_rate": 0.1, "low_heart_rate": 0.2,
+      "fever": 0.2, "cough": 0.2, "cold": 0.2, "fatigue": 0.2,
+      "headache": 0.1, "dizziness": 0.1, "chest_pain": 0,
+      "shortness_of_breath": 0, "nausea": 0.1, "vomiting": 0,
+      "body_ache": 0.2, "sore_throat": 0.2,
+      "low_risk": 1.0, "moderate_risk": 0.3, "high_risk": 0
+    }
+  },
+  {
+    "id": "symptom_followup",
+    "title": "Symptom & Recovery Follow-up",
+    "description": "Monitor active viral or seasonal symptoms like fever, cough, or fatigue, ensuring adequate hydration and rest.",
+    "category": "Monitoring",
+    "reason": "Active mild symptoms benefit from rest, fluid intake, and monitoring to ensure smooth recovery.",
+    "tags": ["symptoms", "viral", "rest", "hydration"],
+    "feature_profile": {
+      "low_bmi": 0.2, "high_bmi": 0.2, "obese_bmi": 0,
+      "elevated_bp": 0, "high_bp": 0, "low_bp": 0,
+      "high_glucose": 0, "very_high_glucose": 0,
+      "high_heart_rate": 0.3, "low_heart_rate": 0,
+      "fever": 0.9, "cough": 0.9, "cold": 0.9, "fatigue": 0.6,
+      "headache": 0.6, "dizziness": 0.2, "chest_pain": 0,
+      "shortness_of_breath": 0.2, "nausea": 0.4, "vomiting": 0.4,
+      "body_ache": 0.7, "sore_throat": 0.8,
+      "low_risk": 0.8, "moderate_risk": 0.5, "high_risk": 0.2
+    }
+  },
+  {
+    "id": "pulmonology_evaluation",
+    "title": "Respiratory / Pulmonology Review",
+    "description": "Consider a respiratory evaluation if cough, wheezing, or shortness of breath persist or cause discomfort.",
+    "category": "Specialist Referral",
+    "reason": "Respiratory symptoms like cough or breathing trouble benefit from targeted lung health review.",
+    "tags": ["respiratory", "pulmonology", "cough", "breathing"],
+    "feature_profile": {
+      "low_bmi": 0.1, "high_bmi": 0.2, "obese_bmi": 0.3,
+      "elevated_bp": 0.1, "high_bp": 0.2, "low_bp": 0,
+      "high_glucose": 0.1, "very_high_glucose": 0.1,
+      "high_heart_rate": 0.4, "low_heart_rate": 0,
+      "fever": 0.5, "cough": 0.9, "cold": 0.6, "fatigue": 0.4,
+      "headache": 0.1, "dizziness": 0.2, "chest_pain": 0.5,
+      "shortness_of_breath": 0.9, "nausea": 0, "vomiting": 0,
+      "body_ache": 0.2, "sore_throat": 0.6,
+      "low_risk": 0.2, "moderate_risk": 0.6, "high_risk": 0.8
+    }
+  },
+  {
+    "id": "repeat_bp_monitoring",
+    "title": "Home Blood Pressure Tracking",
+    "description": "Log blood pressure readings morning and evening for 5 to 7 days to evaluate baseline trends.",
+    "category": "Monitoring",
+    "reason": "Serial BP readings help distinguish transient stress elevation from sustained high blood pressure.",
+    "tags": ["bp_tracking", "home_monitoring"],
+    "feature_profile": {
+      "low_bmi": 0, "high_bmi": 0.4, "obese_bmi": 0.5,
+      "elevated_bp": 1.0, "high_bp": 0.8, "low_bp": 0.2,
+      "high_glucose": 0.3, "very_high_glucose": 0.3,
+      "high_heart_rate": 0.3, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.3,
+      "headache": 0.4, "dizziness": 0.3, "chest_pain": 0.1,
+      "shortness_of_breath": 0.1, "nausea": 0, "vomiting": 0,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0.3, "moderate_risk": 0.8, "high_risk": 0.6
+    }
+  },
+  {
+    "id": "fasting_sugar_followup",
+    "title": "Fasting Blood Glucose Follow-up",
+    "description": "Schedule a fasting blood glucose test or HbA1c lab test to confirm glycemic health.",
+    "category": "Clinical Follow-up",
+    "reason": "Confirmation of blood sugar via laboratory testing provides clarity on glucose control.",
+    "tags": ["glucose", "hba1c", "lab_test"],
+    "feature_profile": {
+      "low_bmi": 0, "high_bmi": 0.4, "obese_bmi": 0.6,
+      "elevated_bp": 0.3, "high_bp": 0.3, "low_bp": 0,
+      "high_glucose": 1.0, "very_high_glucose": 0.9,
+      "high_heart_rate": 0.2, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.4,
+      "headache": 0.1, "dizziness": 0.2, "chest_pain": 0,
+      "shortness_of_breath": 0, "nausea": 0.2, "vomiting": 0.2,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0.2, "moderate_risk": 0.7, "high_risk": 0.7
+    }
+  },
+  {
+    "id": "hydration_electrolyte_plan",
+    "title": "Hydration & Electrolyte Care",
+    "description": "Ensure adequate fluid intake with water or oral rehydration fluids, especially if experiencing low BP or GI symptoms.",
+    "category": "Lifestyle & Wellness",
+    "reason": "Maintaining hydration supports healthy blood pressure and prevents fluid deficit from fever or GI symptoms.",
+    "tags": ["hydration", "fluids", "wellness"],
+    "feature_profile": {
+      "low_bmi": 0.4, "high_bmi": 0, "obese_bmi": 0,
+      "elevated_bp": 0, "high_bp": 0, "low_bp": 0.9,
+      "high_glucose": 0, "very_high_glucose": 0.3,
+      "high_heart_rate": 0.4, "low_heart_rate": 0,
+      "fever": 0.7, "cough": 0.2, "cold": 0.3, "fatigue": 0.5,
+      "headache": 0.4, "dizziness": 0.6, "chest_pain": 0,
+      "shortness_of_breath": 0.1, "nausea": 0.8, "vomiting": 0.9,
+      "body_ache": 0.3, "sore_throat": 0.3,
+      "low_risk": 0.6, "moderate_risk": 0.5, "high_risk": 0.3
+    }
+  },
+  {
+    "id": "heart_rate_rhythm_tracking",
+    "title": "Heart Rate & Pulse Monitoring",
+    "description": "Track resting pulse using a digital oximeter or smartwatch during rest and light activity.",
+    "category": "Monitoring",
+    "reason": "Monitoring resting heart rate helps track recovery and resting autonomic tone.",
+    "tags": ["pulse", "heart_rate", "oximeter"],
+    "feature_profile": {
+      "low_bmi": 0.1, "high_bmi": 0.2, "obese_bmi": 0.3,
+      "elevated_bp": 0.3, "high_bp": 0.4, "low_bp": 0.3,
+      "high_glucose": 0.2, "very_high_glucose": 0.2,
+      "high_heart_rate": 1.0, "low_heart_rate": 0.9,
+      "fever": 0.4, "cough": 0.1, "cold": 0.1, "fatigue": 0.4,
+      "headache": 0.2, "dizziness": 0.6, "chest_pain": 0.4,
+      "shortness_of_breath": 0.4, "nausea": 0, "vomiting": 0,
+      "body_ache": 0.1, "sore_throat": 0,
+      "low_risk": 0.3, "moderate_risk": 0.7, "high_risk": 0.6
+    }
+  },
+  {
+    "id": "sleep_stress_management",
+    "title": "Sleep & Stress Management Review",
+    "description": "Prioritize 7-8 hours of quality sleep and practice stress-reduction techniques to support cardiovascular health.",
+    "category": "Lifestyle & Wellness",
+    "reason": "Chronic stress and sleep deprivation directly elevate resting heart rate and blood pressure.",
+    "tags": ["sleep", "stress", "lifestyle"],
+    "feature_profile": {
+      "low_bmi": 0.2, "high_bmi": 0.4, "obese_bmi": 0.5,
+      "elevated_bp": 0.6, "high_bp": 0.5, "low_bp": 0,
+      "high_glucose": 0.3, "very_high_glucose": 0.3,
+      "high_heart_rate": 0.5, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.8,
+      "headache": 0.7, "dizziness": 0.3, "chest_pain": 0.1,
+      "shortness_of_breath": 0.1, "nausea": 0, "vomiting": 0,
+      "body_ache": 0.4, "sore_throat": 0,
+      "low_risk": 0.5, "moderate_risk": 0.6, "high_risk": 0.4
+    }
+  },
+  {
+    "id": "gastrointestinal_care",
+    "title": "Gastrointestinal Care & Rest",
+    "description": "Eat bland foods, stay hydrated, and rest to allow digestive recovery from nausea or vomiting.",
+    "category": "Lifestyle & Wellness",
+    "reason": "Digestive rest and oral rehydration prevent complications from nausea or acute GI upset.",
+    "tags": ["nausea", "vomiting", "gi_care"],
+    "feature_profile": {
+      "low_bmi": 0.3, "high_bmi": 0, "obese_bmi": 0,
+      "elevated_bp": 0, "high_bp": 0, "low_bp": 0.4,
+      "high_glucose": 0, "very_high_glucose": 0,
+      "high_heart_rate": 0.3, "low_heart_rate": 0,
+      "fever": 0.3, "cough": 0, "cold": 0, "fatigue": 0.5,
+      "headache": 0.3, "dizziness": 0.4, "chest_pain": 0,
+      "shortness_of_breath": 0, "nausea": 1.0, "vomiting": 1.0,
+      "body_ache": 0.3, "sore_throat": 0,
+      "low_risk": 0.6, "moderate_risk": 0.5, "high_risk": 0.3
+    }
+  },
+  {
+    "id": "endocrinology_consultation",
+    "title": "Endocrinology / Metabolic Evaluation",
+    "description": "Consider consulting a specialist for comprehensive metabolic, insulin, and blood sugar management.",
+    "category": "Specialist Referral",
+    "reason": "Significantly elevated sugar readings benefit from specialist metabolic and endocrine review.",
+    "tags": ["endocrinology", "metabolic", "glucose"],
+    "feature_profile": {
+      "low_bmi": 0, "high_bmi": 0.5, "obese_bmi": 0.8,
+      "elevated_bp": 0.4, "high_bp": 0.5, "low_bp": 0,
+      "high_glucose": 0.8, "very_high_glucose": 1.0,
+      "high_heart_rate": 0.3, "low_heart_rate": 0,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.6,
+      "headache": 0.2, "dizziness": 0.3, "chest_pain": 0,
+      "shortness_of_breath": 0.1, "nausea": 0.3, "vomiting": 0.3,
+      "body_ache": 0, "sore_throat": 0,
+      "low_risk": 0, "moderate_risk": 0.5, "high_risk": 0.9
+    }
+  },
+  {
+    "id": "preventive_health_check",
+    "title": "Annual Preventive Health Screening",
+    "description": "Maintain annual health screenings including lipid panel, renal panel, and routine physical exam.",
+    "category": "Monitoring",
+    "reason": "Periodic preventative health exams help detect silent vital changes early.",
+    "tags": ["preventive", "annual_checkup", "wellness"],
+    "feature_profile": {
+      "low_bmi": 0.2, "high_bmi": 0.4, "obese_bmi": 0.4,
+      "elevated_bp": 0.3, "high_bp": 0.2, "low_bp": 0.1,
+      "high_glucose": 0.3, "very_high_glucose": 0.2,
+      "high_heart_rate": 0.1, "low_heart_rate": 0.1,
+      "fever": 0, "cough": 0, "cold": 0, "fatigue": 0.2,
+      "headache": 0.1, "dizziness": 0.1, "chest_pain": 0,
+      "shortness_of_breath": 0, "nausea": 0, "vomiting": 0,
+      "body_ache": 0.1, "sore_throat": 0,
+      "low_risk": 0.9, "moderate_risk": 0.5, "high_risk": 0.1
+    }
+  },
+  {
+    "id": "headache_bp_monitoring",
+    "title": "Headache & Blood Pressure Log",
+    "description": "Keep a daily log of headache occurrences alongside blood pressure readings.",
+    "category": "Monitoring",
+    "reason": "Headaches can correlate with blood pressure fluctuations or stress levels.",
+    "tags": ["headache", "bp_log"],
+    "feature_profile": {
+      "low_bmi": 0.1, "high_bmi": 0.2, "obese_bmi": 0.3,
+      "elevated_bp": 0.7, "high_bp": 0.8, "low_bp": 0.2,
+      "high_glucose": 0.2, "very_high_glucose": 0.2,
+      "high_heart_rate": 0.3, "low_heart_rate": 0,
+      "fever": 0.3, "cough": 0, "cold": 0, "fatigue": 0.5,
+      "headache": 1.0, "dizziness": 0.5, "chest_pain": 0.2,
+      "shortness_of_breath": 0.1, "nausea": 0.2, "vomiting": 0,
+      "body_ache": 0.3, "sore_throat": 0,
+      "low_risk": 0.3, "moderate_risk": 0.7, "high_risk": 0.6
+    }
+  },
+  {
+    "id": "urgent_medical_evaluation",
+    "title": "Urgent Medical Evaluation",
+    "description": "Seek immediate medical attention or emergency care for concerning acute symptoms like chest pain or breathing difficulty.",
+    "category": "Emergency & Safety",
+    "reason": "Acute symptoms such as chest discomfort or shortness of breath require prompt in-person clinical evaluation.",
+    "tags": ["emergency", "urgent", "chest_pain", "breathing"],
+    "feature_profile": {
+      "low_bmi": 0.1, "high_bmi": 0.3, "obese_bmi": 0.5,
+      "elevated_bp": 0.6, "high_bp": 0.9, "low_bp": 0.7,
+      "high_glucose": 0.4, "very_high_glucose": 0.6,
+      "high_heart_rate": 0.8, "low_heart_rate": 0.6,
+      "fever": 0.4, "cough": 0.3, "cold": 0.1, "fatigue": 0.5,
+      "headache": 0.4, "dizziness": 0.7, "chest_pain": 1.0,
+      "shortness_of_breath": 1.0, "nausea": 0.4, "vomiting": 0.4,
+      "body_ache": 0.2, "sore_throat": 0.1,
+      "low_risk": 0, "moderate_risk": 0.4, "high_risk": 1.0
+    }
+  }
+]

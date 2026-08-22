@@ -47,5 +47,5 @@ next-env.d.ts
 __pycache__/
 *.py[cod]
 
-*.joblib
+
 *.pkl
