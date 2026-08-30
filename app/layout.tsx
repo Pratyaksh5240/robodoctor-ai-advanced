@@ -7,6 +7,11 @@ import AuthGate from "@/components/AuthGate";
 export const metadata = {
   title: "RoboDoctor AI",
   description: "AI Powered Health Intelligence System",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
