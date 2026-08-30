@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://robodoctor.vercel.app">🌐 Live Demo</a> •
-  <a href="https://github.com/Pratyaksh5240/robodoctor">💻 GitHub</a> •
+  <a href="https://github.com/Pratyaksh5240/robodoctor-ai-advanced">💻 GitHub</a> •
   <a href="https://robodoctor.onrender.com/health">🧠 ML API</a>
 </p>
 
