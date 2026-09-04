@@ -9,6 +9,7 @@ import { saveSkinReport, loadSkinReports, SkinReportRecord } from "@/lib/reportH
 import { SkinAnalysis } from "@/lib/skinAnalysis";
 import { useLanguage, Language } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { translateUi } from "@/lib/uiI18n";
 
 type SkinFormState = {
@@ -882,6 +883,7 @@ export default function SkinCheckPage() {
           </div>
         </div>
       </div>
+      <MedicalDisclaimer />
     </div>
   );
 }

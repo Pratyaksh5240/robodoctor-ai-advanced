@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { translateUi } from "@/lib/uiI18n";
 
 export default function EmergencyGuidePage() {
@@ -135,6 +136,7 @@ export default function EmergencyGuidePage() {
           )}
         </div>
       </div>
+      <MedicalDisclaimer />
     </div>
   );
 }

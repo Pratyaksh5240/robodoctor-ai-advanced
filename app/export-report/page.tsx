@@ -6,6 +6,7 @@ import { useLanguage } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { generateSampleSbarData, SbarReportData } from "@/lib/reportGenerator";
 
 export default function ExportReportPage() {
@@ -395,6 +396,7 @@ export default function ExportReportPage() {
             </div>
           </footer>
         </div>
+        <MedicalDisclaimer />
       </main>
     </div>
   );

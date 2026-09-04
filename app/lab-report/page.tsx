@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 
@@ -298,6 +299,7 @@ export default function LabReportPage() {
           </section>
         </div>
       </div>
+      <MedicalDisclaimer />
     </div>
   );
 }

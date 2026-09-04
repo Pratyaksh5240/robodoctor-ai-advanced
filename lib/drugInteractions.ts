@@ -24,7 +24,9 @@ export interface DrugInteractionResult {
 export interface CombinedSafetyReport {
   selectedDrugs: DrugInfo[];
   overallRisk: DrugSeverity;
+  coverage: "checked" | "unchecked_pair";
   interactions: DrugInteractionResult[];
+  unverifiedPairs: Array<[DrugInfo, DrugInfo]>;
   foodAndBeverageWarnings: string[];
   specialWarnings: string[];
 }
@@ -300,6 +302,7 @@ const INTERACTION_RULES: Array<{
 export function analyzeDrugSafety(selectedIds: string[]): CombinedSafetyReport {
   const selectedDrugs = DRUG_DATABASE.filter(d => selectedIds.includes(d.id));
   const interactions: DrugInteractionResult[] = [];
+  const unverifiedPairs: Array<[DrugInfo, DrugInfo]> = [];
   const foodWarningsSet = new Set<string>();
   const specialWarningsSet = new Set<string>();
 
@@ -330,6 +333,8 @@ export function analyzeDrugSafety(selectedIds: string[]): CombinedSafetyReport {
           timingAdvice: rule.timingAdvice,
           precautions: rule.precautions
         });
+      } else {
+        unverifiedPairs.push([drugA, drugB]);
       }
     }
   }
@@ -344,10 +349,14 @@ export function analyzeDrugSafety(selectedIds: string[]): CombinedSafetyReport {
     overallRisk = "minor";
   }
 
+  const coverage: "checked" | "unchecked_pair" = unverifiedPairs.length > 0 ? "unchecked_pair" : "checked";
+
   return {
     selectedDrugs,
     overallRisk,
+    coverage,
     interactions,
+    unverifiedPairs,
     foodAndBeverageWarnings: Array.from(foodWarningsSet),
     specialWarnings: Array.from(specialWarningsSet)
   };

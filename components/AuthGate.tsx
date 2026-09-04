@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
 import { translateUi } from "@/lib/uiI18n";
+import EmergencyButton from "@/components/EmergencyButton";
 
 const publicRoutes = new Set(["/", "/login", "/signup"]);
 
@@ -94,5 +95,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <EmergencyButton />
+    </>
+  );
 }

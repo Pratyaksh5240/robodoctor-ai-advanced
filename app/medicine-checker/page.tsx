@@ -7,6 +7,7 @@ import { useLanguage } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import {
   DRUG_DATABASE,
   PRESET_COMBINATIONS,
@@ -135,6 +136,17 @@ export default function MedicineCheckerPage() {
                 : "Search and add 2 or more medicines to instantly check for dangerous drug interactions, bleeding risks, food/alcohol warnings, and dose spacing guidance."}
             </p>
           </div>
+
+          {/* Database Scope Disclaimer */}
+          <div className="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200/90 flex items-start gap-2.5">
+            <span className="text-base">⚠️</span>
+            <div>
+              <span className="font-bold">Database Scope Note:</span>{" "}
+              {isHindi
+                ? "हमारा डेटाबेस सामान्य दवाओं के एक सीमित सेट को कवर करता है। जो दवा संयोजन सूचीबद्ध नहीं हैं, उन्हें अनवेरिफाइड (Unverified) के रूप में चिह्नित किया जाता है और उनका फार्मासिस्ट से परामर्श किया जाना चाहिए।"
+                : "Our database covers a curated set of common medications and interactions. Unlisted drug pairs are marked as unverified and should be reviewed by a pharmacist or physician before combining."}
+            </div>
+          </div>
         </section>
 
         {/* Quick Presets */}
@@ -253,6 +265,33 @@ export default function MedicineCheckerPage() {
               </div>
               <p className="text-xs sm:text-sm leading-relaxed opacity-90">{overallBadge.desc}</p>
             </div>
+
+            {/* Unverified Pair Warning Banner */}
+            {report.unverifiedPairs.length > 0 && (
+              <div className="bg-amber-500/15 border border-amber-500/40 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2 font-bold text-amber-300 text-sm uppercase tracking-wide">
+                  <span>⚠️</span>
+                  <span>
+                    {isHindi ? "अनवेरिफाइड दवा संयोजन (Unverified Drug Pair)" : "Unverified Medication Pair"}
+                  </span>
+                </div>
+                {report.unverifiedPairs.map(([drugA, drugB], uIdx) => (
+                  <div
+                    key={uIdx}
+                    className="bg-slate-950/80 p-3.5 rounded-xl border border-amber-500/30 text-xs space-y-1"
+                  >
+                    <div className="font-bold text-slate-200">
+                      {drugA.genericName} + {drugB.genericName}
+                    </div>
+                    <p className="text-amber-200/90 leading-relaxed">
+                      {isHindi
+                        ? "यह संयोजन हमारे सीमित डेटाबेस में नहीं मिला — इन दवाओं को एक साथ लेने से पहले फार्मासिस्ट या डॉक्टर से परामर्श करें।"
+                        : "This combination was not found in our limited interaction database — consult a pharmacist or doctor before combining."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Interaction Pair Breakdowns */}
             {report.interactions.length > 0 ? (
@@ -387,6 +426,7 @@ export default function MedicineCheckerPage() {
               : "This medication checker is an educational safety tool and does not constitute formal medical or pharmacological advice. Always consult a qualified physician or pharmacist before starting, stopping, or altering any medication doses."}
           </p>
         </section>
+        <MedicalDisclaimer />
       </main>
     </div>
   );

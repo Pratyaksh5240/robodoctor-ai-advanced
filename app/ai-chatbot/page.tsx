@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 
@@ -472,6 +473,7 @@ export default function AIChatbotPage() {
           </form>
         </div>
       </div>
+      <MedicalDisclaimer />
     </div>
   );
 }

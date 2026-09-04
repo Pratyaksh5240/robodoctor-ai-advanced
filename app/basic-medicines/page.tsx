@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 
@@ -140,6 +141,7 @@ export default function BasicMedicinesPage() {
           </p>
         </div>
       </div>
+      <MedicalDisclaimer />
     </div>
   );
 }
