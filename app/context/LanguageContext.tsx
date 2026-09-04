@@ -213,10 +213,10 @@ const translations: Record<Language, TranslationSet> = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+const listeners = new Set<() => void>();
+
 const subscribeToLanguage = (callback: () => void) => {
-  if (typeof window === "undefined") {
-    return () => {};
-  }
+  listeners.add(callback);
 
   const handleStorage = (event: StorageEvent) => {
     if (event.key === "robodoctor-language") {
@@ -224,8 +224,16 @@ const subscribeToLanguage = (callback: () => void) => {
     }
   };
 
-  window.addEventListener("storage", handleStorage);
-  return () => window.removeEventListener("storage", handleStorage);
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", handleStorage);
+  }
+
+  return () => {
+    listeners.delete(callback);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorage);
+    }
+  };
 };
 
 const getLanguageSnapshot = (): Language => {
@@ -246,10 +254,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 
   const setLanguage = (nextLanguage: Language) => {
-    localStorage.setItem("robodoctor-language", nextLanguage);
-    window.dispatchEvent(
-      new StorageEvent("storage", { key: "robodoctor-language" })
-    );
+    if (typeof window !== "undefined") {
+      localStorage.setItem("robodoctor-language", nextLanguage);
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: "robodoctor-language" })
+      );
+    }
+    listeners.forEach((listener) => listener());
   };
 
   return (

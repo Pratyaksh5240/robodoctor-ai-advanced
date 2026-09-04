@@ -380,19 +380,19 @@ export default function Home() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-[color:var(--border)] bg-cyan-500/10 p-5">
-                  <p className="text-sm text-cyan-300">{isHindi ? "वाइटल्स + लक्षण" : translateUi("Vitals + symptoms", language)}</p>
-                  <p className="mt-2 text-3xl font-black">{isHindi ? "जोखिम स्कोर" : translateUi("Risk Score", language)}</p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
+                <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-5">
+                  <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">{isHindi ? "वाइटल्स + लक्षण" : translateUi("Vitals + symptoms", language)}</p>
+                  <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{isHindi ? "जोखिम स्कोर" : translateUi("Risk Score", language)}</p>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                     {isHindi
                       ? "बीपी, शुगर, पल्स, बीएमआई और रेड फ्लैग्स को जल्दी समझें।"
                       : translateUi("Find BP, sugar, pulse, BMI, and symptom red flags faster.", language)}
                   </p>
                 </div>
-                <div className="rounded-3xl border border-[color:var(--border)] bg-fuchsia-500/10 p-5">
-                  <p className="text-sm text-fuchsia-300">{isHindi ? "रिकवरी + वेलनेस" : translateUi("Recovery + wellness", language)}</p>
-                  <p className="mt-2 text-3xl font-black">{isHindi ? "योग वीडियो" : "Yoga Videos"}</p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
+                <div className="rounded-3xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-5">
+                  <p className="text-sm font-semibold text-fuchsia-800 dark:text-fuchsia-300">{isHindi ? "रिकवरी + वेलनेस" : translateUi("Recovery + wellness", language)}</p>
+                  <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{isHindi ? "योग वीडियो" : translateUi("Yoga Videos", language)}</p>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                     {isHindi
                       ? "ब्रीदिंग, स्ट्रेचिंग, योग और मेडिटेशन वीडियो के साथ रिकवरी करें।"
                       : translateUi("Recover with breathing, stretching, yoga, and meditation sessions.", language)}
@@ -401,8 +401,8 @@ export default function Home() {
               </div>
 
               <div className="mt-4 rounded-3xl border border-rose-400/20 bg-rose-500/10 p-5">
-                <p className="text-sm uppercase tracking-[0.2em] text-rose-300">{uiCopy.safetyLayer}</p>
-                <p className="mt-2 text-[var(--foreground)]">{uiCopy.safetyText}</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-800 dark:text-rose-300">{uiCopy.safetyLayer}</p>
+                <p className="mt-2 text-slate-900 dark:text-slate-100">{uiCopy.safetyText}</p>
               </div>
             </div>
           </motion.div>
@@ -419,15 +419,15 @@ export default function Home() {
             {numbersGuide.map((item) => (
               <div
                 key={item.key}
-                className="rounded-[30px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6"
+                className="rounded-[30px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm"
               >
-                <p className={`text-sm uppercase tracking-[0.22em] ${item.accent}`}>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-800 dark:text-cyan-300">
                   {isHindi ? item.titleHi : translateUi(item.titleEn, language)}
                 </p>
-                <h3 className="mt-3 text-2xl font-bold">
+                <h3 className="mt-3 text-2xl font-bold text-slate-950 dark:text-white">
                   {isHindi ? item.normalHi : translateUi(item.normalEn, language)}
                 </h3>
-                <p className="mt-4 text-[var(--muted)]">
+                <p className="mt-4 text-slate-700 dark:text-slate-300">
                   {isHindi ? item.noteHi : translateUi(item.noteEn, language)}
                 </p>
               </div>
@@ -450,20 +450,20 @@ export default function Home() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.08 }}
-                className="group rounded-[30px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 backdrop-blur-sm"
+                className="group flex flex-col justify-between rounded-[30px] border border-white/10 bg-slate-900/60 p-6 backdrop-blur-sm shadow-xl"
               >
-                <div className={`rounded-[22px] bg-gradient-to-br ${card.accent} p-5`}>
-                  <p className="text-sm uppercase tracking-[0.22em] text-slate-100/85">{uiCopy.module}</p>
-                  <h3 className="mt-2 text-2xl font-bold text-slate-50">
+                <div className={`rounded-[22px] bg-gradient-to-br ${card.accent} p-5 border border-white/10`}>
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-200">{uiCopy.module}</p>
+                  <h3 className="mt-2 text-2xl font-black text-white">
                     {isHindi ? card.titleHi : translateUi(card.titleEn, language)}
                   </h3>
-                  <p className="mt-3 text-slate-100/85">
+                  <p className="mt-3 font-medium text-slate-200">
                     {isHindi ? card.descriptionHi : translateUi(card.descriptionEn, language)}
                   </p>
                 </div>
                 <Link
                   href={card.href}
-                  className="mt-5 inline-flex rounded-full border border-[color:var(--border)] bg-black/20 px-5 py-3 text-sm font-medium group-hover:bg-white/10"
+                  className="mt-5 inline-flex justify-center rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300 px-5 py-3 text-sm font-bold shadow-md transition-all"
                 >
                   {uiCopy.openNow}
                 </Link>

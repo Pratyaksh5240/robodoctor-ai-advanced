@@ -27,6 +27,13 @@ export type SkinAnalysis = {
   redFlags: SkinFinding[];
   precautions: string[];
   followUp: string;
+  topClass?: string;
+  topClassName?: string;
+  confidence?: number;
+  probabilities?: Record<string, number>;
+  uncertainPrediction?: boolean;
+  imageQualityPassed?: boolean;
+  isHighRiskPattern?: boolean;
 };
 
 const symptomIncludes = (text: string, terms: string[]) =>
@@ -260,6 +267,30 @@ export function analyzeSkin(inputs: SkinInputs): SkinAnalysis {
   if (inputs.bodyPart === "face" || inputs.bodyPart === "genitals") {
     score += 8;
     precautions.push("Sensitive body areas need lower thresholds for professional review.");
+  }
+
+  if (inputs.bleeding || inputs.discharge) {
+    precautions.push("Keep the area clean and covered with a sterile bandage; do not squeeze or pick at oozing skin.");
+  }
+
+  if (inputs.pain) {
+    precautions.push("Avoid applying heat or squeezing the painful area; gentle cool compresses can help soothe discomfort.");
+  }
+
+  if (inputs.spreading) {
+    precautions.push("Consider marking the outer border of the rash with a soft skin marker to monitor spread rate.");
+  }
+
+  if (inputs.fever) {
+    precautions.push("Monitor body temperature closely and seek urgent care if fever escalates or chills occur.");
+  }
+
+  if (inputs.itching) {
+    precautions.push("Avoid scratching the lesion to prevent secondary bacterial infection; wear loose cotton clothing.");
+  }
+
+  if (inputs.duration === "more-than-2-weeks") {
+    precautions.push("Take clear photos every few days to document lesion evolution for your dermatologist appointment.");
   }
 
   if (likelyPatterns.length === 0) {
