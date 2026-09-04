@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage } from "@/app/context/LanguageContext";
@@ -60,10 +61,18 @@ const mealPlans = {
 
 export default function DietPlannerPage() {
   const { language } = useLanguage();
+  const searchParams = useSearchParams();
   const isHindi = language === "hi";
   const localize = (english: string, hindi: string) =>
     isHindi ? hindi : translateUi(english, language);
   const [goal, setGoal] = useState<keyof typeof mealPlans>("bp");
+
+  useEffect(() => {
+    const track = searchParams?.get("track");
+    if (track === "bp" || track === "sugar" || track === "weight") {
+      setGoal(track as keyof typeof mealPlans);
+    }
+  }, [searchParams]);
 
   const plan = useMemo(() => mealPlans[goal], [goal]);
 

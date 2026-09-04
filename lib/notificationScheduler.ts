@@ -33,7 +33,11 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
-export async function requestNotificationPermission(): Promise<PermissionState> {
+import { db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { DEFAULT_VAPID_PUBLIC_KEY, urlBase64ToUint8Array } from "@/lib/vapidKeys";
+
+export async function requestNotificationPermission(userId?: string | null): Promise<PermissionState> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return "unsupported";
   }
@@ -41,10 +45,52 @@ export async function requestNotificationPermission(): Promise<PermissionState> 
   try {
     await registerServiceWorker();
     const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      await subscribeToWebPushNotifications(userId);
+    }
     return permission as PermissionState;
   } catch (error) {
     console.error("Failed to request notification permission:", error);
     return "denied";
+  }
+}
+
+export async function subscribeToWebPushNotifications(userId?: string | null): Promise<PushSubscription | null> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return null;
+  }
+
+  try {
+    const registration = await registerServiceWorker();
+    if (!registration) return null;
+
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      const applicationServerKey = urlBase64ToUint8Array(DEFAULT_VAPID_PUBLIC_KEY);
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey as unknown as BufferSource,
+      });
+    }
+
+    if (userId && subscription) {
+      const subJson = subscription.toJSON();
+      const subId = btoa(subscription.endpoint).slice(-20).replace(/[^a-zA-Z0-9]/g, "_");
+      await setDoc(
+        doc(db, "users", userId, "pushSubscriptions", subId),
+        {
+          subscription: subJson,
+          endpoint: subscription.endpoint,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    }
+
+    return subscription;
+  } catch (error) {
+    console.error("Web Push subscription failed:", error);
+    return null;
   }
 }
 

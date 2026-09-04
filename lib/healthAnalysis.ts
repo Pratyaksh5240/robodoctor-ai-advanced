@@ -22,6 +22,13 @@ export type Recommendation = {
   severity: Severity;
 };
 
+export type SuggestedModule = {
+  module: "diet-planner" | "medicine-reminder" | "emergency-guide" | "nearby-care";
+  title: string;
+  reason: string;
+  presetParams?: Record<string, string>;
+};
+
 export type HealthAnalysis = {
   riskLevel: "Low" | "Moderate" | "High" | "Emergency";
   riskScore: number;
@@ -31,6 +38,7 @@ export type HealthAnalysis = {
   possibleConcerns: AnalysisItem[];
   urgentFlags: AnalysisItem[];
   recommendations: Recommendation[];
+  suggestedModules?: SuggestedModule[];
   emergencyAdvice: string | null;
   bmi: number | null;
   symptomTags: string[];
@@ -553,6 +561,54 @@ export function analyzeHealth(input: HealthInputs): HealthAnalysis {
     },
   ]);
 
+  const suggestedModules: SuggestedModule[] = [];
+  const hasBpConcern = (input.systolic && input.systolic >= 130) || (input.diastolic && input.diastolic >= 85) || urgentFlags.some(f => f.label.toLowerCase().includes("blood pressure"));
+  const hasSugarConcern = (input.sugar && input.sugar >= 140) || urgentFlags.some(f => f.label.toLowerCase().includes("sugar"));
+  const isEmergency = riskLevel === "Emergency" || riskLevel === "High" || urgentFlags.some(f => f.severity === "emergency");
+
+  if (hasBpConcern) {
+    suggestedModules.push({
+      module: "diet-planner",
+      title: "Diet Planner — DASH BP Plan",
+      reason: "Elevated blood pressure detected. Explore blood-pressure friendly meal plans.",
+      presetParams: { track: "bp" },
+    });
+    suggestedModules.push({
+      module: "medicine-reminder",
+      title: "Smart Reminder — Daily BP Check",
+      reason: "Set a daily blood pressure monitoring reminder.",
+      presetParams: { preset: "bp-check" },
+    });
+  }
+
+  if (hasSugarConcern) {
+    suggestedModules.push({
+      module: "diet-planner",
+      title: "Diet Planner — Sugar Support Plan",
+      reason: "Elevated blood sugar reading. Browse low-glycemic dietary outlines.",
+      presetParams: { track: "sugar" },
+    });
+    suggestedModules.push({
+      module: "medicine-reminder",
+      title: "Smart Reminder — Fasting Sugar Check",
+      reason: "Set a morning fasting blood sugar check planner.",
+      presetParams: { preset: "sugar-check" },
+    });
+  }
+
+  if (isEmergency) {
+    suggestedModules.push({
+      module: "emergency-guide",
+      title: "Emergency Protocol Guide",
+      reason: "High risk symptoms detected. Review urgent medical warning signs.",
+    });
+    suggestedModules.push({
+      module: "nearby-care",
+      title: "Find Nearby Care & Emergency Rooms",
+      reason: "Locate nearby hospitals and emergency medical facilities.",
+    });
+  }
+
   return {
     riskLevel,
     riskScore,
@@ -562,6 +618,7 @@ export function analyzeHealth(input: HealthInputs): HealthAnalysis {
     possibleConcerns: uniqueItems(possibleConcerns),
     urgentFlags: uniqueItems(urgentFlags),
     recommendations: finalRecommendations,
+    suggestedModules,
     emergencyAdvice,
     bmi,
     symptomTags,

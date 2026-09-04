@@ -1041,6 +1041,76 @@ export default function HealthCheck() {
             </div>
           )}
 
+          {/* Proactive Connected Module Recommendations */}
+          <div className="mt-8 rounded-2xl border border-cyan-400/30 bg-cyan-950/40 p-5 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-sm text-cyan-300 uppercase tracking-wide">
+              <span>💡</span>
+              <span>{localize("RECOMMENDED NEXT STEPS & CONNECTED MODULES", "अनुशंसित अगले कदम और मॉड्यूल्स")}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {formData.bp && parseInt(formData.bp) >= 130 && (
+                <>
+                  <Link
+                    href="/diet-planner?track=bp"
+                    className="p-3.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 transition text-xs flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-200 group-hover:text-cyan-300">🥗 DASH Diet Planner (BP Plan)</div>
+                      <div className="text-slate-400 text-[11px] mt-0.5">Explore blood-pressure friendly meal outlines</div>
+                    </div>
+                    <span className="text-cyan-400 font-bold text-sm">→</span>
+                  </Link>
+                  <Link
+                    href="/medicine-reminder?preset=bp-check"
+                    className="p-3.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 transition text-xs flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-200 group-hover:text-cyan-300">⏰ Daily BP Check Reminder</div>
+                      <div className="text-slate-400 text-[11px] mt-0.5">Pre-fill a daily 8:00 AM BP monitor schedule</div>
+                    </div>
+                    <span className="text-cyan-400 font-bold text-sm">→</span>
+                  </Link>
+                </>
+              )}
+              {formData.sugar && Number(formData.sugar) >= 140 && (
+                <>
+                  <Link
+                    href="/diet-planner?track=sugar"
+                    className="p-3.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 transition text-xs flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-200 group-hover:text-cyan-300">🥗 Sugar Support Diet Plan</div>
+                      <div className="text-slate-400 text-[11px] mt-0.5">Browse low-glycemic dietary outlines</div>
+                    </div>
+                    <span className="text-cyan-400 font-bold text-sm">→</span>
+                  </Link>
+                  <Link
+                    href="/medicine-reminder?preset=sugar-check"
+                    className="p-3.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 transition text-xs flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-200 group-hover:text-cyan-300">⏰ Fasting Sugar Check Reminder</div>
+                      <div className="text-slate-400 text-[11px] mt-0.5">Pre-fill a morning sugar check planner</div>
+                    </div>
+                    <span className="text-cyan-400 font-bold text-sm">→</span>
+                  </Link>
+                </>
+              )}
+              {result.urgent && (
+                <Link
+                  href="/nearby-care"
+                  className="p-3.5 rounded-xl bg-red-950/60 border border-red-500/40 hover:border-red-400 transition text-xs flex items-center justify-between col-span-full group"
+                >
+                  <div>
+                    <div className="font-bold text-red-200 group-hover:text-red-100">🏥 Find Nearby Urgent Care & Emergency Rooms</div>
+                    <div className="text-red-300/80 text-[11px] mt-0.5">Open browser geolocation to locate emergency facilities</div>
+                  </div>
+                  <span className="text-red-400 font-bold text-sm">→</span>
+                </Link>
+              )}
+            </div>
+          </div>
+
           <div className="mt-8 flex flex-wrap gap-4 items-center border-t border-[color:var(--border)] pt-6">
             <Link
               href="/"

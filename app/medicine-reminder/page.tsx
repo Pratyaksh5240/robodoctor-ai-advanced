@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
+import { useAuth } from "@/components/AuthProvider";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import { translateUi } from "@/lib/uiI18n";
 import {
   getNotificationPermissionState,
   requestNotificationPermission,
+  subscribeToWebPushNotifications,
   registerServiceWorker,
   checkAndTriggerReminders,
   triggerDesktopNotification,
@@ -18,6 +23,8 @@ import {
 
 export default function MedicineReminderPage() {
   const { language } = useLanguage();
+  const { user } = useAuth();
+  const searchParams = useSearchParams();
   const isHindi = language === "hi";
   const localize = (english: string, hindi: string) =>
     isHindi ? hindi : translateUi(english, language);
@@ -37,16 +44,65 @@ export default function MedicineReminderPage() {
     return saved ? (JSON.parse(saved) as Reminder[]) : [];
   });
 
-  // Save reminders to localStorage
+  // Handle Preset URL Search Params
+  useEffect(() => {
+    const preset = searchParams?.get("preset");
+    if (preset === "bp-check") {
+      setTitle(localize("Check Blood Pressure (Daily)", "ब्लड प्रेशर जांच (दैनिक)"));
+      setTime("08:00");
+    } else if (preset === "sugar-check") {
+      setTitle(localize("Fasting Blood Sugar Check", "खाली पेट ब्लड शुगर जांच"));
+      setTime("08:00");
+    } else if (preset === "medication") {
+      setTitle(localize("Take Daily Prescription Medicine", "दैनिक दवा लें"));
+      setTime("09:00");
+    }
+  }, [searchParams, isHindi]);
+
+  // Load reminders from Firestore if user signed in
+  useEffect(() => {
+    if (!user) return;
+    async function loadFirestoreReminders() {
+      try {
+        const snap = await getDocs(collection(db, "users", user!.uid, "reminders"));
+        if (!snap.empty) {
+          const items: Reminder[] = [];
+          snap.forEach((d) => {
+            items.push(d.data() as Reminder);
+          });
+          setReminders(items);
+        }
+      } catch (err) {
+        console.warn("Failed to load Firestore reminders:", err);
+      }
+    }
+    loadFirestoreReminders();
+  }, [user]);
+
+  // Save reminders to localStorage and Firestore
   useEffect(() => {
     localStorage.setItem("robodoctor-reminders", JSON.stringify(reminders));
-  }, [reminders]);
 
-  // Initial Permission Check & Service Worker Registration
+    if (user) {
+      reminders.forEach(async (r) => {
+        try {
+          await setDoc(doc(db, "users", user.uid, "reminders", String(r.id)), r, { merge: true });
+        } catch (err) {
+          console.warn("Failed to sync reminder to Firestore:", err);
+        }
+      });
+    }
+  }, [reminders, user]);
+
+  // Initial Permission Check, SW Registration & Web Push Subscription
   useEffect(() => {
     setPermissionState(getNotificationPermissionState());
-    registerServiceWorker();
-  }, []);
+    registerServiceWorker().then(() => {
+      if (getNotificationPermissionState() === "granted") {
+        subscribeToWebPushNotifications(user?.uid);
+      }
+    });
+  }, [user]);
 
   // Background Notification Scheduler Loop (Runs every 5s for fast response)
   useEffect(() => {
@@ -60,20 +116,20 @@ export default function MedicineReminderPage() {
   }, []);
 
   const handleEnableNotifications = async () => {
-    const state = await requestNotificationPermission();
+    const state = await requestNotificationPermission(user?.uid);
     setPermissionState(state);
     if (state === "granted") {
       setStatusMsg(
         localize(
-          "Desktop notifications enabled! Click 'Test Notification' below to try an instant test notification.",
-          "डेस्कटॉप नोटिफिकेशन सक्षम हो गए हैं! तुरंत टेस्ट नोटिफिकेशन के लिए 'Test Notification' पर क्लिक करें।"
+          "Background Web Push & Desktop notifications enabled! Reminders will now reach you even when the tab is closed.",
+          "वेब पुश और डेस्कटॉप नोटिफिकेशन सक्षम! टैब बंद होने पर भी आपको रिमाइंडर मिलेंगे।"
         )
       );
     } else if (state === "denied") {
       setStatusMsg(
         localize(
-          "Notifications were blocked in your browser. Click the lock/gear icon near http://localhost:3000 in your browser address bar to allow Notifications.",
-          "नोटिफिकेशन आपके ब्राउज़र में ब्लॉक हैं। अनुमति देने के लिए एड्रेस बार में लॉक/गियर आइकन पर क्लिक करें।"
+          "Notifications were blocked in your browser. Click the lock icon in address bar to allow Notifications.",
+          "नोटिफिकेशन ब्लॉक हैं। एड्रेस बार में लॉक आइकन पर क्लिक करें।"
         )
       );
     }
