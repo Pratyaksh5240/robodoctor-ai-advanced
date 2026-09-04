@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
-import { useLanguage } from "@/app/context/LanguageContext";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 
 type LabForm = {
@@ -12,7 +12,7 @@ type LabForm = {
   hba1c: string;
   hemoglobin: string;
   tsh: string;
-  totalCholesterol: string;
+  cholesterol: string;
 };
 
 const initialForm: LabForm = {
@@ -20,7 +20,7 @@ const initialForm: LabForm = {
   hba1c: "",
   hemoglobin: "",
   tsh: "",
-  totalCholesterol: "",
+  cholesterol: "",
 };
 
 type LabFinding = {
@@ -38,10 +38,7 @@ const toneClasses = {
 };
 
 export default function LabReportPage() {
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
   const [form, setForm] = useState<LabForm>(initialForm);
 
   const findings = useMemo(() => {
@@ -50,7 +47,7 @@ export default function LabReportPage() {
     const hba1c = Number(form.hba1c);
     const hemoglobin = Number(form.hemoglobin);
     const tsh = Number(form.tsh);
-    const totalCholesterol = Number(form.totalCholesterol);
+    const totalCholesterol = Number(form.cholesterol);
 
     if (!Number.isNaN(fastingSugar) && form.fastingSugar) {
       if (fastingSugar >= 126) {
@@ -155,7 +152,7 @@ export default function LabReportPage() {
       }
     }
 
-    if (!Number.isNaN(totalCholesterol) && form.totalCholesterol) {
+    if (!Number.isNaN(totalCholesterol) && form.cholesterol) {
       if (totalCholesterol >= 240) {
         nextFindings.push({
           titleEn: "Total cholesterol is high",
@@ -271,14 +268,10 @@ export default function LabReportPage() {
                     className={`rounded-3xl border p-5 ${toneClasses[finding.tone]}`}
                   >
                     <h3 className="text-xl font-bold">
-                      {isHindi
-                        ? finding.titleHi
-                        : translateUi(finding.titleEn, language)}
+                      {localize(finding.titleEn, finding.titleHi)}
                     </h3>
                     <p className="mt-2 text-sm leading-7">
-                      {isHindi
-                        ? finding.detailHi
-                        : translateUi(finding.detailEn, language)}
+                      {localize(finding.detailEn, finding.detailHi)}
                     </p>
                   </div>
                 ))
@@ -328,7 +321,7 @@ export default function LabReportPage() {
                     </Link>
                   </>
                 )}
-                {Number(form.totalCholesterol) >= 200 && (
+                {Number(form.cholesterol) >= 200 && (
                   <Link
                     href="/diet-planner?track=bp"
                     className="p-3.5 rounded-xl bg-slate-950 border border-slate-700 hover:border-cyan-400 transition text-xs flex items-center justify-between group col-span-full"

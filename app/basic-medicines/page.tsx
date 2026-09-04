@@ -3,73 +3,69 @@
 import Link from "next/link";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 const sections = [
   {
-    titleEn: "Fever and body ache",
-    titleHi: "बुखार और बदन दर्द",
+    titleEn: "Fever and mild body pain",
+    titleHi: "बुखार और हल्का बदन दर्द",
     itemsEn: [
-      "Paracetamol or acetaminophen",
-      "Fluids and rest",
-      "Doctor review if fever stays high or lasts more than 2 to 3 days",
+      "Paracetamol 500mg or 650mg is commonly used after food for fever and body ache.",
+      "Keep gaps of 4 to 6 hours between doses, and do not exceed daily doctor-recommended limits.",
+      "Hydrate well, take rest, and monitor temperature regularly.",
     ],
     itemsHi: [
-      "पैरासिटामोल या एसीटामिनोफेन",
-      "पर्याप्त तरल और आराम",
-      "यदि बुखार बहुत अधिक रहे या 2 से 3 दिन से ज्यादा रहे तो डॉक्टर को दिखाएं",
+      "बुखार और बदन दर्द के लिए पेरासिटामोल 500mg या 650mg भोजन के बाद इस्तेमाल की जाती है।",
+      "खुराक में 4 से 6 घंटे का अंतर रखें और डॉक्टर द्वारा बताई दैनिक सीमा से अधिक न लें।",
+      "पर्याप्त पानी पिएं, आराम करें और नियमित रूप से तापमान मापें।",
     ],
   },
   {
-    titleEn: "Cold and cough",
-    titleHi: "सर्दी और खांसी",
+    titleEn: "Cold, runny nose, and sneezing",
+    titleHi: "सर्दी, जुकाम और छींक आना",
     itemsEn: [
-      "Steam inhalation",
-      "Saline nasal spray",
-      "Basic cough syrup only if suitable for age and condition",
+      "Cetirizine 10mg or Levocetirizine is often taken once daily for runny nose or sneezing.",
+      "Steam inhalation and warm water gargles help ease nasal block and throat irritation.",
+      "Avoid cold water, cold beverages, and dust exposure.",
     ],
     itemsHi: [
-      "भाप लेना",
-      "सेलाइन नेजल स्प्रे",
-      "उम्र और स्थिति के अनुसार उपयुक्त हो तो बेसिक कफ सिरप",
+      "छींक और बहती नाक के लिए सेटिरिज़िन 10mg या लेवोसिटिरिज़िन आमतौर पर दिन में एक बार ली जाती है।",
+      "भाप लेना और गुनगुने पानी के गरारे करना नाक बंद होने और गले की खराश में राहत देता है।",
+      "ठंडा पानी, ठंडे पेय और धूल-मिट्टी के संपर्क से बचें।",
     ],
   },
   {
-    titleEn: "Acidity and indigestion",
-    titleHi: "एसिडिटी और अपच",
+    titleEn: "Acidity, heartburn, and gas",
+    titleHi: "एसिडिटी, सीने में जलन और गैस",
     itemsEn: [
-      "Antacid tablets or liquid",
-      "Small light meals",
-      "Avoid spicy, oily, and late-night food",
+      "Antacids or Pantoprazole/Omeprazole (before food) help with hyperacidity and stomach burning.",
+      "Avoid heavy, oily, spicy foods, caffeine, and immediate lying down after meals.",
+      "Eat smaller meals and drink water regularly.",
     ],
     itemsHi: [
-      "एंटासिड टैबलेट या लिक्विड",
-      "हल्का और कम मात्रा वाला भोजन",
-      "तेज मसालेदार, तैलीय और देर रात का खाना न लें",
+      "ज्यादा एसिडिटी और पेट की जलन के लिए एंटासिड या पेंटोप्रोजोल/ओमेप्राजोल (खाने से पहले) मदद करते हैं।",
+      "भारी, मसालेदार, तला-भुना खाना, कैफीन और खाने के तुरंत बाद लेटने से बचें।",
+      "कम मात्रा में बार-बार खाएं और पानी पिएं।",
     ],
   },
   {
-    titleEn: "Diarrhea support",
-    titleHi: "दस्त में सहायक देखभाल",
+    titleEn: "Loose motion, diarrhea, and vomiting",
+    titleHi: "दस्त, दस्त की समस्या और उल्टी",
     itemsEn: [
-      "ORS",
-      "Plenty of fluids",
-      "Doctor review if blood, dehydration, or persistent diarrhea occurs",
+      "ORS (Oral Rehydration Solution) is essential to prevent dehydration.",
+      "Zinc supplements are often advised during diarrhea to support intestinal recovery.",
+      "Eat light foods like curd rice, banana, apple sauce, and khichdi.",
     ],
     itemsHi: [
-      "ORS",
-      "ज्यादा तरल पदार्थ",
-      "यदि खून, डिहाइड्रेशन या लंबे समय तक दस्त रहे तो डॉक्टर को दिखाएं",
+      "डिहाइड्रेशन (पानी की कमी) से बचने के लिए ORS का घोल बहुत जरूरी है।",
+      "दस्त के समय आंतों की रिकवरी के लिए जिंक सप्लीमेंट की सलाह दी जाती है।",
+      "दही-चावल, केला, और खिचड़ी जैसा हल्का भोजन लें।",
     ],
   },
 ];
 
 export default function BasicMedicinesPage() {
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   return (
     <div className="min-h-screen bg-[var(--background)] px-6 py-10 text-[var(--foreground)] md:px-12">
@@ -110,18 +106,15 @@ export default function BasicMedicinesPage() {
               className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6"
             >
               <h2 className="text-2xl font-bold">
-                {isHindi ? section.titleHi : translateUi(section.titleEn, language)}
+                {localize(section.titleEn, section.titleHi)}
               </h2>
               <ul className="mt-4 space-y-3 text-[var(--muted)]">
-                {(isHindi
-                  ? section.itemsHi
-                  : section.itemsEn.map((item) => translateUi(item, language))
-                ).map((item) => (
+                {section.itemsEn.map((itemEn, idx) => (
                   <li
-                    key={item}
+                    key={itemEn}
                     className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-4"
                   >
-                    {item}
+                    {localize(itemEn, section.itemsHi[idx])}
                   </li>
                 ))}
               </ul>

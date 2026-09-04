@@ -7,7 +7,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { saveSkinReport, loadSkinReports, SkinReportRecord } from "@/lib/reportHistory";
 import { SkinAnalysis } from "@/lib/skinAnalysis";
-import { useLanguage, Language } from "@/app/context/LanguageContext";
+import { useLanguage, useLocalize, Language } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { translateUi } from "@/lib/uiI18n";
@@ -156,7 +156,7 @@ const loadImage = (src: string) =>
     image.src = src;
   });
 
-async function validateSkinLikeImage(dataUrl: string, isHindi: boolean): Promise<ImageCheckResult> {
+async function validateSkinLikeImage(dataUrl: string, language: Language): Promise<ImageCheckResult> {
   try {
     const image = await loadImage(dataUrl);
     const canvas = document.createElement("canvas");
@@ -230,9 +230,9 @@ async function validateSkinLikeImage(dataUrl: string, isHindi: boolean): Promise
     if (looksLikeDocument) {
       return {
         isSkinLike: false,
-        message: isHindi
+        message: language === "hi"
           ? "Yeh photo twacha ki photo jaisi nahin lag rahi hai. Kripya sirf prabhavit twacha wale hissa ki saaf photo upload karein."
-          : "This does not appear to be a skin photo. Please upload a clear photo of the affected skin area only.",
+          : translateUi("This does not appear to be a skin photo. Please upload a clear photo of the affected skin area only.", language),
       };
     }
 
@@ -240,9 +240,9 @@ async function validateSkinLikeImage(dataUrl: string, isHindi: boolean): Promise
   } catch {
     return {
       isSkinLike: false,
-      message: isHindi
+      message: language === "hi"
         ? "Photo padi nahin ja saki. Kripya twacha ki ek saaf photo dobara upload karein."
-        : "The image could not be read. Please upload a clear skin photo and try again.",
+        : translateUi("The image could not be read. Please upload a clear skin photo and try again.", language),
     };
   }
 }
@@ -295,9 +295,7 @@ const translateLesionClass = (cls: string, fallbackName: string, lang: string) =
 
 export default function SkinCheckPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
   const severityLabels = {
     low: localize("Low", "कम"),
     moderate: localize("Moderate", "मध्यम"),
@@ -338,15 +336,16 @@ export default function SkinCheckPage() {
         }
       } catch {
         setStatusMessage(
-          isHindi
-            ? "क्लाउड हिस्ट्री अभी उपलब्ध नहीं है, इसलिए लोकल हिस्ट्री का उपयोग किया जा रहा है।"
-            : "Cloud history is unavailable right now, so local history is still being used."
+          localize(
+            "Cloud history is unavailable right now, so local history is still being used.",
+            "क्लाउड हिस्ट्री अभी उपलब्ध नहीं है, इसलिए लोकल हिस्ट्री का उपयोग किया जा रहा है।"
+          )
         );
       }
     });
 
     return () => unsubscribe();
-  }, [isHindi]);
+  }, [localize]);
 
   useEffect(() => {
     return () => {
@@ -397,9 +396,10 @@ export default function SkinCheckPage() {
       const result = typeof reader.result === "string" ? reader.result : null;
       if (!result) {
         setStatusMessage(
-          isHindi
-            ? "फोटो पढ़ी नहीं जा सकी। कृपया दूसरी फोटो चुनें।"
-            : "The selected image could not be read. Please choose another photo."
+          localize(
+            "The selected image could not be read. Please choose another photo.",
+            "फोटो पढ़ी नहीं जा सकी। कृपया दूसरी फोटो चुनें।"
+          )
         );
         return;
       }
@@ -420,12 +420,18 @@ export default function SkinCheckPage() {
 
     try {
       await saveSkinReport(userId, report);
-      setStatusMessage(isHindi ? "स्किन रिपोर्ट आपकी क्लाउड हिस्ट्री में सेव हो गई।" : "Skin report saved to your cloud history.");
+      setStatusMessage(
+        localize(
+          "Skin report saved to your cloud history.",
+          "स्किन रिपोर्ट आपकी क्लाउड हिस्ट्री में सेव हो गई।"
+        )
+      );
     } catch {
       setStatusMessage(
-        isHindi
-          ? "स्किन विश्लेषण पूरा हुआ, लेकिन क्लाउड सेव नहीं हो पाया। लोकल सेव सफल रहा।"
-          : "Skin analysis completed, but cloud save failed. Local save still worked."
+        localize(
+          "Skin analysis completed, but cloud save failed. Local save still worked.",
+          "स्किन विश्लेषण पूरा हुआ, लेकिन क्लाउड सेव नहीं हो पाया। लोकल सेव सफल रहा।"
+        )
       );
     }
   };
@@ -436,9 +442,10 @@ export default function SkinCheckPage() {
       setAnalysisSource(null);
       setImageWarning("");
       setStatusMessage(
-        isHindi
-          ? "विश्लेषण शुरू करने से पहले कृपया त्वचा की फोटो अपलोड करें।"
-          : "Please upload a skin photo before analysis."
+        localize(
+          "Please upload a skin photo before analysis.",
+          "विश्लेषण शुरू करने से पहले कृपया त्वचा की फोटो अपलोड करें।"
+        )
       );
       return;
     }
@@ -447,7 +454,7 @@ export default function SkinCheckPage() {
     setStatusMessage("");
     setImageWarning("");
 
-    const imageCheck = await validateSkinLikeImage(imageDataUrl, isHindi);
+    const imageCheck = await validateSkinLikeImage(imageDataUrl, language);
     if (!imageCheck.isSkinLike) {
       setAnalysis(null);
       setAnalysisSource(null);
@@ -492,9 +499,10 @@ export default function SkinCheckPage() {
       await persistReport(nextReport);
     } catch {
       setStatusMessage(
-        isHindi
-          ? "विश्लेषण अभी पूरा नहीं हो पाया। कृपया फिर कोशिश करें।"
-          : "Analysis could not be completed right now. Please try again."
+        localize(
+          "Analysis could not be completed right now. Please try again.",
+          "विश्लेषण अभी पूरा नहीं हो पाया। कृपया फिर कोशिश करें।"
+        )
       );
     } finally {
       setIsAnalyzing(false);

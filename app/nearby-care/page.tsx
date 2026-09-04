@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 type Coordinates = {
   latitude: number;
@@ -31,73 +30,49 @@ const getLocationErrorMessage = (
 };
 
 export default function NearbyCarePage() {
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
+  const localize = useLocalize();
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [status, setStatus] = useState("");
 
   const copy = {
-    tag: isHindi ? "नजदीकी देखभाल" : translateUi("Nearby Care", language),
-    title: isHindi
-      ? "लोकेशन से नजदीकी अस्पताल खोजें"
-      : translateUi("Find nearby hospitals from your location", language),
-    subtitle: isHindi
-      ? "लोकेशन अनुमति दें और तुरंत नजदीकी अस्पताल, क्लिनिक, फार्मेसी, और इमरजेंसी केयर खोजें।"
-      : translateUi(
-          "Allow location access to quickly find nearby hospitals, clinics, pharmacies, and emergency care.",
-          language
-        ),
-    useLocation: isHindi
-      ? "मेरी लोकेशन इस्तेमाल करें"
-      : translateUi("Use My Location", language),
-    locationReady: isHindi
-      ? "लोकेशन मिल गई"
-      : translateUi("Location ready", language),
-    backHome: isHindi
-      ? "होम पर वापस जाएं"
-      : translateUi("Back Home", language),
-    nearbyHospitals: isHindi
-      ? "नजदीकी अस्पताल"
-      : translateUi("Nearby Hospitals", language),
-    nearbyClinics: isHindi
-      ? "नजदीकी क्लिनिक"
-      : translateUi("Nearby Clinics", language),
-    nearbyPharmacy: isHindi
-      ? "नजदीकी फार्मेसी"
-      : translateUi("Nearby Pharmacy", language),
-    emergencyRoom: isHindi
-      ? "इमरजेंसी रूम"
-      : translateUi("Emergency Room", language),
-    mapsNote: isHindi
-      ? "यह फीचर आपके ब्राउज़र की लोकेशन का उपयोग करके मैप्स में खोज खोलता है।"
-      : translateUi(
-          "This feature uses your browser location to open nearby searches in maps.",
-          language
-        ),
-    allowPrompt: isHindi
-      ? "कृपया ब्राउज़र में लोकेशन अनुमति दें।"
-      : translateUi("Please allow location access in your browser.", language),
-    noSupport: isHindi
-      ? "इस ब्राउज़र में लोकेशन सपोर्ट उपलब्ध नहीं है।"
-      : translateUi("Location is not supported in this browser.", language),
-    failed: isHindi
-      ? "लोकेशन नहीं मिल पाई। कृपया GPS या ब्राउज़र अनुमति जांचें।"
-      : translateUi(
-          "Unable to get your location. Please check GPS or browser permissions.",
-          language
-        ),
-    currentCoords: isHindi
-      ? "वर्तमान निर्देशांक"
-      : translateUi("Current coordinates", language),
-    hint: isHindi
-      ? "लोकेशन मिलने के बाद नीचे दिए गए बटन से Google Maps में आसपास की सेवाएं खुलेंगी।"
-      : translateUi(
-          "After location is found, the buttons below will open nearby services in Google Maps.",
-          language
-        ),
-    openMaps: isHindi
-      ? "Google Maps में आसपास की सेवा खोलें।"
-      : translateUi("Open this nearby service in Google Maps.", language),
+    tag: localize("Nearby Care", "नजदीकी देखभाल"),
+    title: localize(
+      "Find nearby hospitals from your location",
+      "लोकेशन से नजदीकी अस्पताल खोजें"
+    ),
+    subtitle: localize(
+      "Allow location access to quickly find nearby hospitals, clinics, pharmacies, and emergency care.",
+      "लोकेशन अनुमति दें और तुरंत नजदीकी अस्पताल, क्लिनिक, फार्मेसी, और इमरजेंसी केयर खोजें।"
+    ),
+    useLocation: localize("Use My Location", "मेरी लोकेशन इस्तेमाल करें"),
+    locationReady: localize("Location ready", "लोकेशन मिल गई"),
+    backHome: localize("Back Home", "होम पर वापस जाएं"),
+    nearbyHospitals: localize("Nearby Hospitals", "नजदीकी अस्पताल"),
+    nearbyClinics: localize("Nearby Clinics", "नजदीकी क्लिनिक"),
+    nearbyPharmacy: localize("Nearby Pharmacy", "नजदीकी फार्मेसी"),
+    emergencyRoom: localize("Emergency Room", "इमरजेंसी रूम"),
+    mapsNote: localize(
+      "This feature uses your browser location to open nearby searches in maps.",
+      "यह फीचर आपके ब्राउज़र की लोकेशन का उपयोग करके मैप्स में खोज खोलता है।"
+    ),
+    allowPrompt: localize(
+      "Please allow location access in your browser.",
+      "कृपया ब्राउज़र में लोकेशन अनुमति दें।"
+    ),
+    noSupport: localize(
+      "Location is not supported in this browser.",
+      "इस ब्राउज़र में लोकेशन सपोर्ट उपलब्ध नहीं है।"
+    ),
+    failed: localize(
+      "Unable to get your location. Please check GPS or browser permissions.",
+      "लोकेशन नहीं मिल पाई। कृपया GPS या ब्राउज़र अनुमति जांचें।"
+    ),
+    currentCoords: localize("Current coordinates", "वर्तमान निर्देशांक"),
+    hint: localize(
+      "After location is found, the buttons below will open nearby services in Google Maps.",
+      "लोकेशन मिलने के बाद नीचे दिए गए बटन से Google Maps में आसपास की सेवाएं खुलेंगी।"
+    ),
+    openMaps: localize("Open this nearby service in Google Maps.", "Google Maps में आसपास की सेवा खोलें।"),
   };
 
   const requestLocation = () => {

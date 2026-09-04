@@ -12,7 +12,7 @@ import {
   supportedLanguages,
   useLanguage,
 } from "../context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 
 type RecommendationCardItem = {
   id?: string;
@@ -118,10 +118,7 @@ const speechLocales: Record<Language, string> = {
 export default function HealthCheck() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
-  const isHindi = language === "hi";
-
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const [formData, setFormData] = useState({
     age: "",
@@ -152,32 +149,26 @@ export default function HealthCheck() {
     {
       key: "bp",
       title: localize("How to check blood pressure", "ब्लड प्रेशर कैसे लें"),
-      detail: isHindi
-        ? "डिजिटल BP मशीन का उपयोग करें। बैठकर 5 मिनट आराम करें, हाथ को सीधा रखें, फिर रीडिंग लें।"
-        : translateUi(
-            "Use a digital BP machine. Sit calmly for 5 minutes, keep your arm supported, then take the reading.",
-            language
-          ),
+      detail: localize(
+        "Use a digital BP machine. Sit calmly for 5 minutes, keep your arm supported, then take the reading.",
+        "डिजिटल BP मशीन का उपयोग करें। बैठकर 5 मिनट आराम करें, हाथ को सीधा रखें, फिर रीडिंग लें。"
+      ),
     },
     {
       key: "heartRate",
       title: localize("How to check heart rate", "हार्ट रेट कैसे देखें"),
-      detail: isHindi
-        ? "कलाई या गर्दन की नाड़ी 60 सेकंड तक गिनें, या smartwatch/oximeter का उपयोग करें।"
-        : translateUi(
-            "Count your pulse at the wrist or neck for 60 seconds, or use a smartwatch or oximeter.",
-            language
-          ),
+      detail: localize(
+        "Count your pulse at the wrist or neck for 60 seconds, or use a smartwatch or oximeter.",
+        "कलाई या गर्दन की नाड़ी 60 सेकंड तक गिनें, या smartwatch/oximeter का उपयोग करें。"
+      ),
     },
     {
       key: "sugar",
       title: localize("How to check blood sugar", "ब्लड शुगर कैसे जांचें"),
-      detail: isHindi
-        ? "ग्लूकोमीटर से जांच करें। सुबह खाली पेट की रीडिंग फास्टिंग शुगर मानी जाती है।"
-        : translateUi(
-            "Use a glucometer. A morning reading before food is usually considered fasting sugar.",
-            language
-          ),
+      detail: localize(
+        "Use a glucometer. A morning reading before food is usually considered fasting sugar.",
+        "ग्लूकोमीटर से जांच करें। सुबह खाली पेट की रीडिंग फास्टिंग शुगर मानी जाती है。"
+      ),
     },
   ];
 
@@ -207,9 +198,9 @@ export default function HealthCheck() {
 
     if (!SpeechRecognition) {
       alert(
-        translateUi(
+        localize(
           "Voice recognition not supported in this browser.",
-          language
+          "इस ब्राउज़र में वॉयस रिकॉग्निशन काम नहीं करता।"
         )
       );
       return;
@@ -416,12 +407,8 @@ export default function HealthCheck() {
             className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-sm font-medium text-cyan-100 hover:bg-cyan-400/20"
           >
             {knowsReadings
-              ? isHindi
-                ? "मुझे ये रीडिंग नहीं पता"
-                : translateUi("I don't know these readings", language)
-              : isHindi
-                ? "मुझे रीडिंग पता है"
-                : translateUi("I know my readings", language)}
+              ? localize("I don't know these readings", "मुझे ये रीडिंग नहीं पता")
+              : localize("I know my readings", "मुझे रीडिंग पता है")}
           </button>
         </div>
 

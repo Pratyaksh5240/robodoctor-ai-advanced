@@ -13,7 +13,7 @@ import {
 } from "@/lib/reportHistory";
 import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 
 const HealthTrendChart = dynamic(
   () => import("@/components/ReportsCharts").then((mod) => mod.HealthTrendChart),
@@ -34,9 +34,7 @@ function formatShortDate(timestamp: number) {
 
 export default function ReportsPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const [user, setUser] = useState<User | null>(null);
   const [healthReports, setHealthReports] = useState<HealthReportRecord[]>([]);
@@ -189,8 +187,8 @@ export default function ReportsPage() {
   };
 
   const translateRiskLabel = (value: string) => {
-    if (!isHindi) {
-      return translateUi(value, language);
+    if (language !== "hi") {
+      return localize(value, value);
     }
 
     return value
@@ -201,20 +199,21 @@ export default function ReportsPage() {
   };
 
   const translateSkinSeverity = (value: string) => {
-    if (!isHindi) {
-      return translateUi(value, language);
+    if (language !== "hi") {
+      return localize(value, value);
     }
 
     return value
       .replace("Urgent", "तत्काल")
       .replace("High", "उच्च")
       .replace("Moderate", "मध्यम")
+      .replace("Low Risk", "कम")
       .replace("Low", "कम");
   };
 
   const translateBodyPart = (value: string) => {
-    if (!isHindi) {
-      return translateUi(value, language);
+    if (language !== "hi") {
+      return localize(value, value);
     }
 
     const map: Record<string, string> = {

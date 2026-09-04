@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { useLanguage } from "@/app/context/LanguageContext";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
-import { translateUi } from "@/lib/uiI18n";
 import EmergencyButton from "@/components/EmergencyButton";
 
 const publicRoutes = new Set(["/", "/login", "/signup"]);
@@ -18,10 +17,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, guestMode, loading, startGuestSession } = useAuth();
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   if (!pathname || !isProtectedRoute(pathname)) {
     return <>{children}</>;

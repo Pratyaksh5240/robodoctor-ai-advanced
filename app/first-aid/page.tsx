@@ -3,7 +3,7 @@
 import Link from "next/link";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 
 const sections = [
   {
@@ -66,9 +66,7 @@ const sections = [
 
 export default function FirstAidPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   return (
     <div className="min-h-screen bg-[linear-gradient(160deg,#0f101c_0%,#08111d_50%,#111827_100%)] px-6 py-10 text-white md:px-12">
@@ -106,12 +104,12 @@ export default function FirstAidPage() {
               className="rounded-[28px] border border-white/10 bg-white/5 p-6"
             >
               <h2 className="text-2xl font-bold">
-                {isHindi ? section.titleHi : translateUi(section.titleEn, language)}
+                {localize(section.titleEn, section.titleHi)}
               </h2>
               <ul className="mt-4 space-y-3 text-slate-100">
-                {(isHindi
+                {(language === "hi"
                   ? section.stepsHi
-                  : section.stepsEn.map((step) => translateUi(step, language))
+                  : section.stepsEn.map((step) => localize(step, step))
                 ).map((step) => (
                   <li
                     key={step}

@@ -1,70 +1,66 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 const mealPlans = {
   bp: {
-    titleEn: "Blood pressure friendly plan",
-    titleHi: "ब्लड प्रेशर फ्रेंडली प्लान",
+    titleEn: "DASH-style blood pressure plan",
+    titleHi: "बीपी कंट्रोल डाइट योजना",
     mealsEn: [
-      "Breakfast: oats with fruit and unsalted nuts",
-      "Lunch: dal, roti, salad, and curd",
-      "Snack: coconut water or roasted chana",
-      "Dinner: grilled paneer or tofu with vegetables",
+      "Breakfast: Oats with fruits and flaxseeds",
+      "Lunch: Roti, dal, spinach, and curd",
+      "Snack: Roasted chana and unsalted nuts",
+      "Dinner: Vegetable soup with millet roti",
     ],
     mealsHi: [
-      "नाश्ता: ओट्स, फल और बिना नमक वाले नट्स",
-      "दोपहर: दाल, रोटी, सलाद और दही",
-      "स्नैक: नारियल पानी या भुना चना",
-      "रात: ग्रिल्ड पनीर या टोफू के साथ सब्जियां",
+      "नाश्ता: फल और अलसी के बीज के साथ ओट्स",
+      "दोपहर का खाना: रोटी, दाल, पालक और दही",
+      "शाम का स्नैक: भुना चना और बिना नमक के ड्राई फ्रूट्स",
+      "रात का खाना: बाजरा रोटी के साथ सब्जी का सूप",
     ],
   },
   sugar: {
-    titleEn: "Blood sugar support plan",
-    titleHi: "ब्लड शुगर सपोर्ट प्लान",
+    titleEn: "Balanced glycemic control plan",
+    titleHi: "ब्लड शुगर बैलेंस प्लान",
     mealsEn: [
-      "Breakfast: besan chilla or eggs with vegetables",
-      "Lunch: brown rice or roti with dal and sabzi",
-      "Snack: sprouts or peanuts in small portion",
-      "Dinner: soup, salad, and protein-focused meal",
+      "Breakfast: Sprouts salad and boiled eggs or paneer",
+      "Lunch: Multigrain roti, green vegetables, and salad",
+      "Snack: Buttermilk with chia seeds",
+      "Dinner: Tofu or dal with mixed vegetables",
     ],
     mealsHi: [
-      "नाश्ता: बेसन चीला या अंडे सब्जियों के साथ",
-      "दोपहर: ब्राउन राइस या रोटी के साथ दाल और सब्जी",
-      "स्नैक: स्प्राउट्स या थोड़ी मात्रा में मूंगफली",
-      "रात: सूप, सलाद और प्रोटीन वाला भोजन",
+      "नाश्ता: अंकुरित चाट और उबले अंडे या पनीर",
+      "दोपहर का खाना: मल्टीग्रेन रोटी, हरी सब्जियां और सलाद",
+      "शाम का स्नैक: चिया सीड्स के साथ छाछ",
+      "रात का खाना: मिश्रित सब्जियों के साथ टोफू या दाल",
     ],
   },
   weight: {
-    titleEn: "Weight management plan",
-    titleHi: "वजन प्रबंधन प्लान",
+    titleEn: "High-protein weight management plan",
+    titleHi: "वजन प्रबंधन डाइट प्लान",
     mealsEn: [
-      "Breakfast: Greek yogurt or poha with vegetables",
-      "Lunch: lean protein, vegetables, and smaller carbs",
-      "Snack: fruit with seeds",
-      "Dinner: early light meal with soup or salad",
+      "Breakfast: Moong dal chela with green chutney",
+      "Lunch: Brown rice or roti, chana, and cucumber salad",
+      "Snack: Apple or guava with green tea",
+      "Dinner: Light vegetable soup with grilled paneer or dal",
     ],
     mealsHi: [
-      "नाश्ता: ग्रीक योगर्ट या सब्जियों वाला पोहा",
-      "दोपहर: लीन प्रोटीन, सब्जियां और कम कार्ब्स",
-      "स्नैक: बीजों के साथ फल",
-      "रात: जल्दी हल्का भोजन जैसे सूप या सलाद",
+      "नाश्ता: हरी चटनी के साथ मूंग दाल चीला",
+      "दोपहर का खाना: ब्राउन राइस या रोटी, चना और खीरे का सलाद",
+      "शाम का स्नैक: ग्रीन टी के साथ सेब या अमरूद",
+      "रात का खाना: ग्रिल्ड पनीर या दाल के साथ हल्का सब्जी सूप",
     ],
   },
 };
 
 export default function DietPlannerPage() {
-  const { language } = useLanguage();
+  const localize = useLocalize();
   const searchParams = useSearchParams();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
   const [goal, setGoal] = useState<keyof typeof mealPlans>("bp");
 
   useEffect(() => {
@@ -134,32 +130,17 @@ export default function DietPlannerPage() {
 
           <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
             <h2 className="text-2xl font-bold">
-              {isHindi ? plan.titleHi : translateUi(plan.titleEn, language)}
+              {localize(plan.titleEn, plan.titleHi)}
             </h2>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {(isHindi
-                ? plan.mealsHi
-                : plan.mealsEn.map((meal) => translateUi(meal, language))
-              ).map((meal) => (
+              {plan.mealsEn.map((mealEn, idx) => (
                 <div
-                  key={meal}
+                  key={mealEn}
                   className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-5"
                 >
-                  {meal}
+                  {localize(mealEn, plan.mealsHi[idx])}
                 </div>
               ))}
-            </div>
-
-            <div className="mt-6 rounded-3xl border border-lime-400/20 bg-lime-500/10 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-lime-300">
-                {localize("Keep in mind", "याद रखें")}
-              </p>
-              <p className="mt-2 text-sm leading-7">
-                {localize(
-                  "This is a general health eating guide. For kidney disease, pregnancy, diabetes medication, or any special condition, please ask a professional for a personal diet plan.",
-                  "यह एक सामान्य हेल्थ डाइट गाइड है। किडनी रोग, गर्भावस्था, डायबिटीज दवा, या किसी खास बीमारी में व्यक्तिगत डाइट प्लान के लिए विशेषज्ञ से सलाह लें।"
-                )}
-              </p>
             </div>
           </section>
         </div>

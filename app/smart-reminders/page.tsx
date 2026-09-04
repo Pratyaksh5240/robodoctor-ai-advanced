@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 import type {
   ReminderPlanItem,
   ReminderSuggestionOutput,
@@ -48,9 +48,7 @@ function sourceLabel(provider: string, model: string, fallbackUsed: boolean) {
 
 export default function SmartRemindersPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const [goal, setGoal] = useState("");
   const [medications, setMedications] = useState("");

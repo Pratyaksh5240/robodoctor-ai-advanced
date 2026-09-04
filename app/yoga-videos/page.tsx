@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 type VideoItem = {
   id: string;
@@ -164,10 +163,7 @@ const categoryPills = [
 ];
 
 export default function YogaVideosPage() {
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const [inputQuery, setInputQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
@@ -293,7 +289,7 @@ export default function YogaVideosPage() {
                     : "border border-white/10 bg-slate-800/80 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                {isHindi ? pill.labelHi : translateUi(pill.labelEn, language)}
+                {localize(pill.labelEn, pill.labelHi)}
               </button>
             ))}
 
@@ -337,7 +333,7 @@ export default function YogaVideosPage() {
                 <div className="aspect-video w-full bg-black">
                   <iframe
                     src={video.embed}
-                    title={isHindi ? video.titleHi : translateUi(video.titleEn, language)}
+                    title={localize(video.titleEn, video.titleHi)}
                     className="h-full w-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -348,12 +344,10 @@ export default function YogaVideosPage() {
                     {localize("Wellness Module", "वेलनेस मॉड्यूल")}
                   </p>
                   <h2 className="mt-3 text-2xl font-bold text-white">
-                    {isHindi ? video.titleHi : translateUi(video.titleEn, language)}
+                    {localize(video.titleEn, video.titleHi)}
                   </h2>
                   <p className="mt-3 text-slate-300 text-sm leading-relaxed">
-                    {isHindi
-                      ? video.descriptionHi
-                      : translateUi(video.descriptionEn, language)}
+                    {localize(video.descriptionEn, video.descriptionHi)}
                   </p>
                 </div>
               </section>

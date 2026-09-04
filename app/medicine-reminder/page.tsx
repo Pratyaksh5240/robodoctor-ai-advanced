@@ -8,7 +8,7 @@ import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 import {
   getNotificationPermissionState,
   requestNotificationPermission,
@@ -25,9 +25,7 @@ export default function MedicineReminderPage() {
   const { language } = useLanguage();
   const { user } = useAuth();
   const searchParams = useSearchParams();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
@@ -57,7 +55,7 @@ export default function MedicineReminderPage() {
       setTitle(localize("Take Daily Prescription Medicine", "दैनिक दवा लें"));
       setTime("09:00");
     }
-  }, [searchParams, isHindi]);
+  }, [searchParams, localize]);
 
   // Load reminders from Firestore if user signed in
   useEffect(() => {

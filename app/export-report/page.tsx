@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
@@ -26,7 +25,7 @@ import {
 
 export default function ExportReportPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
+  const localize = useLocalize();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,15 +147,16 @@ export default function ExportReportPage() {
             href="/"
             className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition text-sm font-semibold"
           >
-            ← {isHindi ? "मुख्य पृष्ठ" : translateUi("Back to Home", language)}
+            ← {localize("Back to Home", "मुख्य पृष्ठ")}
           </Link>
           <div className="h-4 w-px bg-slate-700 hidden sm:block" />
           <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
             <span>📄</span>
             <span>
-              {isHindi
-                ? "डॉक्टर रिपोर्ट और SBAR सारांश निर्यात"
-                : "Clinical PDF & Doctor Summary Export"}
+              {localize(
+                "Clinical PDF & Doctor Summary Export",
+                "डॉक्टर रिपोर्ट और SBAR सारांश निर्यात"
+              )}
             </span>
           </h1>
         </div>
@@ -165,7 +165,7 @@ export default function ExportReportPage() {
           {healthReports.length > 1 && (
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-2 py-1">
               <span className="text-xs text-slate-400 font-semibold pl-1">
-                {isHindi ? "रिपोर्ट चुनें:" : "Select Report:"}
+                {localize("Select Report:", "रिपोर्ट चुनें:")}
               </span>
               <select
                 value={selectedIndex}
@@ -188,12 +188,8 @@ export default function ExportReportPage() {
           >
             <span>
               {isEditing
-                ? isHindi
-                  ? "👁️ पूर्वावलोकन देखें"
-                  : "👁️ View Preview"
-                : isHindi
-                ? "✏️ विवरण संपादित करें"
-                : "✏️ Edit Details"}
+                ? localize("👁️ View Preview", "👁️ पूर्वावलोकन देखें")
+                : localize("✏️ Edit Details", "✏️ विवरण संपादित करें")}
             </span>
           </button>
 
@@ -210,7 +206,7 @@ export default function ExportReportPage() {
             }
             className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition"
           >
-            🔄 {isHindi ? "रीसेट" : "Reset"}
+            🔄 {localize("Reset", "रीसेट")}
           </button>
 
           <button
@@ -219,7 +215,7 @@ export default function ExportReportPage() {
           >
             <span>🖨️</span>
             <span>
-              {isHindi ? "PDF डाउनलोड / प्रिंट" : "Download PDF / Print"}
+              {localize("Download PDF / Print", "PDF डाउनलोड / प्रिंट")}
             </span>
           </button>
 
@@ -234,42 +230,36 @@ export default function ExportReportPage() {
         {loading ? (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
             <p className="animate-pulse">
-              {isHindi
-                ? "आपकी रिपोर्ट लोड हो रही है..."
-                : translateUi("Loading saved reports...", language)}
+              {localize("Loading saved reports...", "आपकी रिपोर्ट लोड हो रही है...")}
             </p>
           </div>
         ) : !hasReports ? (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 max-w-xl mx-auto my-8">
             <div className="text-4xl">📋</div>
             <h2 className="text-xl font-bold text-slate-100">
-              {isHindi
-                ? "अभी तक कोई सेव रिपोर्ट नहीं है"
-                : translateUi(
-                    "No saved reports yet — complete a Health Check or Skin Check first",
-                    language
-                  )}
+              {localize(
+                "No saved reports yet — complete a Health Check or Skin Check first",
+                "अभी तक कोई सेव रिपोर्ट नहीं है"
+              )}
             </h2>
             <p className="text-sm text-slate-400">
-              {isHindi
-                ? "डॉक्टर-रेडी SBAR रिपोर्ट जनरेट करने के लिए पहले अपनी स्वास्थ्य जांच या त्वचा जांच पूरी करें।"
-                : translateUi(
-                    "Complete a Health Check or Skin Check first to populate real clinical SBAR summary data.",
-                    language
-                  )}
+              {localize(
+                "Complete a Health Check or Skin Check first to populate real clinical SBAR summary data.",
+                "डॉक्टर-रेडी SBAR रिपोर्ट जनरेट करने के लिए पहले अपनी स्वास्थ्य जांच या त्वचा जांच पूरी करें।"
+              )}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Link
                 href="/health-check"
                 className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition"
               >
-                🩺 {isHindi ? "स्वास्थ्य जांच शुरू करें" : translateUi("Start Health Check", language)}
+                🩺 {localize("Start Health Check", "स्वास्थ्य जांच शुरू करें")}
               </Link>
               <Link
                 href="/skin-check"
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition"
               >
-                🔬 {isHindi ? "त्वचा जांच शुरू करें" : translateUi("Start Skin Check", language)}
+                🔬 {localize("Start Skin Check", "त्वचा जांच शुरू करें")}
               </Link>
             </div>
           </div>
@@ -305,7 +295,7 @@ export default function ExportReportPage() {
             {healthReports.length > 1 && (
               <div className="bg-slate-950 print:hidden p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
                 <span className="text-xs text-slate-300 font-medium">
-                  {isHindi ? "चयनित जांच रिपोर्ट:" : "Selected Screening Record:"}
+                  {localize("Selected Screening Record:", "चयनित जांच रिपोर्ट:")}
                 </span>
                 <select
                   value={selectedIndex}

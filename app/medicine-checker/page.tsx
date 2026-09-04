@@ -3,8 +3,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
@@ -12,12 +11,11 @@ import {
   DRUG_DATABASE,
   PRESET_COMBINATIONS,
   analyzeDrugSafety,
-  DrugInfo
 } from "@/lib/drugInteractions";
 
 export default function MedicineCheckerPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
+  const localize = useLocalize();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(["paracetamol", "ibuprofen"]);
@@ -57,34 +55,38 @@ export default function MedicineCheckerPage() {
       case "major":
         return {
           bg: "bg-red-500/20 text-red-400 border-red-500/40",
-          label: isHindi ? "🚨 गंभीर जोखिम (Major Risk)" : "🚨 Major Interaction Risk",
-          desc: isHindi
-            ? "इस दवा संयोजन में गंभीर दुष्प्रभाव या रक्तस्राव का जोखिम है। तुरंत डॉक्टर से परामर्श लें।"
-            : "This drug combination carries high risk of dangerous side effects or severe interactions. Doctor consultation required."
+          label: localize("🚨 Major Interaction Risk", "🚨 गंभीर जोखिम (Major Risk)"),
+          desc: localize(
+            "This drug combination carries high risk of dangerous side effects or severe interactions. Doctor consultation required.",
+            "इस दवा संयोजन में गंभीर दुष्प्रभाव या रक्तस्राव का जोखिम है। तुरंत डॉक्टर से परामर्श लें।"
+          ),
         };
       case "moderate":
         return {
           bg: "bg-amber-500/20 text-amber-400 border-amber-500/40",
-          label: isHindi ? "⚠️ मध्यम जोखिम (Moderate Caution)" : "⚠️ Moderate Caution Required",
-          desc: isHindi
-            ? "दवाओं के समय में अंतर रखें या खुराक के लिए डॉक्टर की सलाह लें।"
-            : "Dose spacing or clinical monitoring recommended for this combination."
+          label: localize("⚠️ Moderate Caution Required", "⚠️ मध्यम जोखिम (Moderate Caution)"),
+          desc: localize(
+            "Dose spacing or clinical monitoring recommended for this combination.",
+            "दवाओं के समय में अंतर रखें या खुराक के लिए डॉक्टर की सलाह लें।"
+          ),
         };
       case "minor":
         return {
           bg: "bg-blue-500/20 text-blue-400 border-blue-500/40",
-          label: isHindi ? "ℹ️ मामूली इंटरैक्शन (Minor Interaction)" : "ℹ️ Minor / Routine Combination",
-          desc: isHindi
-            ? "सामान्य खुराक सीमाओं के भीतर उपयोग करना आमतौर पर सुरक्षित है।"
-            : "Generally safe under standard dosage limits with minor routine precautions."
+          label: localize("ℹ️ Minor / Routine Combination", "ℹ️ मामूली इंटरैक्शन (Minor Interaction)"),
+          desc: localize(
+            "Generally safe under standard dosage limits with minor routine precautions.",
+            "सामान्य खुराक सीमाओं के भीतर उपयोग करना आमतौर पर सुरक्षित है।"
+          ),
         };
       default:
         return {
           bg: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
-          label: isHindi ? "✅ सुरक्षित संयोजन (Safe Combination)" : "✅ No Major Known Direct Interaction",
-          desc: isHindi
-            ? "चुनी गई दवाओं के बीच कोई गंभीर अंतःक्रिया दर्ज नहीं की गई है।"
-            : "No adverse direct interaction found between the selected medications."
+          label: localize("✅ No Major Known Direct Interaction", "✅ सुरक्षित संयोजन (Safe Combination)"),
+          desc: localize(
+            "No adverse direct interaction found between the selected medications.",
+            "चुनी गई दवाओं के बीच कोई गंभीर अंतःक्रिया दर्ज नहीं की गई है।"
+          ),
         };
     }
   };
@@ -100,13 +102,13 @@ export default function MedicineCheckerPage() {
             href="/"
             className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition text-sm font-semibold"
           >
-            ← {isHindi ? "मुख्य पृष्ठ" : translateUi("Back to Home", language)}
+            ← {localize("Back to Home", "मुख्य पृष्ठ")}
           </Link>
           <div className="h-4 w-px bg-slate-700 hidden sm:block" />
           <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
             <span>💊</span>
             <span>
-              {isHindi ? "दवा सुरक्षा एवं इंटरैक्शन जांच" : "Drug Interaction & Safety Checker"}
+              {localize("Drug Interaction & Safety Checker", "दवा सुरक्षा एवं इंटरैक्शन जांच")}
             </span>
           </h1>
         </div>
@@ -126,14 +128,16 @@ export default function MedicineCheckerPage() {
               <span>🛡️ Clinical Medication Safety</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {isHindi
-                ? "क्या आपकी दवाएं एक साथ लेना सुरक्षित है?"
-                : "Check Medication Interactions & Side Effects"}
+              {localize(
+                "Check Medication Interactions & Side Effects",
+                "क्या आपकी दवाएं एक साथ लेना सुरक्षित है?"
+              )}
             </h2>
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-              {isHindi
-                ? "अपनी दवाओं को खोजें और चुनें। यह टूल दवाओं के बीच संभावित अंतःक्रिया (Interactions), दुष्प्रभावों, भोजन संबंधी चेतावनियों और खुराक के समय का विश्लेषण करता है।"
-                : "Search and add 2 or more medicines to instantly check for dangerous drug interactions, bleeding risks, food/alcohol warnings, and dose spacing guidance."}
+              {localize(
+                "Search and add 2 or more medicines to instantly check for dangerous drug interactions, bleeding risks, food/alcohol warnings, and dose spacing guidance.",
+                "अपनी दवाओं को खोजें और चुनें। यह टूल दवाओं के बीच संभावित अंतःक्रिया (Interactions), दुष्प्रभावों, भोजन संबंधी चेतावनियों और खुराक के समय का विश्लेषण करता है।"
+              )}
             </p>
           </div>
 
@@ -141,10 +145,11 @@ export default function MedicineCheckerPage() {
           <div className="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200/90 flex items-start gap-2.5">
             <span className="text-base">⚠️</span>
             <div>
-              <span className="font-bold">Database Scope Note:</span>{" "}
-              {isHindi
-                ? "हमारा डेटाबेस सामान्य दवाओं के एक सीमित सेट को कवर करता है। जो दवा संयोजन सूचीबद्ध नहीं हैं, उन्हें अनवेरिफाइड (Unverified) के रूप में चिह्नित किया जाता है और उनका फार्मासिस्ट से परामर्श किया जाना चाहिए।"
-                : "Our database covers a curated set of common medications and interactions. Unlisted drug pairs are marked as unverified and should be reviewed by a pharmacist or physician before combining."}
+              <span className="font-bold">{localize("Database Scope Note:", "Database Scope Note:")}</span>{" "}
+              {localize(
+                "Our database covers a curated set of common medications and interactions. Unlisted drug pairs are marked as unverified and should be reviewed by a pharmacist or physician before combining.",
+                "हमारा डेटाबेस सामान्य दवाओं के एक सीमित सेट को कवर करता है। जो दवा संयोजन सूचीबद्ध नहीं हैं, उन्हें अनवेरिफाइड (Unverified) के रूप में चिह्नित किया जाता है और उनका फार्मासिस्ट से परामर्श किया जाना चाहिए।"
+              )}
             </div>
           </div>
         </section>
@@ -152,7 +157,7 @@ export default function MedicineCheckerPage() {
         {/* Quick Presets */}
         <section className="space-y-3">
           <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold">
-            {isHindi ? "त्वरित उदाहरण (Quick Examples)" : "Try Common Medicine Combinations"}
+            {localize("Try Common Medicine Combinations", "त्वरित उदाहरण (Quick Examples)")}
           </h3>
           <div className="flex flex-wrap gap-2.5">
             {PRESET_COMBINATIONS.map((preset) => (
@@ -162,7 +167,7 @@ export default function MedicineCheckerPage() {
                 className="px-3.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs font-medium text-slate-200 transition flex items-center gap-1.5"
               >
                 <span>⚡</span>
-                <span>{isHindi ? preset.titleHi : preset.titleEn}</span>
+                <span>{localize(preset.titleEn, preset.titleHi)}</span>
               </button>
             ))}
           </div>
@@ -172,18 +177,17 @@ export default function MedicineCheckerPage() {
         <section className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6">
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-slate-200">
-              {isHindi ? "दवा का नाम खोजें (Search Medicine)" : "Search Medicine Name or Generic Component"}
+              {localize("Search Medicine Name or Generic Component", "दवा का नाम खोजें (Search Medicine)")}
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={
-                  isHindi
-                    ? "उदा: Dolo 650, Aspirin, Combiflam, Metformin, Augmentin..."
-                    : "e.g. Dolo 650, Aspirin, Ibuprofen, Glycomet, Augmentin, Lisinopril..."
-                }
+                placeholder={localize(
+                  "e.g. Dolo 650, Aspirin, Ibuprofen, Glycomet, Augmentin, Lisinopril...",
+                  "उदा: Dolo 650, Aspirin, Combiflam, Metformin, Augmentin..."
+                )}
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 text-sm"
               />
 
@@ -222,13 +226,14 @@ export default function MedicineCheckerPage() {
           {/* Selected Medicine Badges */}
           <div className="space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-slate-400 font-bold">
-              {isHindi ? "चुनी गई दवाएं (Selected Medicines):" : "Currently Selected Medicines:"}
+              {localize("Currently Selected Medicines:", "चुनी गई दवाएं (Selected Medicines):")}
             </h4>
             {selectedIds.length === 0 ? (
               <p className="text-xs text-slate-500 italic">
-                {isHindi
-                  ? "कोई दवा नहीं चुनी गई है। सुरक्षा विश्लेषण के लिए ऊपर खोजें।"
-                  : "No medicines selected. Search above to add medications for analysis."}
+                {localize(
+                  "No medicines selected. Search above to add medications for analysis.",
+                  "कोई दवा नहीं चुनी गई है। सुरक्षा विश्लेषण के लिए ऊपर खोजें।"
+                )}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -272,7 +277,7 @@ export default function MedicineCheckerPage() {
                 <div className="flex items-center gap-2 font-bold text-amber-300 text-sm uppercase tracking-wide">
                   <span>⚠️</span>
                   <span>
-                    {isHindi ? "अनवेरिफाइड दवा संयोजन (Unverified Drug Pair)" : "Unverified Medication Pair"}
+                    {localize("Unverified Medication Pair", "अनवेरिफाइड दवा संयोजन (Unverified Drug Pair)")}
                   </span>
                 </div>
                 {report.unverifiedPairs.map(([drugA, drugB], uIdx) => (
@@ -284,9 +289,10 @@ export default function MedicineCheckerPage() {
                       {drugA.genericName} + {drugB.genericName}
                     </div>
                     <p className="text-amber-200/90 leading-relaxed">
-                      {isHindi
-                        ? "यह संयोजन हमारे सीमित डेटाबेस में नहीं मिला — इन दवाओं को एक साथ लेने से पहले फार्मासिस्ट या डॉक्टर से परामर्श करें।"
-                        : "This combination was not found in our limited interaction database — consult a pharmacist or doctor before combining."}
+                      {localize(
+                        "This combination was not found in our limited interaction database — consult a pharmacist or doctor before combining.",
+                        "यह संयोजन हमारे सीमित डेटाबेस में नहीं मिला — इन दवाओं को एक साथ लेने से पहले फार्मासिस्ट या डॉक्टर से परामर्श करें।"
+                      )}
                     </p>
                   </div>
                 ))}
@@ -297,7 +303,7 @@ export default function MedicineCheckerPage() {
             {report.interactions.length > 0 ? (
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-slate-100">
-                  {isHindi ? "संभावित दवा अंतःक्रियाएं (Detected Drug Interactions)" : "Detected Drug-Drug Interactions"}
+                  {localize("Detected Drug-Drug Interactions", "संभावित दवा अंतःक्रियाएं (Detected Drug Interactions)")}
                 </h3>
                 {report.interactions.map((item, idx) => (
                   <div
@@ -333,7 +339,7 @@ export default function MedicineCheckerPage() {
                     {item.symptoms.length > 0 && (
                       <div className="space-y-1.5">
                         <span className="text-xs font-bold text-amber-400 uppercase tracking-wide">
-                          {isHindi ? "ध्यान देने योग्य लक्षण (Symptoms to Watch):" : "Warning Symptoms to Watch:"}
+                          {localize("Warning Symptoms to Watch:", "ध्यान देने योग्य लक्षण (Symptoms to Watch):")}
                         </span>
                         <div className="flex flex-wrap gap-2">
                           {item.symptoms.map((sym, sIdx) => (
@@ -351,7 +357,7 @@ export default function MedicineCheckerPage() {
                     {/* Timing & Precaution Advice */}
                     <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
                       <div className="text-xs font-bold text-cyan-400 uppercase tracking-wide">
-                        {isHindi ? "खुराक का समय एवं सलाह (Timing & Administration):" : "Timing & Dosing Advice:"}
+                        {localize("Timing & Dosing Advice:", "खुराक का समय एवं सलाह (Timing & Administration):")}
                       </div>
                       <p className="text-xs sm:text-sm text-slate-300">{item.timingAdvice}</p>
                       {item.precautions.map((prec, pIdx) => (
@@ -368,12 +374,13 @@ export default function MedicineCheckerPage() {
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 text-center space-y-2">
                 <div className="text-2xl">✅</div>
                 <h4 className="text-sm font-bold text-slate-200">
-                  {isHindi ? "कोई प्रत्यक्ष हानिकारक अंतःक्रिया नहीं मिली" : "No Direct Major Interaction Detected"}
+                  {localize("No Direct Major Interaction Detected", "कोई प्रत्यक्ष हानिकारक अंतःक्रिया नहीं मिली")}
                 </h4>
                 <p className="text-xs text-slate-400 max-w-lg mx-auto">
-                  {isHindi
-                    ? "चुनी गई दवाओं के बीच कोई गंभीर अंतःक्रिया दर्ज नहीं की गई है। भोजन और शराब संबंधी चेतावनियों के लिए नीचे देखें।"
-                    : "No high-risk pairwise interactions were detected among the selected medicines. Please review food and beverage warnings below."}
+                  {localize(
+                    "No high-risk pairwise interactions were detected among the selected medicines. Please review food and beverage warnings below.",
+                    "चुनी गई दवाओं के बीच कोई गंभीर अंतःक्रिया दर्ज नहीं की गई है। भोजन और शराब संबंधी चेतावनियों के लिए नीचे देखें।"
+                  )}
                 </p>
               </div>
             )}
@@ -384,7 +391,7 @@ export default function MedicineCheckerPage() {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
                 <h4 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
                   <span>🥗</span>
-                  <span>{isHindi ? "भोजन निर्देश (Food & Meal Warnings)" : "Food & Meal Administration"}</span>
+                  <span>{localize("Food & Meal Administration", "भोजन निर्देश (Food & Meal Warnings)")}</span>
                 </h4>
                 <div className="space-y-2 text-xs text-slate-300">
                   {report.foodAndBeverageWarnings.map((warn, idx) => (
@@ -400,7 +407,7 @@ export default function MedicineCheckerPage() {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
                 <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
                   <span>🍺</span>
-                  <span>{isHindi ? "शराब एवं जीवनशैली निर्देश" : "Alcohol & Special Safety Warnings"}</span>
+                  <span>{localize("Alcohol & Special Safety Warnings", "शराब एवं जीवनशैली निर्देश")}</span>
                 </h4>
                 <div className="space-y-2 text-xs text-slate-300">
                   {report.specialWarnings.map((warn, idx) => (
@@ -421,9 +428,10 @@ export default function MedicineCheckerPage() {
             <span>⚠️ Clinical Disclaimer:</span>
           </div>
           <p className="leading-relaxed">
-            {isHindi
-              ? "यह दवा जांच टूल केवल शैक्षणिक एवं सूचनात्मक उद्देश्यों के लिए है। यह पेशेवर चिकित्सीय सलाह या नुस्खे का स्थान नहीं लेता है। किसी भी दवा को बंद करने या बदलने से पहले हमेशा अपने डॉक्टर या फार्मासिस्ट से सलाह लें।"
-              : "This medication checker is an educational safety tool and does not constitute formal medical or pharmacological advice. Always consult a qualified physician or pharmacist before starting, stopping, or altering any medication doses."}
+            {localize(
+              "This medication checker is an educational safety tool and does not constitute formal medical or pharmacological advice. Always consult a qualified physician or pharmacist before starting, stopping, or altering any medication doses.",
+              "यह दवा जांच टूल केवल शैक्षणिक एवं सूचनात्मक उद्देश्यों के लिए है। यह पेशेवर चिकित्सीय सलाह या नुस्खे का स्थान नहीं लेता है। किसी भी दवा को बंद करने या बदलने से पहले हमेशा अपने डॉक्टर या फार्मासिस्ट से सलाह लें।"
+            )}
           </p>
         </section>
         <MedicalDisclaimer />

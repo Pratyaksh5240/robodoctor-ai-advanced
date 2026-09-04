@@ -7,10 +7,9 @@ import Image from "next/image";
 import { signOut } from "firebase/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useLanguage } from "@/app/context/LanguageContext";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
 import { auth } from "@/lib/firebase";
-import { translateUi } from "@/lib/uiI18n";
 
 const productCards = [
   {
@@ -180,23 +179,31 @@ const productCards = [
   },
 ];
 
-const strengthPointsEn = [
-  "Structured risk levels instead of random generic advice",
-  "Skin screening with photo upload and symptom triage",
-  "Saved history for recent health and skin reports",
-  "Emergency-safety guidance built into the product",
-  "New lab, diet, medicine, and reminder modules for everyday care",
-];
-
-const strengthPointsHi = [
-  "रैंडम सलाह की जगह संरचित जोखिम स्तर",
-  "फोटो अपलोड और लक्षणों के साथ स्किन स्क्रीनिंग",
-  "स्वास्थ्य और त्वचा रिपोर्ट की सेव हिस्ट्री",
-  "प्रोडक्ट में इनबिल्ट आपातकालीन सुरक्षा मार्गदर्शन",
+const strengthPointsList = [
+  {
+    en: "Structured risk levels instead of random generic advice",
+    hi: "रैंडम सलाह की जगह संरचित जोखिम स्तर",
+  },
+  {
+    en: "Skin screening with photo upload and symptom triage",
+    hi: "फोटो अपलोड और लक्षणों के साथ स्किन स्क्रीनिंग",
+  },
+  {
+    en: "Saved history for recent health and skin reports",
+    hi: "स्वास्थ्य और त्वचा रिपोर्ट की सेव हिस्ट्री",
+  },
+  {
+    en: "Emergency-safety guidance built into the product",
+    hi: "प्रोडक्ट में इनबिल्ट आपातकालीन सुरक्षा मार्गदर्शन",
+  },
+  {
+    en: "New lab, diet, medicine, and reminder modules for everyday care",
+    hi: "रोजमर्रा की देखभाल के लिए नए लैब, डाइट, मेडिसिन और रिमाइंडर मॉड्यूल",
+  },
 ];
 
 export default function Home() {
-  const { language } = useLanguage();
+  const localize = useLocalize();
   const { user, guestMode, clearGuestSession } = useAuth();
   const [mounted, setMounted] = useState(false);
 
@@ -204,12 +211,10 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  const isHindi = language === "hi";
   const displayName = guestMode
-    ? isHindi
-      ? "गेस्ट"
-      : "Guest"
+    ? localize("Guest", "गेस्ट")
     : user?.displayName?.trim() || user?.email?.split("@")[0] || "";
+
   const numbersGuide = [
     {
       key: "bp",
@@ -217,8 +222,10 @@ export default function Home() {
       titleHi: "ब्लड प्रेशर",
       normalEn: "Typical healthy reading: around 120/80 mmHg",
       normalHi: "सामान्य रीडिंग: लगभग 120/80 mmHg",
-      noteEn: "Repeated values above 140/90 may need doctor review. Very high readings with chest pain, breathlessness, or severe headache can be urgent.",
-      noteHi: "बार-बार 140/90 से ऊपर की रीडिंग डॉक्टर को दिखानी चाहिए। बहुत अधिक रीडिंग के साथ सीने में दर्द, सांस फूलना या तेज सिरदर्द हो तो स्थिति गंभीर हो सकती है।",
+      noteEn:
+        "Repeated values above 140/90 may need doctor review. Very high readings with chest pain, breathlessness, or severe headache can be urgent.",
+      noteHi:
+        "बार-बार 140/90 से ऊपर की रीडिंग डॉक्टर को दिखानी चाहिए। बहुत अधिक रीडिंग के साथ सीने में दर्द, सांस फूलना या तेज सिरदर्द हो तो स्थिति गंभीर हो सकती है।",
       accent: "text-cyan-300",
     },
     {
@@ -227,8 +234,10 @@ export default function Home() {
       titleHi: "हार्ट रेट",
       normalEn: "Typical resting range: about 60 to 100 beats per minute",
       normalHi: "आराम की सामान्य सीमा: लगभग 60 से 100 धड़कन प्रति मिनट",
-      noteEn: "A very fast or very low pulse with dizziness, fainting, chest pain, or weakness should not be ignored.",
-      noteHi: "बहुत तेज या बहुत कम नाड़ी के साथ चक्कर, बेहोशी, सीने में दर्द या कमजोरी हो तो उसे नजरअंदाज नहीं करना चाहिए।",
+      noteEn:
+        "A very fast or very low pulse with dizziness, fainting, chest pain, or weakness should not be ignored.",
+      noteHi:
+        "बहुत तेज या बहुत कम नाड़ी के साथ चक्कर, बेहोशी, सीने में दर्द या कमजोरी हो तो उसे नजरअंदाज नहीं करना चाहिए।",
       accent: "text-emerald-300",
     },
     {
@@ -237,58 +246,47 @@ export default function Home() {
       titleHi: "ब्लड शुगर",
       normalEn: "Typical fasting range: about 70 to 99 mg/dL",
       normalHi: "फास्टिंग की सामान्य सीमा: लगभग 70 से 99 mg/dL",
-      noteEn: "Fasting values of 100 to 125 can be borderline. 126 or higher may need diabetes evaluation, especially if repeated.",
-      noteHi: "100 से 125 की फास्टिंग वैल्यू सीमा रेखा पर हो सकती है। 126 या उससे ऊपर की रीडिंग बार-बार आए तो डायबिटीज जांच की जरूरत हो सकती है।",
+      noteEn:
+        "Fasting values of 100 to 125 can be borderline. 126 or higher may need diabetes evaluation, especially if repeated.",
+      noteHi:
+        "100 से 125 की फास्टिंग वैल्यू सीमा रेखा पर हो सकती है। 126 या उससे ऊपर की रीडिंग बार-बार आए तो डायबिटीज जांच की जरूरत हो सकती है।",
       accent: "text-amber-300",
     },
   ];
 
-  const copy = {
-    subtitle: isHindi ? "हेल्थ स्क्रीनिंग असिस्टेंट" : "Health screening assistant",
-    secureLogin: isHindi ? "सुरक्षित लॉगिन" : "Secure Login",
-    welcome: isHindi ? "स्वागत" : "Welcome",
-    logout: isHindi ? "लॉगआउट" : "Logout",
-    heroTag: isHindi ? "पूर्वानुमान. रोकथाम. सुरक्षा." : "Predict. Prevent. Protect.",
-    heroTitle: isHindi
-      ? "रोज़मर्रा के जोखिम, त्वचा समस्याओं, रिकवरी और आपातकालीन चेतावनियों के लिए एक बेहतर स्वास्थ्य सहायक।"
-      : "A stronger health assistant for daily risks, skin issues, recovery, and emergency warning signs.",
-    heroText: isHindi
-      ? "RoboDoctor AI अब सिर्फ एक फॉर्म नहीं, बल्कि एक छोटा हेल्थ प्लेटफॉर्म है। उपयोगकर्ता वाइटल्स, त्वचा समस्याएं, योग वीडियो, रिपोर्ट हिस्ट्री और देखभाल की ज़रूरत समझ सकते हैं।"
-      : "RoboDoctor AI now works like a mini health platform, not just a form. Users can screen vital signs, check skin concerns, watch yoga sessions, track reports, and understand when to seek care.",
-    startGuest: isHindi ? "हेल्थ चेक खोलें" : "Open Health Check",
-    openSkin: isHindi ? "स्किन चेक खोलें" : "Open Skin Check",
-    platformSnapshot: isHindi ? "प्लेटफॉर्म झलक" : "Platform Snapshot",
-    smarter: isHindi ? "और समझदारी से स्क्रीनिंग करें" : "Screen smarter, recover better",
-    guestMode: isHindi ? "लॉगिन एक्सेस" : "Login access",
-    safetyLayer: isHindi ? "सुरक्षा परत" : "Safety Layer",
-    safetyText: isHindi
-      ? "इनबिल्ट आपातकालीन मार्गदर्शन हल्के मामलों और गंभीर जोखिम वाले मामलों में अंतर करने में मदद करता है।"
-      : "Built-in emergency guidance helps separate mild cases from high-risk situations that need urgent care.",
-    tools: isHindi ? "टूल्स" : "Tools",
-    modules: isHindi ? "मुख्य स्वास्थ्य मॉड्यूल" : "Core health modules",
-    openNow: isHindi ? "अभी खोलें" : "Open now",
-    module: isHindi ? "मॉड्यूल" : "Module",
+  const uiCopy = {
+    subtitle: localize("Health screening assistant", "हेल्थ स्क्रीनिंग असिस्टेंट"),
+    secureLogin: localize("Secure Login", "सुरक्षित लॉगिन"),
+    welcome: localize("Welcome", "स्वागत"),
+    logout: localize("Logout", "लॉगआउट"),
+    heroTag: localize("Predict. Prevent. Protect.", "पूर्वानुमान. रोकथाम. सुरक्षा."),
+    heroTitle: localize(
+      "A stronger health assistant for daily risks, skin issues, recovery, and emergency warning signs.",
+      "रोज़मर्रा के जोखिम, त्वचा समस्याओं, रिकवरी और आपातकालीन चेतावनियों के लिए एक बेहतर स्वास्थ्य सहायक।"
+    ),
+    heroText: localize(
+      "RoboDoctor AI now works like a mini health platform, not just a form. Users can screen vital signs, check skin concerns, watch yoga sessions, track reports, and understand when to seek care.",
+      "RoboDoctor AI अब सिर्फ एक फॉर्म नहीं, बल्कि एक छोटा हेल्थ प्लेटफॉर्म है। उपयोगकर्ता वाइटल्स, त्वचा समस्याएं, योग वीडियो, रिपोर्ट हिस्ट्री और देखभाल की ज़रूरत समझ सकते हैं।"
+    ),
+    startGuest: localize("Open Health Check", "हेल्थ चेक खोलें"),
+    openSkin: localize("Open Skin Check", "स्किन चेक खोलें"),
+    platformSnapshot: localize("Platform Snapshot", "प्लेटफॉर्म झलक"),
+    smarter: localize("Screen smarter, recover better", "और समझदारी से स्क्रीनिंग करें"),
+    guestMode: localize("Login access", "लॉगिन एक्सेस"),
+    safetyLayer: localize("Safety Layer", "सुरक्षा परत"),
+    safetyText: localize(
+      "Built-in emergency guidance helps separate mild cases from high-risk situations that need urgent care.",
+      "इनबिल्ट आपातकालीन मार्गदर्शन हल्के मामलों और गंभीर जोखिम वाले मामलों में अंतर करने में मदद करता है।"
+    ),
+    tools: localize("Tools", "टूल्स"),
+    modules: localize("Core health modules", "मुख्य स्वास्थ्य मॉड्यूल"),
+    openNow: localize("Open now", "अभी खोलें"),
+    module: localize("Module", "मॉड्यूल"),
   };
 
-  const uiCopy = Object.fromEntries(
-    Object.entries(copy).map(([key, value]) => [
-      key,
-      typeof value === "string" && !isHindi ? translateUi(value, language) : value,
-    ])
-  ) as typeof copy;
-  const resolvedDisplayName =
-    guestMode && !isHindi ? translateUi("Guest", language) : displayName;
-  const strengthPoints = (isHindi ? strengthPointsHi : strengthPointsEn).map((point) =>
-    isHindi ? point : translateUi(point, language)
+  const strengthPoints = strengthPointsList.map((item) =>
+    localize(item.en, item.hi)
   );
-  const learnLabel = isHindi ? "जानकारी" : translateUi("Learn", language);
-  const numbersTitle = isHindi ? "अपने हेल्थ नंबर समझें" : translateUi("Understand your health numbers", language);
-  const numbersText = isHindi
-    ? "हेल्थ चेक शुरू करने से पहले यह जल्दी समझ लें कि BP, हार्ट रेट और शुगर की सामान्य रेंज क्या होती है।"
-    : translateUi(
-        "Before starting a health check, quickly understand what normal BP, heart rate, and sugar ranges usually look like.",
-        language
-      );
 
   return (
     <div className="min-h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
@@ -309,7 +307,7 @@ export default function Home() {
           {mounted && (user || guestMode) ? (
             <>
               <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-5 py-3 text-sm font-medium text-[var(--foreground)]">
-                {uiCopy.welcome} {resolvedDisplayName}
+                {uiCopy.welcome} {displayName}
               </div>
               <button
                 type="button"
@@ -365,7 +363,7 @@ export default function Home() {
                 href="/yoga-videos"
                 className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-7 py-4 font-semibold hover:opacity-90"
               >
-                {isHindi ? "योग वीडियो खोलें" : translateUi("Open Yoga Videos", language)}
+                {localize("Open Yoga Videos", "योग वीडियो खोलें")}
               </Link>
             </div>
 
@@ -403,21 +401,31 @@ export default function Home() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/10 p-5">
-                  <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">{isHindi ? "वाइटल्स + लक्षण" : translateUi("Vitals + symptoms", language)}</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{isHindi ? "जोखिम स्कोर" : translateUi("Risk Score", language)}</p>
+                  <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">
+                    {localize("Vitals + symptoms", "वाइटल्स + लक्षण")}
+                  </p>
+                  <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">
+                    {localize("Risk Score", "जोखिम स्कोर")}
+                  </p>
                   <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                    {isHindi
-                      ? "बीपी, शुगर, पल्स, बीएमआई और रेड फ्लैग्स को जल्दी समझें।"
-                      : translateUi("Find BP, sugar, pulse, BMI, and symptom red flags faster.", language)}
+                    {localize(
+                      "Find BP, sugar, pulse, BMI, and symptom red flags faster.",
+                      "बीपी, शुगर, पल्स, बीएमआई और रेड फ्लैग्स को जल्दी समझें।"
+                    )}
                   </p>
                 </div>
                 <div className="rounded-3xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-5">
-                  <p className="text-sm font-semibold text-fuchsia-800 dark:text-fuchsia-300">{isHindi ? "रिकवरी + वेलनेस" : translateUi("Recovery + wellness", language)}</p>
-                  <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{isHindi ? "योग वीडियो" : translateUi("Yoga Videos", language)}</p>
+                  <p className="text-sm font-semibold text-fuchsia-800 dark:text-fuchsia-300">
+                    {localize("Recovery + wellness", "रिकवरी + वेलनेस")}
+                  </p>
+                  <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">
+                    {localize("Yoga Videos", "योग वीडियो")}
+                  </p>
                   <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                    {isHindi
-                      ? "ब्रीदिंग, स्ट्रेचिंग, योग और मेडिटेशन वीडियो के साथ रिकवरी करें।"
-                      : translateUi("Recover with breathing, stretching, yoga, and meditation sessions.", language)}
+                    {localize(
+                      "Recover with breathing, stretching, yoga, and meditation sessions.",
+                      "ब्रीदिंग, स्ट्रेचिंग, योग और मेडिटेशन वीडियो के साथ रिकवरी करें।"
+                    )}
                   </p>
                 </div>
               </div>
@@ -432,9 +440,18 @@ export default function Home() {
 
         <section className="mt-12">
           <div className="mb-6">
-            <p className="mb-2 text-sm uppercase tracking-[0.25em] text-[var(--muted)]">{learnLabel}</p>
-            <h2 className="text-3xl font-bold">{numbersTitle}</h2>
-            <p className="mt-3 max-w-3xl text-[var(--muted)]">{numbersText}</p>
+            <p className="mb-2 text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
+              {localize("Learn", "जानकारी")}
+            </p>
+            <h2 className="text-3xl font-bold">
+              {localize("Understand your health numbers", "अपने हेल्थ नंबर समझें")}
+            </h2>
+            <p className="mt-3 max-w-3xl text-[var(--muted)]">
+              {localize(
+                "Before starting a health check, quickly understand what normal BP, heart rate, and sugar ranges usually look like.",
+                "हेल्थ चेक शुरू करने से पहले यह जल्दी समझ लें कि BP, हार्ट रेट और शुगर की सामान्य रेंज क्या होती है।"
+              )}
+            </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
@@ -444,13 +461,13 @@ export default function Home() {
                 className="rounded-[30px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-sm"
               >
                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-800 dark:text-cyan-300">
-                  {isHindi ? item.titleHi : translateUi(item.titleEn, language)}
+                  {localize(item.titleEn, item.titleHi)}
                 </p>
                 <h3 className="mt-3 text-2xl font-bold text-slate-950 dark:text-white">
-                  {isHindi ? item.normalHi : translateUi(item.normalEn, language)}
+                  {localize(item.normalEn, item.normalHi)}
                 </h3>
                 <p className="mt-4 text-slate-700 dark:text-slate-300">
-                  {isHindi ? item.noteHi : translateUi(item.noteEn, language)}
+                  {localize(item.noteEn, item.noteHi)}
                 </p>
               </div>
             ))}
@@ -477,10 +494,10 @@ export default function Home() {
                 <div className={`rounded-[22px] bg-gradient-to-br ${card.accent} p-5 border border-white/10`}>
                   <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-200">{uiCopy.module}</p>
                   <h3 className="mt-2 text-2xl font-black text-white">
-                    {isHindi ? card.titleHi : translateUi(card.titleEn, language)}
+                    {localize(card.titleEn, card.titleHi)}
                   </h3>
                   <p className="mt-3 font-medium text-slate-200">
-                    {isHindi ? card.descriptionHi : translateUi(card.descriptionEn, language)}
+                    {localize(card.descriptionEn, card.descriptionHi)}
                   </p>
                 </div>
                 <Link

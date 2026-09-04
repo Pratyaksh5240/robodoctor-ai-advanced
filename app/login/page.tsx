@@ -8,14 +8,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/components/AuthProvider";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 
 function LoginPageContent() {
   const { language } = useLanguage();
   const { startGuestSession } = useAuth();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();

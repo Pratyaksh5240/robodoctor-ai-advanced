@@ -4,76 +4,41 @@ import Link from "next/link";
 import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 
 export default function EmergencyGuidePage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
-  const emergencyGroups = isHindi
-    ? [
-        {
-          title: "अभी आपातकालीन मदद लें",
-          items: [
-            "सीने में दर्द, बहुत सांस फूलना, या बेहोशी",
-            "शरीर के एक तरफ कमजोरी, बोलने में कठिनाई, या अचानक भ्रम",
-            "बहुत अधिक ब्लड प्रेशर के साथ तेज सिरदर्द या धुंधला दिखना",
-            "होंठ, जीभ या गले में गंभीर एलर्जी सूजन",
-          ],
-        },
-        {
-          title: "जल्दी डॉक्टर को दिखाएं",
-          items: [
-            "उल्टी, डिहाइड्रेशन या भ्रम के साथ बहुत अधिक शुगर",
-            "बुखार, पस, तेजी से फैलने या चेहरे की सूजन के साथ त्वचा समस्या",
-            "आराम की स्थिति में हार्ट रेट 120 से ऊपर या चक्कर के साथ 50 से कम",
-            "लगातार उल्टी, दस्त, या डिहाइड्रेशन के संकेत",
-          ],
-        },
-        {
-          title: "रूटीन फॉलो-अप बुक करें",
-          items: [
-            "सीमा पर मौजूद शुगर या ब्लड प्रेशर रीडिंग",
-            "बार-बार सिरदर्द, खांसी, या हल्की सांस की परेशानी",
-            "दो हफ्ते से ज्यादा समय तक रहने वाले त्वचा घाव",
-            "वजन, नींद या जीवनशैली से जुड़ी समस्याएं",
-          ],
-        },
-      ]
-    : [
-        {
-          title: translateUi("Call emergency help now", language),
-          items: [
-            translateUi("Chest pain, severe shortness of breath, or fainting", language),
-            translateUi("One-sided weakness, trouble speaking, or sudden confusion", language),
-            translateUi(
-              "Very high blood pressure with severe headache or blurred vision",
-              language
-            ),
-            translateUi("Severe allergic swelling of lips, tongue, or throat", language),
-          ],
-        },
-        {
-          title: translateUi("Seek urgent doctor review", language),
-          items: [
-            translateUi("High blood sugar with vomiting, dehydration, or confusion", language),
-            translateUi("Skin rash with fever, pus, fast spread, or facial swelling", language),
-            translateUi("Heart rate above 120 at rest or below 50 with dizziness", language),
-            translateUi("Persistent vomiting, diarrhea, or signs of dehydration", language),
-          ],
-        },
-        {
-          title: translateUi("Track and book routine follow-up", language),
-          items: [
-            translateUi("Borderline sugar or blood pressure readings", language),
-            translateUi("Recurrent headaches, cough, or mild breathing symptoms", language),
-            translateUi("Skin lesions lasting more than two weeks", language),
-            translateUi("Weight, sleep, or lifestyle issues affecting long-term health", language),
-          ],
-        },
-      ];
+  const emergencyGroups = [
+    {
+      title: localize("Call emergency help now", "अभी आपातकालीन मदद लें"),
+      items: [
+        localize("Chest pain, severe shortness of breath, or fainting", "सीने में दर्द, बहुत सांस फूलना, या बेहोशी"),
+        localize("One-sided weakness, trouble speaking, or sudden confusion", "शरीर के एक तरफ कमजोरी, बोलने में कठिनाई, या अचानक भ्रम"),
+        localize("Very high blood pressure with severe headache or blurred vision", "बहुत अधिक ब्लड प्रेशर के साथ तेज सिरदर्द या धुंधला दिखना"),
+        localize("Severe allergic swelling of lips, tongue, or throat", "होंठ, जीभ या गले में गंभीर एलर्जी सूजन"),
+      ],
+    },
+    {
+      title: localize("Seek urgent doctor review", "जल्दी डॉक्टर को दिखाएं"),
+      items: [
+        localize("High blood sugar with vomiting, dehydration, or confusion", "उल्टी, डिहाइड्रेशन या भ्रम के साथ बहुत अधिक शुगर"),
+        localize("Skin rash with fever, pus, fast spread, or facial swelling", "बुखार, पस, तेजी से फैलने या चेहरे की सूजन के साथ त्वचा समस्या"),
+        localize("Heart rate above 120 at rest or below 50 with dizziness", "आराम की स्थिति में हार्ट रेट 120 से ऊपर या चक्कर के साथ 50 से कम"),
+        localize("Persistent vomiting, diarrhea, or signs of dehydration", "लगातार उल्टी, दस्त, या डिहाइड्रेशन के संकेत"),
+      ],
+    },
+    {
+      title: localize("Track and book routine follow-up", "रूटीन फॉलो-अप बुक करें"),
+      items: [
+        localize("Borderline sugar or blood pressure readings", "सीमा पर मौजूद शुगर या ब्लड प्रेशर रीडिंग"),
+        localize("Recurrent headaches, cough, or mild breathing symptoms", "बार-बार सिरदर्द, खांसी, या हल्की सांस की परेशानी"),
+        localize("Skin lesions lasting more than two weeks", "दो हफ्ते से ज्यादा समय तक रहने वाले त्वचा घाव"),
+        localize("Weight, sleep, or lifestyle issues affecting long-term health", "वजन, नींद या जीवनशैली से जुड़ी समस्याएं"),
+      ],
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[linear-gradient(160deg,#120708_0%,#08111d_50%,#07161f_100%)] px-6 py-10 text-white md:px-12">

@@ -2,16 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 export default function EmergencyButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
-
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

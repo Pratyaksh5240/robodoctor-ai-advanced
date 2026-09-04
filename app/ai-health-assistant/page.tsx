@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 import type {
   AssistantConversationMessage,
   BaselineAnalysisSummary,
@@ -66,21 +66,17 @@ function sourceLabel(provider: string, model: string, fallbackUsed: boolean) {
 
 export default function AIHealthAssistantPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const starterMessage = useMemo<AssistantConversationMessage>(
     () => ({
       role: "assistant",
-      text: isHindi
-        ? "Namaste, main aapka AI Health Assistant hoon. Symptoms ya health readings bhejiye aur main follow-up questions ke saath guide karunga."
-        : translateUi(
-            "Hello, I am your AI Health Assistant. Share symptoms or health readings and I will guide you with follow-up questions.",
-            language
-          ),
+      text: localize(
+        "Hello, I am your AI Health Assistant. Share symptoms or health readings and I will guide you with follow-up questions.",
+        "नमस्ते, मैं आपका AI Health Assistant हूँ। लक्षण या हेल्थ रीडिंग भेजें और मैं फॉलो-अप प्रश्नों के साथ मार्गदर्शन करूँगा।"
+      ),
     }),
-    [isHindi, language]
+    [localize]
   );
 
   const [profile, setProfile] = useState<ProfileState>(initialProfile);
@@ -99,17 +95,11 @@ export default function AIHealthAssistantPage() {
   const [suggestBusy, setSuggestBusy] = useState(false);
   const [status, setStatus] = useState("");
 
-  const quickPrompts = isHindi
-    ? [
-        "Mujhe bukhar aur khansi hai",
-        "Mera BP 160/100 hai aur sir dard hai",
-        "Seene me dard aur saans ki dikkat hai",
-      ]
-    : [
-        "I have fever and cough for 2 days",
-        "My BP is 160/100 with headache",
-        "I have chest pain and breathlessness",
-      ];
+  const quickPrompts = [
+    localize("I have fever and cough for 2 days", "मुझे बुखार और खांसी है"),
+    localize("My BP is 160/100 with headache", "मेरा BP 160/100 है और सिर दर्द है"),
+    localize("I have chest pain and breathlessness", "सीने में दर्द और सांस की दिक्कत है"),
+  ];
 
   const profilePayload = {
     age: profile.age,

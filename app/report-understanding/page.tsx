@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChangeEvent, FormEvent, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 import type { ReportAnalysisOutput } from "@/lib/ai-health-assistant/types";
 
 async function postJson<T>(url: string, body: unknown) {
@@ -39,9 +39,7 @@ function sourceLabel(provider: string, model: string, fallbackUsed: boolean) {
 
 export default function ReportUnderstandingPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
 
   const [fileName, setFileName] = useState("");
   const [fileDataUrl, setFileDataUrl] = useState("");

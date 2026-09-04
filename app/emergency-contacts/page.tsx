@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/lib/useLocalize";
 
 type Contact = {
   id: number;
@@ -15,9 +15,7 @@ type Contact = {
 
 export default function EmergencyContactsPage() {
   const { language } = useLanguage();
-  const isHindi = language === "hi";
-  const localize = (english: string, hindi: string) =>
-    isHindi ? hindi : translateUi(english, language);
+  const localize = useLocalize();
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [phone, setPhone] = useState("");

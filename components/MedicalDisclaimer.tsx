@@ -1,18 +1,14 @@
 "use client";
 
-import { useLanguage } from "@/app/context/LanguageContext";
-import { translateUi } from "@/lib/uiI18n";
+import { useLocalize } from "@/app/context/LanguageContext";
 
 export default function MedicalDisclaimer() {
-  const { language } = useLanguage();
-  const isHindi = language === "hi";
+  const localize = useLocalize();
 
-  const disclaimerText = isHindi
-    ? "रोबोडॉक्टर एआई केवल सूचनात्मक और सहायता स्क्रीनिंग प्रदान करता है और यह चिकित्सीय निदान नहीं है। किसी भी स्वास्थ्य निर्णय के लिए हमेशा योग्य डॉक्टर से परामर्श लें।"
-    : translateUi(
-        "RoboDoctor AI provides informational screening only and is not a medical diagnosis. Always consult a licensed doctor for medical decisions.",
-        language
-      );
+  const disclaimerText = localize(
+    "RoboDoctor AI provides informational screening only and is not a medical diagnosis. Always consult a licensed doctor for medical decisions.",
+    "रोबोडॉक्टर एआई केवल सूचनात्मक और सहायता स्क्रीनिंग प्रदान करता है और यह चिकित्सीय निदान नहीं है। किसी भी स्वास्थ्य निर्णय के लिए हमेशा योग्य डॉक्टर से परामर्श लें।"
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto my-8 px-4 print:hidden">
@@ -20,7 +16,7 @@ export default function MedicalDisclaimer() {
         <span className="text-base select-none">⚠️</span>
         <div className="space-y-1">
           <div className="font-bold text-[var(--foreground)] uppercase tracking-wider text-[11px]">
-            {isHindi ? "चिकित्सीय अस्वीकरण (Medical Disclaimer):" : "Official Medical Disclaimer:"}
+            {localize("Official Medical Disclaimer:", "चिकित्सीय अस्वीकरण (Medical Disclaimer):")}
           </div>
           <p className="leading-relaxed opacity-90">{disclaimerText}</p>
         </div>

@@ -285,3 +285,6 @@ export function useLanguage() {
 
   return context;
 }
+
+export { useLocalize } from "@/lib/useLocalize";
+
