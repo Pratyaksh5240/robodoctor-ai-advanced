@@ -113,6 +113,17 @@ const productCards = [
     accent: "from-lime-400/30 to-emerald-400/30",
   },
   {
+    key: "exportreport",
+    titleEn: "Clinical PDF Export",
+    titleHi: "डॉक्टर रिपोर्ट और SBAR निर्यात",
+    descriptionEn:
+      "Generate a formatted clinical SBAR summary PDF of your vitals, skin check, and lab findings for doctor visits.",
+    descriptionHi:
+      "डॉक्टर परामर्श के लिए अपने वाइटल्स, स्किन चेक और लैब परिणामों की SBAR पीडीएफ रिपोर्ट बनाएं।",
+    href: "/export-report",
+    accent: "from-cyan-400/30 to-emerald-400/30",
+  },
+  {
     key: "drugchecker",
     titleEn: "Drug Interaction Checker",
     titleHi: "दवा सुरक्षा एवं इंटरैक्शन",

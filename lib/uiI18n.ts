@@ -1397,6 +1397,10 @@ const uiTranslations: Record<string, Partial<Record<NonHindiLanguage, string>>> 
   // Drug Interaction Checker
   "Drug Interaction Checker": { es: "Comprobador de interacciones de medicamentos", fr: "Vérificateur d'interactions médicamenteuses", de: "Prüfer für Arzneimittelwechselwirkungen", zh: "药物相互作用检查器", ko: "약물 상호작용 검사기" },
   "Check Medication Interactions & Side Effects": { es: "Verifique interacciones y efectos secundarios de medicamentos", fr: "Vérifiez les interactions médicamenteuses et les effets secondaires", de: "Prüfen Sie Arzneimittelwechselwirkungen und Nebenwirkungen", zh: "检查药物相互作用和副作用", ko: "약물 상호작용 및 부작용 확인" },
+
+  // Clinical PDF Report Export
+  "Clinical PDF Export": { es: "Exportación de informe clínico PDF", fr: "Exportation PDF du rapport clinique", de: "Klinischer PDF-Bericht-Export", zh: "临床 PDF 报告导出", ko: "임상 PDF 리포트 내보내기" },
+  "Download Clinical PDF Report & Doctor Summary": { es: "Descargar informe clínico PDF y resumen para el médico", fr: "Télécharger le rapport clinique PDF et le résumé pour le médecin", de: "Klinischen PDF-Bericht & Arztzusammenfassung herunterladen", zh: "下载临床 PDF 报告和医生摘要", ko: "임상 PDF 리포트 및 의사 요약 다운로드" },
 };
 
 export function translateUi(text: string, language: Language): string {
