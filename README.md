@@ -73,6 +73,7 @@
 ---
 
 ### 🧪 6. Additional Healthcare Utilities
+- **Drug Interaction & Safety Checker (`/medicine-checker`)**: Evaluates multi-medicine combinations for dangerous drug-drug interactions, severe bleeding risks, mechanism breakdowns, warning symptoms, timing advice, and food/alcohol administration warnings.
 - **Lab Report Analyzer (`/lab-report`)**: Interprets blood sugar, HbA1c, hemoglobin, TSH, and cholesterol.
 - **Diet Planner (`/diet-planner`)**: Structured meal guidelines for hypertension, diabetes, heart health, and weight management.
 - **Smart Reminders (`/medicine-reminder`)**: Medication, water intake, daily walk, and vital check planners.

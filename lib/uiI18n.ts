@@ -1393,6 +1393,10 @@ const uiTranslations: Record<string, Partial<Record<NonHindiLanguage, string>>> 
     ko: "위치를 확인한 후 아래 버튼을 누르면 Google 지도에서 주변 서비스가 열립니다."
   },
   "Open this nearby service in Google Maps.": { es: "Abrir este servicio cercano en Google Maps.", fr: "Ouvrir ce service à proximité dans Google Maps.", de: "Diesen nahen Dienst in Google Maps öffnen.", zh: "在 Google Maps 中打开此附近服务。", ko: "Google 지도에서 이 주변 서비스 열기." },
+
+  // Drug Interaction Checker
+  "Drug Interaction Checker": { es: "Comprobador de interacciones de medicamentos", fr: "Vérificateur d'interactions médicamenteuses", de: "Prüfer für Arzneimittelwechselwirkungen", zh: "药物相互作用检查器", ko: "약물 상호작용 검사기" },
+  "Check Medication Interactions & Side Effects": { es: "Verifique interacciones y efectos secundarios de medicamentos", fr: "Vérifiez les interactions médicamenteuses et les effets secondaires", de: "Prüfen Sie Arzneimittelwechselwirkungen und Nebenwirkungen", zh: "检查药物相互作用和副作用", ko: "약물 상호작용 및 부작용 확인" },
 };
 
 export function translateUi(text: string, language: Language): string {

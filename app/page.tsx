@@ -113,6 +113,17 @@ const productCards = [
     accent: "from-lime-400/30 to-emerald-400/30",
   },
   {
+    key: "drugchecker",
+    titleEn: "Drug Interaction Checker",
+    titleHi: "दवा सुरक्षा एवं इंटरैक्शन",
+    descriptionEn:
+      "Search multiple medicines to analyze dangerous drug interactions, side effects, and food warnings.",
+    descriptionHi:
+      "दवाओं के बीच खतरनाक अंतःक्रियाओं, दुष्प्रभावों और भोजन संबंधी चेतावनियों का विश्लेषण करें।",
+    href: "/medicine-checker",
+    accent: "from-blue-400/30 to-purple-500/30",
+  },
+  {
     key: "medicines",
     titleEn: "Basic Medicines",
     titleHi: "बेसिक मेडिसिन",
