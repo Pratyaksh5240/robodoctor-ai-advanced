@@ -1,10 +1,13 @@
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
   query,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -26,7 +29,15 @@ export type SkinReportRecord = {
   summary: string;
 };
 
+export type UserProfileRecord = {
+  patientName?: string;
+  age?: number;
+  gender?: string;
+  updatedAt?: number;
+};
+
 type UserCollectionPath = [string, string, string];
+
 
 async function loadCollection<T>(path: UserCollectionPath) {
   const collectionRef = collection(db, ...path);
@@ -83,3 +94,21 @@ export async function loadSkinReportsPage(userId: string, maxItems = 20) {
 export async function saveSkinReport(userId: string, record: SkinReportRecord) {
   return addCollectionRecord(["users", userId, "skinReports"], record);
 }
+
+export async function getUserProfile(userId: string): Promise<UserProfileRecord | null> {
+  const docRef = doc(db, "users", userId, "profile", "main");
+  const snapshot = await getDoc(docRef);
+  if (snapshot.exists()) {
+    return snapshot.data() as UserProfileRecord;
+  }
+  return null;
+}
+
+export async function saveUserProfile(
+  userId: string,
+  profile: Partial<UserProfileRecord>
+) {
+  const docRef = doc(db, "users", userId, "profile", "main");
+  await setDoc(docRef, { ...profile, updatedAt: Date.now() }, { merge: true });
+}
+

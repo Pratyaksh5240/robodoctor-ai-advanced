@@ -1,3 +1,9 @@
+import type {
+  HealthReportRecord,
+  SkinReportRecord,
+  UserProfileRecord,
+} from "@/lib/reportHistory";
+
 export interface SbarReportData {
   reportId: string;
   generatedAt: string;
@@ -126,3 +132,134 @@ export function generateSampleSbarData(): SbarReportData {
       "Arrange a primary doctor or dermatologist appointment within 1 to 2 weeks for comprehensive physical exam.",
   };
 }
+
+export function mapRecordsToSbar(
+  healthReport?: HealthReportRecord | null,
+  skinReport?: SkinReportRecord | null,
+  profile?: UserProfileRecord | null,
+  fallbackName?: string
+): SbarReportData {
+  if (!healthReport) {
+    const sample = generateSampleSbarData();
+    if (profile?.patientName || fallbackName) {
+      sample.patientName = profile?.patientName || fallbackName || sample.patientName;
+    }
+    if (profile?.age) sample.age = profile.age;
+    if (profile?.gender) sample.gender = profile.gender;
+    return sample;
+  }
+
+  const dateObj = new Date(healthReport.createdAt);
+  const dateStr = dateObj.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  const timeStr = dateObj.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const randomDigits = Math.floor(1000 + Math.random() * 9000);
+  const reportId = `RBD-${dateObj.getFullYear()}${(dateObj.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}${dateObj.getDate().toString().padStart(2, "0")}-${randomDigits}`;
+
+  const bpVal = healthReport.bp
+    ? healthReport.bp.includes("mmHg")
+      ? healthReport.bp
+      : `${healthReport.bp} mmHg`
+    : "120/80 mmHg";
+  const sugarVal = parseFloat(healthReport.sugar) || 100;
+  const hrVal = parseFloat(healthReport.heartRate) || 72;
+
+  const rawRisk = (healthReport.riskLevel || "").toLowerCase();
+  let overallRiskLevel: "low" | "moderate" | "high" | "urgent" = "low";
+  if (rawRisk.includes("emergency") || rawRisk.includes("urgent")) {
+    overallRiskLevel = "urgent";
+  } else if (rawRisk.includes("high")) {
+    overallRiskLevel = "high";
+  } else if (rawRisk.includes("moderate")) {
+    overallRiskLevel = "moderate";
+  }
+
+  const redFlags: Array<{ title: string; detail: string; severity: string }> = [];
+  if (healthReport.summary) {
+    redFlags.push({
+      title: "Vital Risk Assessment",
+      detail: healthReport.summary,
+      severity: overallRiskLevel,
+    });
+  }
+  if (skinReport) {
+    redFlags.push({
+      title: `Skin Lesion (${skinReport.bodyPart})`,
+      detail: `${skinReport.summary} (Severity: ${skinReport.severity})`,
+      severity: skinReport.severity.toLowerCase(),
+    });
+  }
+
+  const precautions = [
+    "Schedule a follow-up with your physician to discuss your recent vital readings.",
+    "Monitor blood pressure and blood sugar regularly as recommended by your physician.",
+    "Maintain healthy dietary habits, adequate hydration, and moderate activity.",
+  ];
+  if (skinReport) {
+    precautions.push(
+      `Protect the examined ${skinReport.bodyPart} area from excessive sun exposure using broad-spectrum SPF 50+.`
+    );
+  }
+
+  let recommendedFollowUp = "Arrange a primary care routine consultation within 2 to 4 weeks.";
+  if (overallRiskLevel === "urgent" || overallRiskLevel === "high") {
+    recommendedFollowUp =
+      "Seek immediate clinical consultation or emergency care within 24 to 48 hours.";
+  } else if (overallRiskLevel === "moderate") {
+    recommendedFollowUp = "Arrange a primary physician consultation within 1 to 2 weeks.";
+  }
+
+  return {
+    reportId,
+    generatedAt: `${dateStr} at ${timeStr}`,
+    patientName: profile?.patientName || fallbackName || "Patient Summary Record",
+    age: profile?.age || 45,
+    gender: profile?.gender || "Not Specified",
+    primaryChiefComplaint: healthReport.summary || "Routine vital health screening",
+    symptomsList: [
+      "Vital risk check completed",
+      ...(skinReport ? [`Skin screening (${skinReport.bodyPart})`] : []),
+    ],
+    symptomDuration: "Recent screening",
+    affectedBodyPart: skinReport ? `${skinReport.bodyPart} / General Vitals` : "General Vitals",
+    vitals: {
+      bloodPressure: bpVal,
+      bloodSugar: sugarVal,
+      heartRate: hrVal,
+      weightKg: 70,
+      heightCm: 170,
+      bmi: 24.2,
+    },
+    skinScreening: skinReport
+      ? {
+          topPattern: skinReport.summary,
+          confidence: Math.round(skinReport.score * 0.95),
+          highRiskFlag: skinReport.severity === "High" || skinReport.severity === "Urgent",
+          uncertainFlag: false,
+        }
+      : undefined,
+    // TODO: Connect labValues to Firestore user lab reports collection in future release
+    labValues: {
+      fastingSugar: sugarVal,
+    },
+    // TODO: Connect currentMedicines to user reminder schedule or medicine checker history
+    currentMedicines: [],
+    overallRiskLevel,
+    riskScore: healthReport.riskScore,
+    redFlags,
+    // TODO: Connect detectedDrugInteractions to medicine checker saved history
+    detectedDrugInteractions: [],
+    precautions,
+    recommendedFollowUp,
+  };
+}
+
