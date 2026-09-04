@@ -5,6 +5,10 @@ import { translateUi } from "@/lib/uiI18n";
 
 export function useLocalize() {
   const { language } = useLanguage();
-  return (english: string, hindi: string) =>
-    language === "hi" ? hindi : translateUi(english, language);
+  return (english: string, hindi?: string) => {
+    if (language === "hi") {
+      return hindi || translateUi(english, "hi");
+    }
+    return translateUi(english, language);
+  };
 }

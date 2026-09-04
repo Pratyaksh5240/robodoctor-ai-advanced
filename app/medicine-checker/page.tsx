@@ -265,7 +265,10 @@ export default function MedicineCheckerPage() {
               <div className="flex items-center justify-between">
                 <span className="text-base sm:text-lg font-extrabold">{overallBadge.label}</span>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-900/60 border border-slate-700">
-                  {report.selectedDrugs.length} Medicines Analyzed
+                  {localize(
+                    `${report.selectedDrugs.length} Medicines Analyzed`,
+                    `${report.selectedDrugs.length} दवाओं का विश्लेषण`
+                  )}
                 </span>
               </div>
               <p className="text-xs sm:text-sm leading-relaxed opacity-90">{overallBadge.desc}</p>
@@ -286,7 +289,7 @@ export default function MedicineCheckerPage() {
                     className="bg-slate-950/80 p-3.5 rounded-xl border border-amber-500/30 text-xs space-y-1"
                   >
                     <div className="font-bold text-slate-200">
-                      {drugA.genericName} + {drugB.genericName}
+                      {localize(drugA.genericName, drugA.genericName)} + {localize(drugB.genericName, drugB.genericName)}
                     </div>
                     <p className="text-amber-200/90 leading-relaxed">
                       {localize(
@@ -314,7 +317,7 @@ export default function MedicineCheckerPage() {
                       <h4 className="text-base font-bold text-white flex items-center gap-2">
                         <span>⚡</span>
                         <span>
-                          {item.drugA.genericName} + {item.drugB.genericName}
+                          {localize(item.drugA.genericName, item.drugA.genericName)} + {localize(item.drugB.genericName, item.drugB.genericName)}
                         </span>
                       </h4>
                       <span
@@ -326,13 +329,20 @@ export default function MedicineCheckerPage() {
                             : "bg-blue-500/20 text-blue-400 border-blue-500/40"
                         }`}
                       >
-                        {item.severity} Risk
+                        {localize(
+                          `${item.severity.toUpperCase()} Risk`,
+                          item.severity === "major"
+                            ? "गंभीर जोखिम"
+                            : item.severity === "moderate"
+                            ? "मध्यम जोखिम"
+                            : "मामूली जोखिम"
+                        )}
                       </span>
                     </div>
 
                     <div className="space-y-2 text-xs sm:text-sm">
-                      <div className="font-semibold text-slate-200">{item.title}</div>
-                      <p className="text-slate-300 leading-relaxed">{item.mechanism}</p>
+                      <div className="font-semibold text-slate-200">{localize(item.title, item.title)}</div>
+                      <p className="text-slate-300 leading-relaxed">{localize(item.mechanism, item.mechanism)}</p>
                     </div>
 
                     {/* Symptoms to Watch */}
@@ -347,7 +357,7 @@ export default function MedicineCheckerPage() {
                               key={sIdx}
                               className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200"
                             >
-                              ⚠️ {sym}
+                              ⚠️ {localize(sym, sym)}
                             </span>
                           ))}
                         </div>
@@ -359,11 +369,11 @@ export default function MedicineCheckerPage() {
                       <div className="text-xs font-bold text-cyan-400 uppercase tracking-wide">
                         {localize("Timing & Dosing Advice:", "खुराक का समय एवं सलाह (Timing & Administration):")}
                       </div>
-                      <p className="text-xs sm:text-sm text-slate-300">{item.timingAdvice}</p>
+                      <p className="text-xs sm:text-sm text-slate-300">{localize(item.timingAdvice, item.timingAdvice)}</p>
                       {item.precautions.map((prec, pIdx) => (
                         <div key={pIdx} className="text-xs text-slate-400 flex items-start gap-2">
                           <span>👉</span>
-                          <span>{prec}</span>
+                          <span>{localize(prec, prec)}</span>
                         </div>
                       ))}
                     </div>
@@ -397,7 +407,7 @@ export default function MedicineCheckerPage() {
                   {report.foodAndBeverageWarnings.map((warn, idx) => (
                     <div key={idx} className="flex items-start gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                       <span>•</span>
-                      <span>{warn}</span>
+                      <span>{localize(warn, warn)}</span>
                     </div>
                   ))}
                 </div>
@@ -413,7 +423,7 @@ export default function MedicineCheckerPage() {
                   {report.specialWarnings.map((warn, idx) => (
                     <div key={idx} className="flex items-start gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                       <span>⚠️</span>
-                      <span>{warn}</span>
+                      <span>{localize(warn, warn)}</span>
                     </div>
                   ))}
                 </div>
