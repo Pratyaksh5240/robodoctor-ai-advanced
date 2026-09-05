@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { Language, useLanguage, useLocalize } from "@/app/context/LanguageContext";
@@ -347,16 +346,6 @@ export default function AIChatbotPage() {
   );
   const [messages, setMessages] = useState<Message[]>(starter);
   const [input, setInput] = useState("");
-
-  const searchParams = useSearchParams();
-  const triageSymptoms = searchParams?.get("symptoms");
-
-  useEffect(() => {
-    if (triageSymptoms) {
-      setInput(triageSymptoms);
-    }
-  }, [triageSymptoms]);
-
   const [isLoading, setIsLoading] = useState(false);
 
   const sendMessage = async (text: string) => {

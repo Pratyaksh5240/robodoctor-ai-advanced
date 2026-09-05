@@ -5,14 +5,10 @@ import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLocalize } from "@/lib/useLocalize";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 
 export default function EmergencyGuidePage() {
   const { language } = useLanguage();
   const localize = useLocalize();
-  const searchParams = useSearchParams();
-  const triageSymptoms = searchParams?.get("symptoms");
 
   const emergencyGroups = [
     {
@@ -73,17 +69,7 @@ export default function EmergencyGuidePage() {
           </div>
         </div>
 
-        
-        {triageSymptoms && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-500/50 bg-rose-500/20 p-4 text-sm font-bold text-rose-200 shadow-lg animate-pulse">
-            <span className="text-2xl">🚨</span>
-            <span>
-              {localize("Because you mentioned: {symptoms}", "क्योंकि आपने बताया: {symptoms}", { symptoms: triageSymptoms })}
-            </span>
-          </div>
-        )}
-
-<div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
           {emergencyGroups.map((group, index) => (
             <section
               key={group.title}

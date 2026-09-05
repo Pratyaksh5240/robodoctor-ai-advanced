@@ -61,17 +61,10 @@ const mealPlans = {
 function DietPlannerContent() {
   const localize = useLocalize();
   const searchParams = useSearchParams();
-  const triageSymptoms = searchParams?.get("symptoms");
   const [goal, setGoal] = useState<keyof typeof mealPlans>("bp");
 
   useEffect(() => {
     const track = searchParams?.get("track");
-    if (triageSymptoms) {
-      const lower = triageSymptoms.toLowerCase();
-      if (lower.includes("sugar") || lower.includes("diabetes") || lower.includes("glucose")) setGoal("sugar");
-      else if (lower.includes("weight") || lower.includes("fat") || lower.includes("slim")) setGoal("weight");
-      else if (lower.includes("bp") || lower.includes("hypertension") || lower.includes("pressure")) setGoal("bp");
-    }
     if (track === "bp" || track === "sugar" || track === "weight") {
       setGoal(track as keyof typeof mealPlans);
     }
@@ -108,17 +101,7 @@ function DietPlannerContent() {
           </div>
         </div>
 
-        
-        {triageSymptoms && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm font-semibold text-cyan-300">
-            <span className="text-xl">💡</span>
-            <span>
-              {localize("Because you mentioned: {symptoms}", "क्योंकि आपने बताया: {symptoms}", { symptoms: triageSymptoms })}
-            </span>
-          </div>
-        )}
-
-<div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
+        <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
           <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
             <h2 className="text-2xl font-bold">
               {localize("Choose your goal", "अपना लक्ष्य चुनें")}

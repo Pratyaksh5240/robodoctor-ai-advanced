@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
@@ -40,8 +39,6 @@ const toneClasses = {
 
 export default function LabReportPage() {
   const localize = useLocalize();
-  const searchParams = useSearchParams();
-  const triageSymptoms = searchParams?.get("symptoms");
   const [form, setForm] = useState<LabForm>(initialForm);
 
   const findings = useMemo(() => {
@@ -228,17 +225,7 @@ export default function LabReportPage() {
           </div>
         </div>
 
-        
-        {triageSymptoms && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm font-semibold text-cyan-300">
-            <span className="text-xl">💡</span>
-            <span>
-              {localize("Because you mentioned: {symptoms}", "क्योंकि आपने बताया: {symptoms}", { symptoms: triageSymptoms })}
-            </span>
-          </div>
-        )}
-
-<div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
             <h2 className="text-2xl font-bold">
               {localize("Enter lab values", "लैब वैल्यू दर्ज करें")}
