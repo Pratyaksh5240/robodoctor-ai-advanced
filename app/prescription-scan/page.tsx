@@ -251,12 +251,13 @@ function PrescriptionScanContent() {
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      className={`rounded-2xl border p-4 transition ${
+                      className={`rounded-3xl border p-5 transition shadow-lg ${
                         item.selected
-                          ? "border-cyan-500/40 bg-cyan-500/10"
+                          ? "border-cyan-500/40 bg-slate-900/90"
                           : "border-[color:var(--border)] bg-[color:var(--surface)] opacity-70"
                       }`}
                     >
+                      {/* Card Header */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <label className="flex items-center gap-3 cursor-pointer">
                           <input
@@ -265,9 +266,14 @@ function PrescriptionScanContent() {
                             onChange={(e) => updateItem(item.id, "selected", e.target.checked)}
                             className="h-5 w-5 rounded border-cyan-400 accent-cyan-500 cursor-pointer"
                           />
-                          <span className="font-bold text-base">
-                            {localize("Confirmed", "पुष्ट")}
-                          </span>
+                          <div>
+                            <span className="font-extrabold text-lg text-white">
+                              {item.name || localize("Identified Medicine", "पहचानी गई दवा")}
+                            </span>
+                            {item.purpose && (
+                              <p className="text-xs text-cyan-400 font-medium">{item.purpose}</p>
+                            )}
+                          </div>
                         </label>
 
                         <span
@@ -283,13 +289,14 @@ function PrescriptionScanContent() {
                         </span>
                       </div>
 
-                      <div className="grid gap-2">
+                      {/* Name & Dosage Inputs */}
+                      <div className="grid gap-2 mb-4">
                         <input
                           type="text"
                           value={item.name}
                           onChange={(e) => updateItem(item.id, "name", e.target.value)}
                           placeholder={localize("Medicine Name", "दवा का नाम")}
-                          className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm font-semibold"
+                          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm font-semibold text-white focus:border-cyan-400 focus:outline-none"
                         />
 
                         <div className="grid grid-cols-2 gap-2">
@@ -298,24 +305,67 @@ function PrescriptionScanContent() {
                             value={item.dosageGuess || ""}
                             onChange={(e) => updateItem(item.id, "dosageGuess", e.target.value)}
                             placeholder={localize("Dosage (e.g. 500mg)", "खुराक (उदा. 500mg)")}
-                            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-xs"
+                            className="rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-200 focus:border-cyan-400 focus:outline-none"
                           />
                           <input
                             type="text"
                             value={item.frequencyGuess || ""}
                             onChange={(e) => updateItem(item.id, "frequencyGuess", e.target.value)}
                             placeholder={localize("Frequency (e.g. 1-0-1)", "आवृत्ति (उदा. 1-0-1)")}
-                            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-xs"
+                            className="rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-200 focus:border-cyan-400 focus:outline-none"
                           />
                         </div>
                       </div>
 
+                      {/* 1. WHEN TO EAT SECTION */}
+                      {item.whenToEat && (
+                        <div className="mb-3 rounded-2xl border border-emerald-500/20 bg-emerald-950/30 p-3.5 text-xs text-emerald-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-base">🕒</span>
+                            <span className="font-bold text-emerald-400 uppercase tracking-wider text-[11px]">
+                              {localize("When to Take", "कब खाएं (सेवन का समय)")}
+                            </span>
+                          </div>
+                          <p className="leading-relaxed pl-6 text-slate-200">{item.whenToEat}</p>
+                        </div>
+                      )}
+
+                      {/* 2. HOW MUCH TO EAT SECTION */}
+                      {item.howMuchToEat && (
+                        <div className="mb-3 rounded-2xl border border-blue-500/20 bg-blue-950/30 p-3.5 text-xs text-blue-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-base">📏</span>
+                            <span className="font-bold text-blue-400 uppercase tracking-wider text-[11px]">
+                              {localize("How Much to Take", "कितनी मात्रा लें (खुराक सीमा)")}
+                            </span>
+                          </div>
+                          <p className="leading-relaxed pl-6 text-slate-200">{item.howMuchToEat}</p>
+                        </div>
+                      )}
+
+                      {/* 3. HARM OF OVERUSE & DANGERS */}
+                      {item.harmOveruse && (
+                        <div className="mb-3 rounded-2xl border border-rose-500/30 bg-rose-950/40 p-3.5 text-xs text-rose-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-base">⚠️</span>
+                            <span className="font-bold text-rose-400 uppercase tracking-wider text-[11px]">
+                              {localize("Harm if Overused & Dangers", "जरूरत से ज्यादा लेने पर नुकसान व खतरे")}
+                            </span>
+                          </div>
+                          <p className="leading-relaxed pl-6 text-slate-200">{item.harmOveruse}</p>
+                        </div>
+                      )}
+
+                      {/* Actions */}
                       {item.selected && (
-                        <div className="mt-3 flex justify-end">
+                        <div className="mt-4 flex items-center justify-between pt-2 border-t border-slate-800">
+                          <span className="text-[11px] text-slate-400">
+                            ✓ {localize("Ready for reminder & interaction check", "रिमाइंडर और सुरक्षा जांच के लिए तैयार")}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleSendToReminder(item)}
-                            className="text-xs text-lime-400 hover:underline flex items-center gap-1 font-semibold"
+                            className="rounded-xl border border-lime-400/30 bg-lime-500/10 px-3 py-1.5 text-xs text-lime-400 hover:bg-lime-500/20 transition flex items-center gap-1.5 font-bold"
                           >
                             <span>⏰</span>
                             <span>{localize("Create Reminder", "रिमाइंडर बनाएं")}</span>

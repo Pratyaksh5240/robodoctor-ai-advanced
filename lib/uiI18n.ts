@@ -1883,6 +1883,39 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
   "Your health and skin history": { hi: "आपकी स्वास्थ्य और त्वचा हिस्ट्री", es: "Su historial de salud y piel", fr: "Votre historique de santé et de peau", de: "Ihre Gesundheits- und Haut-Historie", zh: "您的健康与皮肤历史", ko: "내 건강 및 피부 기록" },
   "Sugar": { hi: "शुगर", es: "Glucosa", fr: "Glycémie", de: "Blutzucker", zh: "血糖", ko: "혈당" },
   "Pulse": { hi: "नाड़ी", es: "Pulso", fr: "Pouls", de: "Puls", zh: "脉搏", ko: "맥박" },
+
+  "When to Take": {
+    hi: "कब खाएं (सेवन का समय)",
+    es: "Cuándo tomar",
+    fr: "Quand prendre",
+    de: "Wann einnehmen",
+    zh: "服用时间",
+    ko: "복용 시기",
+  },
+  "How Much to Take": {
+    hi: "कितनी मात्रा लें (खुराक सीमा)",
+    es: "Cuánto tomar",
+    fr: "Quelle dose prendre",
+    de: "Wie viel einnehmen",
+    zh: "服用剂量",
+    ko: "복용량",
+  },
+  "Harm if Overused & Dangers": {
+    hi: "जरूरत से ज्यादा लेने पर नुकसान व खतरे",
+    es: "Daños por uso excesivo y peligros",
+    fr: "Risques en cas de surdosage",
+    de: "Gefahren bei Überdosierung",
+    zh: "过量服用的危害与风险",
+    ko: "과다 복용 시 위험 및 부작용",
+  },
+  "AI Medicine Guide & Safe Usage": {
+    hi: "एआई दवा गाइड व सुरक्षित उपयोग",
+    es: "Guía de medicamentos y uso seguro de IA",
+    fr: "Guide des médicaments et utilisation sûre de l'IA",
+    de: "KI-Medikamenten-Leitfaden & sichere Anwendung",
+    zh: "AI药品指南与安全用药",
+    ko: "AI 의약품 안내 및 안전한 복용법",
+  },
 };
 
 export function translateUi(text: string, language: Language): string {
