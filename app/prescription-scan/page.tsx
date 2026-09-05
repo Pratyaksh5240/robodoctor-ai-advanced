@@ -334,7 +334,7 @@ function PrescriptionScanContent() {
                     disabled={selectedItems.length === 0}
                     className="w-full rounded-2xl bg-cyan-500 py-3 font-bold text-black hover:bg-cyan-400 disabled:opacity-50 transition"
                   >
-                    🔍 {localize(`Check Interactions for ${selectedItems.length} Selected`, `चयनित ${selectedItems.length} दवाओं के इंटरेक्शन जांचें`)}
+                    🔍 {localize("Check Interactions for {count} Selected", "चयनित {count} दवाओं के इंटरेक्शन जांचें", { count: selectedItems.length })}
                   </button>
                 </div>
               </div>

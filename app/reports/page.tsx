@@ -346,7 +346,7 @@ export default function ReportsPage() {
                 </p>
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   {streak
-                    ? localize(`Best: ${streak.longestStreak} days`, `सर्वश्रेष्ठ: ${streak.longestStreak} दिन`)
+                    ? localize("Best: {count} days", "सर्वश्रेष्ठ: {count} दिन", { count: streak.longestStreak })
                     : localize("Log daily vitals to build streak", "स्ट्रिक बनाने के लिए जांच करें")}
                 </p>
               </div>

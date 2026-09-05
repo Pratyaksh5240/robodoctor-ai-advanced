@@ -404,7 +404,7 @@ export default function HealthCheck() {
                 )}
               </span>
               <span className="text-[var(--muted)] font-normal">
-                ({localize(`Best: ${streak.longestStreak}`, `सर्वश्रेष्ठ: ${streak.longestStreak}`)})
+                ({localize("Best: {count}", "सर्वश्रेष्ठ: {count}", { count: streak.longestStreak })})
               </span>
             </div>
           )}

@@ -521,10 +521,7 @@ export default function Home() {
                 </p>
                 <p className="text-xs text-[var(--muted)] mt-1">
                   {vitalsStreak && vitalsStreak.currentStreak > 0
-                    ? localize(
-                        `You are currently on a ${vitalsStreak.currentStreak}-day streak. Log today's vitals to keep your streak going!`,
-                        `आप वर्तमान में ${vitalsStreak.currentStreak} दिन के स्ट्रिक पर हैं। इसे बनाए रखने के लिए आज की जांच करें!`
-                      )
+                    ? localize("You are currently on a {count}-day streak. Log today's vitals to keep your streak going!", "आप वर्तमान में {count} दिन के स्ट्रिक पर हैं। इसे बनाए रखने के लिए आज की जांच करें!", { count: vitalsStreak.currentStreak })
                     : localize(
                         "Log today's vital risk check to start your daily health streak.",
                         "अपना दैनिक स्वास्थ्य स्ट्रिक शुरू करने के लिए आज की जांच करें।"
