@@ -75,14 +75,11 @@ export async function POST(request: NextRequest) {
     
     // Candidate Gemini models to attempt in sequence
     const candidateModels = [
+      "gemini-3.6-flash",
       process.env.GEMINI_MODEL?.trim(),
       process.env.AI_HEALTH_ASSISTANT_GEMINI_MODEL?.trim(),
-      "gemini-3.6-flash",
       "gemini-2.5-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-2.0-flash-exp",
-      "gemini-1.5-flash",
-      "gemini-1.5-pro"
+      "gemini-1.5-flash"
     ].filter(Boolean) as string[];
 
     const modelsToTry = Array.from(new Set(candidateModels));

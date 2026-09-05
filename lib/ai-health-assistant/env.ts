@@ -111,10 +111,10 @@ export function getGoogleAiConfig(): GoogleAiConfig {
     geminiApiKey,
     geminiModel:
       process.env.AI_HEALTH_ASSISTANT_GEMINI_MODEL?.trim() ||
-      "gemini-2.0-flash",
+      "gemini-3.6-flash",
     vertexModel:
       process.env.AI_HEALTH_ASSISTANT_VERTEX_MODEL?.trim() ||
-      "gemini-2.0-flash",
+      "gemini-3.6-flash",
     vertexProject,
     vertexLocation,
     vertexAccessToken,
