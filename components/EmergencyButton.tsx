@@ -22,8 +22,8 @@ export default function EmergencyButton() {
 
   return (
     <>
-      {/* Floating Action Button (FAB) anchored bottom-right */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Action Button (FAB) anchored bottom-left to avoid overlapping with AI Assistant at bottom-right */}
+      <div className="fixed bottom-6 left-6 z-[9998]">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
