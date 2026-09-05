@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { translateUi, Language } from "@/lib/uiI18n";
+import { connectToDatabase } from "@/lib/db/mongodb";
+import ChatMessageModel from "@/lib/models/ChatMessage";
 
 export const runtime = "nodejs";
 
@@ -131,6 +133,23 @@ export async function POST(request: NextRequest) {
             ?.trim();
 
           if (replyText) {
+            const lastUserQuery = [...messages].reverse().find((m) => m.role === "user")?.text || "";
+            try {
+              const db = await connectToDatabase();
+              if (db) {
+                await ChatMessageModel.create({
+                  userQuery: lastUserQuery,
+                  botReply: replyText,
+                  aiModel: model,
+                  provider: "gemini",
+                  language,
+                  fallbackUsed: false,
+                });
+              }
+            } catch (err) {
+              console.warn("MongoDB log save error:", err);
+            }
+
             return NextResponse.json({
               reply: replyText,
               provider: "gemini",
@@ -151,6 +170,23 @@ export async function POST(request: NextRequest) {
     // Fallback if all models failed
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.text || "";
     const fallbackReply = getEnhancedBotFallback(lastUserMsg, language);
+
+    try {
+      const db = await connectToDatabase();
+      if (db) {
+        await ChatMessageModel.create({
+          userQuery: lastUserMsg,
+          botReply: fallbackReply,
+          aiModel: "rule-based",
+          provider: "fallback-rules",
+          language,
+          fallbackUsed: true,
+        });
+      }
+    } catch (err) {
+      console.warn("MongoDB log save error:", err);
+    }
+
     return NextResponse.json({
       reply: fallbackReply,
       provider: "fallback-rules",
