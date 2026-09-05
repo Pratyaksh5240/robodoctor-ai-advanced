@@ -17,6 +17,15 @@ function getBotReply(input: string, language: Language) {
     language === "hi" ? hi : translateUi(en, language);
   const text = input.toLowerCase();
 
+  // Check greetings
+  if (/^(h[el]+o+|h+i+|h+e+y+|greetings|namaste|hola|bonjour|good\s*(morning|afternoon|evening))/i.test(text.trim())) {
+    return localize(
+      "Hello! 👋 I am your RoboDoctor AI health assistant. How can I help you today? You can ask me about symptoms, blood pressure, sugar readings, or any health questions.",
+      "नमस्ते! 👋 मैं आपका RoboDoctor AI स्वास्थ्य सहायक हूं। आज मैं आपकी क्या मदद कर सकता हूं? आप मुझसे लक्षणों, ब्लड प्रेशर, शुगर रीडिंग या किसी भी स्वास्थ्य सवाल के बारे में पूछ सकते हैं।"
+    );
+  }
+
+
   if (text.includes("chest pain") || text.includes("सीने")) {
     return localize(
       "If chest pain comes with breathlessness, sweating, weakness, or dizziness, seek emergency help now. Even mild repeated chest pain should be reviewed by a doctor.",
@@ -84,6 +93,15 @@ function getEnhancedBotReply(input: string, language: Language) {
     language === "hi" ? hi : translateUi(en, language);
 
   const text = input.toLowerCase();
+
+  // Check greetings
+  if (/^(h[el]+o+|h+i+|h+e+y+|greetings|namaste|hola|bonjour|good\s*(morning|afternoon|evening))/i.test(text.trim())) {
+    return localize(
+      "Hello! 👋 I am your RoboDoctor AI health assistant. How can I help you today? You can ask me about symptoms, blood pressure, sugar readings, or any health questions.",
+      "नमस्ते! 👋 मैं आपका RoboDoctor AI स्वास्थ्य सहायक हूं। आज मैं आपकी क्या मदद कर सकता हूं? आप मुझसे लक्षणों, ब्लड प्रेशर, शुगर रीडिंग या किसी भी स्वास्थ्य सवाल के बारे में पूछ सकते हैं।"
+    );
+  }
+
   const baseReply = getBotReply(input, language);
   const bpMatch = text.match(/(\d{2,3})\s*[\/-]\s*(\d{2,3})/);
   const sugarMatch =

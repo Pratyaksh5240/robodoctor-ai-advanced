@@ -147,7 +147,7 @@ export default function FloatingChatbot() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-sm scrollbar-thin">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-sm chat-scrollbar">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -184,7 +184,7 @@ export default function FloatingChatbot() {
           </div>
 
           {/* Quick Reply Pills */}
-          <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/50 flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/50 flex gap-2 overflow-x-auto no-scrollbar" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
             {defaultQuickReplies.map((qr) => (
               <button
                 key={qr.en}
