@@ -1,12 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
+import { useAuth } from "@/components/AuthProvider";
+import { useActiveProfile } from "@/app/context/ActiveProfileContext";
+import { saveHealthReport } from "@/lib/reportHistory";
+import { getVitalsStreak, updateVitalsStreakOnLog, VitalsStreak } from "@/lib/streakService";
 import {
   Language,
   supportedLanguages,
@@ -119,6 +124,15 @@ export default function HealthCheck() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const localize = useLocalize();
+  const { user } = useAuth();
+  const { activeProfileId, activeProfile } = useActiveProfile();
+  const [streak, setStreak] = useState<VitalsStreak | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      getVitalsStreak(user.uid, activeProfileId).then((data) => setStreak(data));
+    }
+  }, [user, activeProfileId]);
 
   const [formData, setFormData] = useState({
     age: "",
@@ -335,6 +349,26 @@ export default function HealthCheck() {
       }
 
       setResult(data);
+
+      if (user) {
+        saveHealthReport(
+          user.uid,
+          {
+            createdAt: Date.now(),
+            riskLevel: data.risk || "Moderate",
+            riskScore: Math.round((data.probability || 0) * (data.probability <= 1 ? 100 : 1)),
+            summary: data.message || "Framingham Vital Risk Check Completed.",
+            bp: formData.bp,
+            sugar: String(sugar || ""),
+            heartRate: String(heartRate || ""),
+          },
+          activeProfileId
+        ).catch((e) => console.error("Error saving health report:", e));
+
+        updateVitalsStreakOnLog(user.uid, activeProfileId).then((updated) => {
+          setStreak(updated);
+        });
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -351,25 +385,42 @@ export default function HealthCheck() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] px-6 py-8 text-[var(--foreground)] md:p-16">
-      <motion.h1
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6 text-4xl font-bold"
-      >
-        {t.healthCheck}
-      </motion.h1>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <motion.h1
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl font-bold"
+          >
+            {t.healthCheck}
+          </motion.h1>
+          {streak && streak.currentStreak > 0 && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-bold text-amber-300">
+              <span>🔥</span>
+              <span>
+                {localize(
+                  `${streak.currentStreak}-day streak`,
+                  `${streak.currentStreak} दिन का स्ट्रिक`
+                )}
+              </span>
+              <span className="text-[var(--muted)] font-normal">
+                ({localize(`Best: ${streak.longestStreak}`, `सर्वश्रेष्ठ: ${streak.longestStreak}`)})
+              </span>
+            </div>
+          )}
+        </div>
 
-      <select
-        value={language}
-        onChange={(e) => setLanguage(e.target.value as Language)}
-        className="mb-6 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2"
-      >
-        {supportedLanguages.map((item) => (
-          <option key={item.value} value={item.value}>
-            {item.label}
-          </option>
-        ))}
-      </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <ProfileSwitcher />
+          <LanguageSwitcher />
+          <Link
+            href="/"
+            className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm hover:opacity-90"
+          >
+            {localize("Home", "होम")}
+          </Link>
+        </div>
+      </div>
 
       <motion.button
         onClick={startVoiceInput}

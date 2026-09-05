@@ -13,6 +13,9 @@ import {
 } from "@/lib/reportHistory";
 import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
+import { useActiveProfile } from "@/app/context/ActiveProfileContext";
+import { getVitalsStreak, VitalsStreak } from "@/lib/streakService";
 import { useLocalize } from "@/lib/useLocalize";
 
 const HealthTrendChart = dynamic(
@@ -35,10 +38,12 @@ function formatShortDate(timestamp: number) {
 export default function ReportsPage() {
   const { language } = useLanguage();
   const localize = useLocalize();
+  const { activeProfileId, activeProfile } = useActiveProfile();
 
   const [user, setUser] = useState<User | null>(null);
   const [healthReports, setHealthReports] = useState<HealthReportRecord[]>([]);
   const [skinReports, setSkinReports] = useState<SkinReportRecord[]>([]);
+  const [streak, setStreak] = useState<VitalsStreak | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
 
@@ -52,13 +57,15 @@ export default function ReportsPage() {
       }
 
       try {
-        const [health, skin] = await Promise.all([
-          loadHealthReportsPage(currentUser.uid, 20),
-          loadSkinReportsPage(currentUser.uid, 20),
+        const [health, skin, vitalsStreak] = await Promise.all([
+          loadHealthReportsPage(currentUser.uid, 20, activeProfileId),
+          loadSkinReportsPage(currentUser.uid, 20, activeProfileId),
+          getVitalsStreak(currentUser.uid, activeProfileId),
         ]);
 
         setHealthReports(health);
         setSkinReports(skin);
+        setStreak(vitalsStreak);
       } catch {
         setStatus(
           localize(
@@ -72,7 +79,7 @@ export default function ReportsPage() {
     });
 
     return () => unsubscribe();
-  }, [language]);
+  }, [language, activeProfileId, localize]);
 
   const handleLogout = async () => {
     try {
@@ -242,6 +249,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <ProfileSwitcher />
             <LanguageSwitcher />
             <Link
               href="/"
@@ -298,7 +306,7 @@ export default function ReportsPage() {
           </div>
         ) : (
           <>
-            <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <section className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-500/10 p-6">
                 <p className="text-sm uppercase tracking-[0.18em] text-cyan-200">
                   {copy.healthReports}
@@ -327,6 +335,19 @@ export default function ReportsPage() {
                 <p className="mt-3 text-4xl font-black">{stats.latestSkinScore ?? "-"}</p>
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   {copy.currentSeverityScore}
+                </p>
+              </div>
+              <div className="rounded-[28px] border border-amber-500/30 bg-amber-500/10 p-6">
+                <p className="text-sm uppercase tracking-[0.18em] text-amber-300">
+                  🔥 {localize("Vitals Streak", "वाइटल्स स्ट्रिक")}
+                </p>
+                <p className="mt-3 text-4xl font-black">
+                  {streak ? `${streak.currentStreak} 🔥` : "0 🔥"}
+                </p>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  {streak
+                    ? localize(`Best: ${streak.longestStreak} days`, `सर्वश्रेष्ठ: ${streak.longestStreak} दिन`)
+                    : localize("Log daily vitals to build streak", "स्ट्रिक बनाने के लिए जांच करें")}
                 </p>
               </div>
             </section>

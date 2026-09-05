@@ -2,6 +2,7 @@ import "./globals.css";
 import { Suspense } from "react";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ActiveProfileProvider } from "./context/ActiveProfileContext";
 import AuthGate from "@/components/AuthGate";
 
 export const metadata = {
@@ -24,12 +25,15 @@ export default function RootLayout({
       <body>
         <LanguageProvider>
           <AuthProvider>
-            <Suspense fallback={children}>
-              <AuthGate>{children}</AuthGate>
-            </Suspense>
+            <ActiveProfileProvider>
+              <Suspense fallback={children}>
+                <AuthGate>{children}</AuthGate>
+              </Suspense>
+            </ActiveProfileProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>
     </html>
   );
 }
+

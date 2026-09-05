@@ -4,10 +4,13 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
+import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { getSubcollectionPath } from "@/lib/reportHistory";
 import { useLocalize } from "@/lib/useLocalize";
 import {
   getNotificationPermissionState,
@@ -24,6 +27,7 @@ import {
 function MedicineReminderContent() {
   const { language } = useLanguage();
   const { user } = useAuth();
+  const { activeProfileId } = useActiveProfile();
   const searchParams = useSearchParams();
   const localize = useLocalize();
 
@@ -42,10 +46,24 @@ function MedicineReminderContent() {
     return saved ? (JSON.parse(saved) as Reminder[]) : [];
   });
 
-  // Handle Preset URL Search Params
+  // Handle Preset & Prescription Scanner Search Params
   useEffect(() => {
     const preset = searchParams?.get("preset");
-    if (preset === "bp-check") {
+    const medName = searchParams?.get("medName");
+    const dosage = searchParams?.get("dosage");
+    const frequency = searchParams?.get("frequency");
+
+    if (medName) {
+      const suggestedTitle = `${medName}${dosage ? ` - ${dosage}` : ""}`;
+      setTitle(suggestedTitle);
+      if (frequency?.toLowerCase().includes("night") || frequency?.toLowerCase().includes("bed")) {
+        setTime("21:00");
+      } else if (frequency?.toLowerCase().includes("evening")) {
+        setTime("18:00");
+      } else {
+        setTime("09:00");
+      }
+    } else if (preset === "bp-check") {
       setTitle(localize("Check Blood Pressure (Daily)", "ब्लड प्रेशर जांच (दैनिक)"));
       setTime("08:00");
     } else if (preset === "sugar-check") {
@@ -62,20 +80,24 @@ function MedicineReminderContent() {
     if (!user) return;
     async function loadFirestoreReminders() {
       try {
-        const snap = await getDocs(collection(db, "users", user!.uid, "reminders"));
+        const pathSegments = getSubcollectionPath(user!.uid, "reminders", activeProfileId);
+        const colRef = collection(db, pathSegments[0], ...pathSegments.slice(1));
+        const snap = await getDocs(colRef);
         if (!snap.empty) {
           const items: Reminder[] = [];
           snap.forEach((d) => {
             items.push(d.data() as Reminder);
           });
           setReminders(items);
+        } else {
+          setReminders([]);
         }
       } catch (err) {
         console.warn("Failed to load Firestore reminders:", err);
       }
     }
     loadFirestoreReminders();
-  }, [user]);
+  }, [user, activeProfileId]);
 
   // Save reminders to localStorage and Firestore
   useEffect(() => {
@@ -84,13 +106,15 @@ function MedicineReminderContent() {
     if (user) {
       reminders.forEach(async (r) => {
         try {
-          await setDoc(doc(db, "users", user.uid, "reminders", String(r.id)), r, { merge: true });
+          const pathSegments = getSubcollectionPath(user.uid, "reminders", activeProfileId);
+          const docRef = doc(db, pathSegments[0], ...pathSegments.slice(1), String(r.id));
+          await setDoc(docRef, r, { merge: true });
         } catch (err) {
           console.warn("Failed to sync reminder to Firestore:", err);
         }
       });
     }
-  }, [reminders, user]);
+  }, [reminders, user, activeProfileId]);
 
   // Initial Permission Check, SW Registration & Web Push Subscription
   useEffect(() => {
@@ -185,7 +209,8 @@ function MedicineReminderContent() {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <ProfileSwitcher />
             <LanguageSwitcher />
             <Link
               href="/"

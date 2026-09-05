@@ -9,6 +9,9 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
+import { useActiveProfile } from "@/app/context/ActiveProfileContext";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
+import { getVitalsStreak, VitalsStreak } from "@/lib/streakService";
 import { auth } from "@/lib/firebase";
 
 const productCards = [
@@ -99,6 +102,17 @@ const productCards = [
       "दवा, पानी, वॉक, BP और शुगर-चेक रिमाइंडर एक छोटे हेल्थ प्लानर में सेव करें।",
     href: "/medicine-reminder",
     accent: "from-emerald-400/30 to-lime-400/30",
+  },
+  {
+    key: "prescription",
+    titleEn: "Prescription Scanner",
+    titleHi: "प्रिस्क्रिप्शन स्कैनर",
+    descriptionEn:
+      "Scan doctor prescriptions or medicine packaging with AI vision to extract medicines, dosages, and instructions.",
+    descriptionHi:
+      "एआई विज़न से डॉक्टर पर्चे या दवा बॉक्स को स्कैन करके दवाएं, खुराक और निर्देश निकालें।",
+    href: "/prescription-scan",
+    accent: "from-purple-400/30 to-cyan-400/30",
   },
   {
     key: "diet",
@@ -205,11 +219,36 @@ const strengthPointsList = [
 export default function Home() {
   const localize = useLocalize();
   const { user, guestMode, clearGuestSession } = useAuth();
+  const { activeProfileId } = useActiveProfile();
   const [mounted, setMounted] = useState(false);
+  const [vitalsStreak, setVitalsStreak] = useState<VitalsStreak | null>(null);
+  const [showNudge, setShowNudge] = useState<boolean>(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (!user) {
+      setShowNudge(false);
+      return;
+    }
+
+    getVitalsStreak(user.uid, activeProfileId).then((streakData) => {
+      setVitalsStreak(streakData);
+      const today = new Date().toISOString().slice(0, 10);
+      const dismissedToday = localStorage.getItem(`nudge-dismissed-${today}`);
+
+      if (!dismissedToday && streakData.lastLoggedDate !== today) {
+        setShowNudge(true);
+      } else {
+        setShowNudge(false);
+      }
+    });
+  }, [user, activeProfileId]);
+
+  const handleDismissNudge = () => {
+    setShowNudge(false);
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(`nudge-dismissed-${today}`, "true");
+  };
 
   const displayName = guestMode
     ? localize("Guest", "गेस्ट")
@@ -301,7 +340,8 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <ProfileSwitcher />
           <LanguageSwitcher />
           <ThemeToggle />
           {mounted && (user || guestMode) ? (
@@ -473,6 +513,46 @@ export default function Home() {
             ))}
           </div>
         </section>
+
+        {showNudge && (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200 shadow-xl">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🔥</span>
+              <div>
+                <p className="font-extrabold text-amber-300 text-lg">
+                  {localize("Keep your daily health streak going!", "अपना वाइटल्स स्ट्रिक जारी रखें!")}
+                </p>
+                <p className="text-xs text-[var(--muted)] mt-1">
+                  {vitalsStreak && vitalsStreak.currentStreak > 0
+                    ? localize(
+                        `You are currently on a ${vitalsStreak.currentStreak}-day streak. Log today's vitals to keep your streak going!`,
+                        `आप वर्तमान में ${vitalsStreak.currentStreak} दिन के स्ट्रिक पर हैं। इसे बनाए रखने के लिए आज की जांच करें!`
+                      )
+                    : localize(
+                        "Log today's vital risk check to start your daily health streak.",
+                        "अपना दैनिक स्वास्थ्य स्ट्रिक शुरू करने के लिए आज की जांच करें।"
+                      )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link
+                href="/health-check"
+                className="rounded-xl bg-amber-500 px-5 py-2.5 text-xs font-bold text-black hover:bg-amber-400 transition"
+              >
+                {localize("Log Vitals Now", "अभी जांच करें")}
+              </Link>
+              <button
+                type="button"
+                onClick={handleDismissNudge}
+                className="rounded-xl border border-amber-500/30 px-3 py-2 text-xs text-amber-200 hover:bg-amber-500/20 transition"
+              >
+                {localize("Dismiss", "हटाएं")}
+              </button>
+            </div>
+          </div>
+        )}
 
         <section className="mt-12">
           <div className="mb-6 flex items-end justify-between gap-4">

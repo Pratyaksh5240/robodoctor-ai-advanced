@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import {
   DRUG_DATABASE,
@@ -13,12 +15,40 @@ import {
   analyzeDrugSafety,
 } from "@/lib/drugInteractions";
 
-export default function MedicineCheckerPage() {
+function MedicineCheckerContent() {
   const { language } = useLanguage();
   const localize = useLocalize();
 
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(["paracetamol", "ibuprofen"]);
+
+  // Pre-fill from URL query param (e.g. from Prescription Scanner)
+  useEffect(() => {
+    const medsQuery = searchParams?.get("meds");
+    if (medsQuery) {
+      const names = medsQuery.split(",").map((n) => decodeURIComponent(n).trim().toLowerCase());
+      const matchedIds: string[] = [];
+
+      names.forEach((name) => {
+        if (!name) return;
+        const match = DRUG_DATABASE.find(
+          (d) =>
+            d.id.toLowerCase() === name ||
+            d.genericName.toLowerCase().includes(name) ||
+            name.includes(d.genericName.toLowerCase()) ||
+            d.brandNames.some((b) => b.toLowerCase().includes(name) || name.includes(b.toLowerCase()))
+        );
+        if (match && !matchedIds.includes(match.id)) {
+          matchedIds.push(match.id);
+        }
+      });
+
+      if (matchedIds.length > 0) {
+        setSelectedIds(matchedIds);
+      }
+    }
+  }, [searchParams]);
 
   // Filter autocomplete suggestions
   const filteredSuggestions = useMemo(() => {
@@ -113,7 +143,8 @@ export default function MedicineCheckerPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <ProfileSwitcher />
           <LanguageSwitcher />
           <ThemeToggle />
         </div>
@@ -449,3 +480,12 @@ export default function MedicineCheckerPage() {
     </div>
   );
 }
+
+export default function MedicineCheckerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 p-10 text-white">Loading medicine checker...</div>}>
+      <MedicineCheckerContent />
+    </Suspense>
+  );
+}
+

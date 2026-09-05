@@ -9,7 +9,9 @@ import { saveSkinReport, loadSkinReports, SkinReportRecord } from "@/lib/reportH
 import { SkinAnalysis } from "@/lib/skinAnalysis";
 import { useLanguage, useLocalize, Language } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { translateUi } from "@/lib/uiI18n";
 
 type SkinFormState = {
@@ -296,6 +298,7 @@ const translateLesionClass = (cls: string, fallbackName: string, lang: string) =
 export default function SkinCheckPage() {
   const { language } = useLanguage();
   const localize = useLocalize();
+  const { activeProfileId } = useActiveProfile();
   const severityLabels = {
     low: localize("Low", "कम"),
     moderate: localize("Moderate", "मध्यम"),
@@ -330,9 +333,11 @@ export default function SkinCheckPage() {
       setUserId(user.uid);
 
       try {
-        const cloudReports = await loadSkinReports(user.uid);
+        const cloudReports = await loadSkinReports(user.uid, activeProfileId);
         if (cloudReports.length > 0) {
           setReports(cloudReports);
+        } else {
+          setReports([]);
         }
       } catch {
         setStatusMessage(
@@ -345,7 +350,7 @@ export default function SkinCheckPage() {
     });
 
     return () => unsubscribe();
-  }, [localize]);
+  }, [localize, activeProfileId]);
 
   useEffect(() => {
     return () => {
@@ -419,7 +424,7 @@ export default function SkinCheckPage() {
     }
 
     try {
-      await saveSkinReport(userId, report);
+      await saveSkinReport(userId, report, activeProfileId);
       setStatusMessage(
         localize(
           "Skin report saved to your cloud history.",
@@ -527,7 +532,8 @@ export default function SkinCheckPage() {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <ProfileSwitcher />
             <LanguageSwitcher />
             <Link
               href="/"
