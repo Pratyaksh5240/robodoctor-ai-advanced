@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildBaselineHealthAnalysis } from "@/lib/ai-health-assistant/riskWrapper";
+import { extractSymptomSignals } from "@/lib/symptomExtraction";
 
 export async function POST(request: Request) {
   let body: any;
@@ -41,15 +42,21 @@ export async function POST(request: Request) {
 
   // Graceful Fallback: Use baseline clinical rules engine when Python ML backend is offline
   try {
-    const baseline = buildBaselineHealthAnalysis({
-      age: Number(body.age || 0),
-      heightCm: Number(body.heightCm || 0),
-      weightKg: Number(body.weightKg || 0),
-      bloodPressure: String(body.bloodPressure || ""),
-      sugar: body.bloodSugar !== null && body.bloodSugar !== undefined ? Number(body.bloodSugar) : null,
-      heartRate: body.heartRate !== null && body.heartRate !== undefined ? Number(body.heartRate) : null,
-      symptoms: String(body.symptoms || ""),
-    });
+    const symptomsText = String(body.symptoms || "");
+    const { signals } = await extractSymptomSignals(symptomsText);
+
+    const baseline = buildBaselineHealthAnalysis(
+      {
+        age: Number(body.age || 0),
+        heightCm: Number(body.heightCm || 0),
+        weightKg: Number(body.weightKg || 0),
+        bloodPressure: String(body.bloodPressure || ""),
+        sugar: body.bloodSugar !== null && body.bloodSugar !== undefined ? Number(body.bloodSugar) : null,
+        heartRate: body.heartRate !== null && body.heartRate !== undefined ? Number(body.heartRate) : null,
+        symptoms: symptomsText,
+      },
+      signals
+    );
 
     const mappedRisk = baseline.riskLevel === "Emergency" ? "High" : baseline.riskLevel;
 
@@ -57,19 +64,35 @@ export async function POST(request: Request) {
     const probaMod = mappedRisk === "Moderate" ? 70.0 : 20.0;
     const probaHigh = mappedRisk === "High" ? 80.0 : 10.0;
 
-    const priorityFinding = baseline.urgentFlags[0]
+    // Select priority finding based on highest clinical severity (emergency > urgent > watch > info)
+    const severityRank: Record<string, number> = {
+      emergency: 4,
+      urgent: 3,
+      watch: 2,
+      info: 1,
+    };
+
+    const candidateFindings = [
+      ...baseline.urgentFlags.map((item) => ({ ...item, isUrgentFlag: true })),
+      ...baseline.possibleConcerns.map((item) => ({ ...item, isUrgentFlag: false })),
+    ];
+
+    candidateFindings.sort((a, b) => {
+      const diff = (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0);
+      if (diff !== 0) return diff;
+      if (a.isUrgentFlag && !b.isUrgentFlag) return -1;
+      if (b.isUrgentFlag && !a.isUrgentFlag) return 1;
+      return 0;
+    });
+
+    const topFinding = candidateFindings[0] || null;
+
+    const priorityFinding = topFinding
       ? {
-          title: baseline.urgentFlags[0].label,
-          detail: baseline.urgentFlags[0].detail,
+          title: topFinding.label,
+          detail: topFinding.detail,
           explanation: baseline.summary,
-          severity: baseline.urgentFlags[0].severity,
-        }
-      : baseline.possibleConcerns[0]
-      ? {
-          title: baseline.possibleConcerns[0].label,
-          detail: baseline.possibleConcerns[0].detail,
-          explanation: baseline.summary,
-          severity: baseline.possibleConcerns[0].severity,
+          severity: topFinding.severity,
         }
       : null;
 
@@ -95,6 +118,7 @@ export async function POST(request: Request) {
       recommendations,
       urgent: baseline.riskLevel === "Emergency" || baseline.urgentFlags.some(f => f.severity === "urgent" || f.severity === "emergency"),
       message: baseline.summary,
+      symptomTags: baseline.symptomTags,
       source: "rules_fallback",
     });
   } catch (fallbackErr) {

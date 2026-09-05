@@ -3,6 +3,7 @@ import {
   parseBloodPressure,
   type HealthAnalysis,
 } from "@/lib/healthAnalysis";
+import type { ExtractedSignal } from "@/lib/symptomExtraction";
 import type {
   BaselineAnalysisSummary,
   BaselineHealthProfile,
@@ -74,7 +75,10 @@ export function mergeSymptoms(
   };
 }
 
-export function buildBaselineHealthAnalysis(profile: BaselineHealthProfile) {
+export function buildBaselineHealthAnalysis(
+  profile: BaselineHealthProfile,
+  extraSignals?: ExtractedSignal[]
+) {
   const { systolic, diastolic } = parseBloodPressure(
     profile.bloodPressure?.trim() ?? ""
   );
@@ -88,6 +92,7 @@ export function buildBaselineHealthAnalysis(profile: BaselineHealthProfile) {
     sugar: toNullableNumber(profile.sugar),
     heartRate: toNullableNumber(profile.heartRate),
     symptoms: profile.symptoms?.trim() ?? "",
+    extraSignals: extraSignals ?? profile.extraSignals,
   });
 }
 

@@ -1,3 +1,5 @@
+import type { ExtractedSignal } from "@/lib/symptomExtraction";
+
 export type GoogleAiProvider = "gemini" | "vertex" | "fallback";
 
 export type AssistantConversationMessage = {
@@ -46,6 +48,7 @@ export type BaselineHealthProfile = {
   heartRate?: number | string | null;
   symptoms?: string | null;
   notes?: string | null;
+  extraSignals?: ExtractedSignal[];
 };
 
 export type WrappedRiskLevel = "Low" | "Medium" | "High";

@@ -1,3 +1,5 @@
+import type { ExtractedSignal } from "./symptomExtraction";
+
 export type HealthInputs = {
   age: number;
   heightCm: number;
@@ -7,6 +9,7 @@ export type HealthInputs = {
   sugar: number | null;
   heartRate: number | null;
   symptoms: string;
+  extraSignals?: ExtractedSignal[];
 };
 
 export type Severity = "info" | "watch" | "urgent" | "emergency";
@@ -403,6 +406,61 @@ export function analyzeHealth(input: HealthInputs): HealthAnalysis {
       });
     }
   });
+
+  if (input.extraSignals && input.extraSignals.length > 0) {
+    for (const signal of input.extraSignals) {
+      const termLower = signal.term.toLowerCase();
+      const existingTag = symptomTags.find(
+        (tag) =>
+          tag.toLowerCase() === termLower ||
+          termLower.includes(tag.toLowerCase()) ||
+          tag.toLowerCase().includes(termLower)
+      );
+
+      if (!existingTag) {
+        symptomTags.push(termLower);
+      }
+
+      const isUrgentOrEmergency =
+        signal.severity === "urgent" || signal.severity === "emergency";
+      const alreadyInUrgent = urgentFlags.some(
+        (flag) =>
+          flag.label.toLowerCase() === termLower ||
+          termLower.includes(flag.label.toLowerCase())
+      );
+      const alreadyInConcerns = possibleConcerns.some(
+        (c) =>
+          c.label.toLowerCase() === termLower ||
+          termLower.includes(c.label.toLowerCase())
+      );
+
+      if (isUrgentOrEmergency) {
+        if (!alreadyInUrgent) {
+          addUrgentFlag(urgentFlags, signal.term, signal.note, signal.severity);
+        }
+      } else {
+        if (!alreadyInConcerns && !alreadyInUrgent) {
+          possibleConcerns.push({
+            label: signal.term,
+            detail: signal.note,
+            severity: signal.severity,
+          });
+        }
+      }
+
+      if (signal.category === "serious_diagnosis") {
+        recommendations.push({
+          text: `Given your reported diagnosis of ${signal.term}, consult your physician or specialist to ensure your vitals and symptoms are safely managed.`,
+          severity: signal.severity,
+        });
+      } else if (signal.severity === "emergency") {
+        recommendations.push({
+          text: `Emergency warning: ${signal.term} (${signal.note}) requires immediate emergency medical evaluation.`,
+          severity: "emergency",
+        });
+      }
+    }
+  }
 
   const hasFever = symptomTags.includes("fever");
   const hasCough = symptomTags.includes("cough");
