@@ -14,6 +14,7 @@ import { db } from "@/lib/firebase";
 import {
   collection,
   addDoc,
+  setDoc,
   deleteDoc,
   doc,
   onSnapshot,
@@ -150,13 +151,23 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       return localId;
     }
 
-    // Signed-in User: Store in Firestore
+    // Signed-in User: Synchronously generate doc ID and update local state, then save to Firestore
     const depsRef = collection(db, "users", user.uid, "dependents");
-    const newDoc = await addDoc(depsRef, {
+    const newDocRef = doc(depsRef);
+    const newId = newDocRef.id;
+
+    const newDependent: Dependent = { id: newId, ...data, createdAt };
+    setDependents((prev) => [...prev, newDependent]);
+
+    // Save in background to Firestore without blocking the UI modal response
+    void setDoc(newDocRef, {
       ...data,
       createdAt,
+    }).catch((err) => {
+      console.error("Error writing family member to Firestore:", err);
     });
-    return newDoc.id;
+
+    return newId;
   };
 
   const deleteDependent = async (id: string): Promise<void> => {
