@@ -159,17 +159,6 @@ const productCards = [
     accent: "from-rose-400/30 to-fuchsia-400/30",
   },
   {
-    key: "chatbot",
-    titleEn: "AI Chatbot",
-    titleHi: "एआई चैटबॉट",
-    descriptionEn:
-      "Ask symptom questions in a guided chat and get simple next-step health guidance.",
-    descriptionHi:
-      "गाइडेड चैट में अपने लक्षण पूछें और आसान अगले कदमों का स्वास्थ्य मार्गदर्शन पाएं।",
-    href: "/ai-chatbot",
-    accent: "from-cyan-400/30 to-indigo-400/30",
-  },
-  {
     key: "contacts",
     titleEn: "Emergency Contacts",
     titleHi: "इमरजेंसी कॉन्टैक्ट्स",
