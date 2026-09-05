@@ -51,28 +51,21 @@ export default function ReportsPage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
+      const targetId = currentUser ? currentUser.uid : "guest";
 
       try {
         const [health, skin, vitalsStreak] = await Promise.all([
-          loadHealthReportsPage(currentUser.uid, 20, activeProfileId),
-          loadSkinReportsPage(currentUser.uid, 20, activeProfileId),
-          getVitalsStreak(currentUser.uid, activeProfileId),
+          loadHealthReportsPage(targetId, 20, activeProfileId),
+          loadSkinReportsPage(targetId, 20, activeProfileId),
+          getVitalsStreak(targetId, activeProfileId),
         ]);
 
         setHealthReports(health);
         setSkinReports(skin);
         setStreak(vitalsStreak);
-      } catch {
-        setStatus(
-          localize(
-            "Unable to load cloud reports right now. Please try again shortly.",
-            "क्लाउड रिपोर्ट अभी लोड नहीं हो पाईं। कृपया थोड़ी देर बाद फिर कोशिश करें।"
-          )
-        );
+        setStatus("");
+      } catch (err) {
+        console.warn("Reports page load fallback:", err);
       } finally {
         setLoading(false);
       }

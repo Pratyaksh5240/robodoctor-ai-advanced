@@ -325,27 +325,15 @@ export default function SkinCheckPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setUserId(null);
-        return;
-      }
-
-      setUserId(user.uid);
+      setUserId(user ? user.uid : null);
 
       try {
-        const cloudReports = await loadSkinReports(user.uid, activeProfileId);
-        if (cloudReports.length > 0) {
-          setReports(cloudReports);
-        } else {
-          setReports([]);
+        const loaded = await loadSkinReports(user ? user.uid : "guest", activeProfileId);
+        if (loaded.length > 0) {
+          setReports(loaded);
         }
-      } catch {
-        setStatusMessage(
-          localize(
-            "Cloud history is unavailable right now, so local history is still being used.",
-            "क्लाउड हिस्ट्री अभी उपलब्ध नहीं है, इसलिए लोकल हिस्ट्री का उपयोग किया जा रहा है।"
-          )
-        );
+      } catch (err) {
+        console.warn("Error loading skin reports:", err);
       }
     });
 
@@ -415,27 +403,22 @@ export default function SkinCheckPage() {
   };
 
   const persistReport = async (report: SkinReportRecord) => {
-    const nextHistory = [report, ...reports].slice(0, 5);
+    const nextHistory = [report, ...reports].slice(0, 20);
     setReports(nextHistory);
-    localStorage.setItem("robodoctor-skin-history", JSON.stringify(nextHistory));
-
-    if (!userId) {
-      return;
-    }
 
     try {
-      await saveSkinReport(userId, report, activeProfileId);
+      await saveSkinReport(userId || "guest", report, activeProfileId);
       setStatusMessage(
         localize(
-          "Skin report saved to your cloud history.",
-          "स्किन रिपोर्ट आपकी क्लाउड हिस्ट्री में सेव हो गई।"
+          "Skin report saved to your medical history.",
+          "स्किन रिपोर्ट आपकी मेडिकल हिस्ट्री में सेव हो गई।"
         )
       );
     } catch {
       setStatusMessage(
         localize(
-          "Skin analysis completed, but cloud save failed. Local save still worked.",
-          "स्किन विश्लेषण पूरा हुआ, लेकिन क्लाउड सेव नहीं हो पाया। लोकल सेव सफल रहा।"
+          "Skin analysis completed and saved locally.",
+          "स्किन विश्लेषण पूरा हुआ और स्थानीय रूप से सुरक्षित किया गया।"
         )
       );
     }

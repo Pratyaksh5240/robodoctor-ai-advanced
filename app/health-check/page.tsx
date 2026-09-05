@@ -129,9 +129,7 @@ export default function HealthCheck() {
   const [streak, setStreak] = useState<VitalsStreak | null>(null);
 
   useEffect(() => {
-    if (user) {
-      getVitalsStreak(user.uid, activeProfileId).then((data) => setStreak(data));
-    }
+    getVitalsStreak(user?.uid || "guest", activeProfileId).then((data) => setStreak(data));
   }, [user, activeProfileId]);
 
   const [formData, setFormData] = useState({
@@ -350,25 +348,26 @@ export default function HealthCheck() {
 
       setResult(data);
 
-      if (user) {
-        saveHealthReport(
-          user.uid,
-          {
-            createdAt: Date.now(),
-            riskLevel: data.risk || "Moderate",
-            riskScore: Math.round((data.probability || 0) * (data.probability <= 1 ? 100 : 1)),
-            summary: data.message || "Framingham Vital Risk Check Completed.",
-            bp: formData.bp,
-            sugar: String(sugar || ""),
-            heartRate: String(heartRate || ""),
-          },
-          activeProfileId
-        ).catch((e) => console.error("Error saving health report:", e));
+      const targetUserId = user?.uid || "guest";
+      saveHealthReport(
+        targetUserId,
+        {
+          createdAt: Date.now(),
+          riskLevel: data.risk || "Moderate",
+          riskScore: Math.round((data.probability || 0) * (data.probability <= 1 ? 100 : 1)),
+          summary: data.message || "Framingham Vital Risk Check Completed.",
+          bp: formData.bp,
+          sugar: String(sugar || ""),
+          heartRate: String(heartRate || ""),
+        },
+        activeProfileId
+      ).catch((e) => console.error("Error saving health report:", e));
 
-        updateVitalsStreakOnLog(user.uid, activeProfileId).then((updated) => {
+      updateVitalsStreakOnLog(targetUserId, activeProfileId)
+        .then((updated) => {
           setStreak(updated);
-        });
-      }
+        })
+        .catch((e) => console.error("Error updating streak:", e));
     } catch (err) {
       setError(
         err instanceof Error

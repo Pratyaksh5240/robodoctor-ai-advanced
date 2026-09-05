@@ -41,16 +41,13 @@ export default function ExportReportPage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
+      const targetId = currentUser ? currentUser.uid : "guest";
 
       try {
         const [health, skin, profile] = await Promise.all([
-          loadHealthReportsPage(currentUser.uid, 20),
-          loadSkinReportsPage(currentUser.uid, 20),
-          getUserProfile(currentUser.uid),
+          loadHealthReportsPage(targetId, 20),
+          loadSkinReportsPage(targetId, 20),
+          getUserProfile(targetId),
         ]);
 
         setHealthReports(health);
@@ -64,7 +61,7 @@ export default function ExportReportPage() {
               health[0],
               skin[0] || null,
               profile,
-              currentUser.displayName || undefined
+              currentUser?.displayName || undefined
             )
           );
         } else if (skin.length > 0) {
@@ -73,7 +70,7 @@ export default function ExportReportPage() {
               null,
               skin[0],
               profile,
-              currentUser.displayName || undefined
+              currentUser?.displayName || undefined
             )
           );
         }
