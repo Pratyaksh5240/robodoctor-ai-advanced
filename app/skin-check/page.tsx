@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { saveSkinReport, loadSkinReports, SkinReportRecord } from "@/lib/reportHistory";
@@ -298,6 +299,18 @@ const translateLesionClass = (cls: string, fallbackName: string, lang: string) =
 export default function SkinCheckPage() {
   const { language } = useLanguage();
   const localize = useLocalize();
+
+  const searchParams = useSearchParams();
+  const triageSymptoms = searchParams?.get("symptoms");
+
+  const [form, setForm] = useState<SkinFormState>(initialState);
+
+  useEffect(() => {
+    if (triageSymptoms) {
+      setForm((prev) => ({ ...prev, symptoms: triageSymptoms }));
+    }
+  }, [triageSymptoms]);
+
   const { activeProfileId } = useActiveProfile();
   const severityLabels = {
     low: localize("Low", "कम"),
@@ -305,7 +318,6 @@ export default function SkinCheckPage() {
     high: localize("High", "उच्च"),
     urgent: localize("Urgent", "तत्काल"),
   };
-  const [form, setForm] = useState<SkinFormState>(initialState);
   const [analysis, setAnalysis] = useState<SkinAnalysis | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);

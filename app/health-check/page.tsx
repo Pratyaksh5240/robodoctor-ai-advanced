@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -127,6 +127,16 @@ export default function HealthCheck() {
   const { user } = useAuth();
   const { activeProfileId, activeProfile } = useActiveProfile();
   const [streak, setStreak] = useState<VitalsStreak | null>(null);
+
+  const searchParams = useSearchParams();
+  const triageSymptoms = searchParams?.get("symptoms");
+
+  useEffect(() => {
+    if (triageSymptoms) {
+      setFormData((prev) => ({ ...prev, symptoms: triageSymptoms }));
+    }
+  }, [triageSymptoms]);
+
 
   useEffect(() => {
     if (user) {
@@ -487,7 +497,17 @@ export default function HealthCheck() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-8 md:grid-cols-2">
+      
+        {triageSymptoms && (
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm font-semibold text-cyan-300">
+            <span className="text-xl">💡</span>
+            <span>
+              {localize("Because you mentioned: {symptoms}", "क्योंकि आपने बताया: {symptoms}", { symptoms: triageSymptoms })}
+            </span>
+          </div>
+        )}
+
+<form onSubmit={handleSubmit} className="grid gap-8 md:grid-cols-2">
         <div>
           <label className="mb-2 block text-[var(--muted)]">{t.age}</label>
           <input

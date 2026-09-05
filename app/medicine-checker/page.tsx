@@ -20,11 +20,13 @@ function MedicineCheckerContent() {
   const localize = useLocalize();
 
   const searchParams = useSearchParams();
+  const triageSymptoms = searchParams?.get("symptoms");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(["paracetamol", "ibuprofen"]);
 
   // Pre-fill from URL query param (e.g. from Prescription Scanner)
   useEffect(() => {
+    if (triageSymptoms) { setSearchTerm(triageSymptoms); }
     const medsQuery = searchParams?.get("meds");
     if (medsQuery) {
       const names = medsQuery.split(",").map((n) => decodeURIComponent(n).trim().toLowerCase());

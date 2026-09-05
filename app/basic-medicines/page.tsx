@@ -4,6 +4,8 @@ import Link from "next/link";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const sections = [
   {
@@ -66,6 +68,8 @@ const sections = [
 
 export default function BasicMedicinesPage() {
   const localize = useLocalize();
+  const searchParams = useSearchParams();
+  const triageSymptoms = searchParams?.get("symptoms");
 
   return (
     <div className="min-h-screen bg-[var(--background)] px-6 py-10 text-[var(--foreground)] md:px-12">
@@ -99,7 +103,17 @@ export default function BasicMedicinesPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        
+        {triageSymptoms && (
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm font-semibold text-cyan-300">
+            <span className="text-xl">💡</span>
+            <span>
+              {localize("Because you mentioned: {symptoms}", "क्योंकि आपने बताया: {symptoms}", { symptoms: triageSymptoms })}
+            </span>
+          </div>
+        )}
+
+<div className="grid gap-6 md:grid-cols-2">
           {sections.map((section) => (
             <section
               key={section.titleEn}

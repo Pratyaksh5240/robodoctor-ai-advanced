@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { signOut } from "firebase/auth";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -13,6 +14,8 @@ import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import ProfileSwitcher, { openAddFamilyMemberModal } from "@/components/ProfileSwitcher";
 import { getVitalsStreak, VitalsStreak } from "@/lib/streakService";
 import { auth } from "@/lib/firebase";
+import { isEmergencyInput } from "@/lib/triageSafety";
+import { openEmergencyModal } from "@/components/EmergencyButton";
 
 const productCards = [
   {
@@ -206,6 +209,105 @@ const strengthPointsList = [
 ];
 
 export default function Home() {
+
+  const router = useRouter();
+  const { language } = useLanguage();
+  const [triageInput, setTriageInput] = useState("");
+  const [isTriageLoading, setIsTriageLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [suggestedModules, setSuggestedModules] = useState<{ key: string; titleEn: string; titleHi: string; href: string }[] | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
+      setSpeechSupported(true);
+    }
+  }, []);
+
+  const handleVoiceInput = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = language === "hi" ? "hi-IN" : "en-US";
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript) {
+        setTriageInput(transcript);
+      }
+    };
+
+    recognition.start();
+  };
+
+  const handleTriageSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const query = triageInput.trim();
+    if (!query || isTriageLoading) return;
+
+    setSuggestedModules(null);
+
+    // 1. Instant client-side emergency check
+    if (isEmergencyInput(query)) {
+      openEmergencyModal();
+      router.push(`/emergency-guide?symptoms=${encodeURIComponent(query)}`);
+      return;
+    }
+
+    setIsTriageLoading(true);
+    try {
+      const res = await fetch("/api/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: query }),
+      });
+
+      const data = await res.json();
+      setIsTriageLoading(false);
+
+      if (data.urgent || data.route === "emergency-guide") {
+        openEmergencyModal();
+        router.push(`/emergency-guide?symptoms=${encodeURIComponent(query)}`);
+        return;
+      }
+
+      const extractedText = (data.extractedSymptoms && data.extractedSymptoms.length > 0)
+        ? data.extractedSymptoms.join(", ")
+        : query;
+      const symptomsQuery = encodeURIComponent(extractedText);
+
+      if (data.confidence === "low") {
+        const routeMap: Record<string, { key: string; titleEn: string; titleHi: string; href: string }> = {
+          "skin-check": { key: "skin", titleEn: "Skin Check", titleHi: "स्किन चेक", href: "/skin-check" },
+          "health-check": { key: "vitals", titleEn: "Vital Risk Check", titleHi: "वाइटल जोखिम जांच", href: "/health-check" },
+          "medicine-checker": { key: "medicine", titleEn: "Medicine Checker", titleHi: "दवा सुरक्षा जांच", href: "/medicine-checker" },
+          "lab-report": { key: "lab", titleEn: "Lab Report Analyzer", titleHi: "लैब रिपोर्ट विश्लेषक", href: "/lab-report" },
+          "diet-planner": { key: "diet", titleEn: "Diet Planner", titleHi: "डाइट प्लानर", href: "/diet-planner" },
+          "basic-medicines": { key: "basic-meds", titleEn: "Basic OTC Medicines", titleHi: "बुनियादी दवाएं", href: "/basic-medicines" },
+          "ai-chatbot": { key: "chat", titleEn: "AI Health Assistant", titleHi: "AI स्वास्थ्य सहायक", href: "/ai-chatbot" },
+        };
+
+        const primary = routeMap[data.route] || routeMap["health-check"];
+        const fallbackSecondary = data.route === "health-check" ? routeMap["ai-chatbot"] : routeMap["health-check"];
+
+        setSuggestedModules([primary, fallbackSecondary]);
+      } else {
+        const targetRoute = data.route || "health-check";
+        const targetPath = targetRoute === "emergency-guide" ? "/emergency-guide" : `/${targetRoute}`;
+        router.push(`${targetPath}?symptoms=${symptomsQuery}`);
+      }
+    } catch (err) {
+      setIsTriageLoading(false);
+      router.push(`/health-check?symptoms=${encodeURIComponent(query)}`);
+    }
+  };
+
   const localize = useLocalize();
   const { user, guestMode, clearGuestSession } = useAuth();
   const { activeProfileId } = useActiveProfile();
@@ -547,6 +649,107 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        
+        <section className="mt-10 rounded-[32px] border border-cyan-500/30 bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-blue-950/40 p-6 md:p-8 backdrop-blur-md shadow-2xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="flex h-3 w-3 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-400">
+                  {localize("Smart Symptom Triage", "स्मार्ट लक्षण ट्रायज")}
+                </span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-white">
+                {localize("What's bothering you today?", "आज आपको क्या परेशानी है?")}
+              </h2>
+              <p className="text-sm text-slate-300 mt-1">
+                {localize(
+                  "Describe your symptoms in plain language. AI will find the right tool for you.",
+                  "अपने लक्षणों को आसान भाषा में बताएं। AI आपके लिए सही टूल खोजेगा।"
+                )}
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleTriageSubmit} className="relative flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={triageInput}
+                onChange={(e) => setTriageInput(e.target.value)}
+                placeholder={localize(
+                  "What's going on? e.g. 'my 6-year-old has a rash and mild fever'",
+                  "क्या समस्या है? उदा. 'मेरी 6 साल की बच्ची को दाने और हल्का बुखार है'"
+                )}
+                className="w-full rounded-2xl border border-white/20 bg-slate-900/80 px-5 py-4 text-base text-white placeholder-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 transition-all pr-12"
+              />
+              {speechSupported && (
+                <button
+                  type="button"
+                  onClick={handleVoiceInput}
+                  title={localize("Speak symptoms", "बोलकर लक्षण बताएं")}
+                  aria-label={localize("Speak symptoms", "बोलकर लक्षण बताएं")}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-300 hover:text-white transition ${
+                    isListening ? "bg-red-500/30 text-red-400 animate-pulse" : "hover:bg-white/10"
+                  }`}
+                >
+                  🎤
+                </button>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={!triageInput.trim() || isTriageLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-8 py-4 font-bold text-white shadow-lg hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {isTriageLoading ? (
+                <>
+                  <span className="animate-spin text-lg">🌀</span>
+                  <span>{localize("Analyzing symptoms...", "लक्षणों का विश्लेषण किया जा रहा है...")}</span>
+                </>
+              ) : (
+                <>
+                  <span>⚡</span>
+                  <span>{localize("Analyze & Guide", "विश्लेषण करें और मार्गदर्शन पाएं")}</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {suggestedModules && (
+            <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <p className="text-sm font-semibold text-amber-200 mb-3">
+                🔍 {localize("This sounds like it could be about:", "यह इनमें से किसी एक से संबंधित हो सकता है:")}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {suggestedModules.map((mod) => (
+                  <button
+                    key={mod.key}
+                    type="button"
+                    onClick={() => router.push(`${mod.href}?symptoms=${encodeURIComponent(triageInput.trim())}`)}
+                    className="rounded-xl border border-amber-400/40 bg-amber-400/20 px-4 py-2 text-sm font-bold text-white hover:bg-amber-400/30 transition-all flex items-center gap-2"
+                  >
+                    <span>👉</span>
+                    <span>{localize(mod.titleEn, mod.titleHi)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-4 text-xs text-slate-400 flex items-center gap-1.5">
+            <span>🛡️</span>
+            <span>
+              {localize(
+                "AI triage is for guidance only, not medical diagnosis. In emergencies call emergency services immediately.",
+                "AI ट्रायज केवल मार्गदर्शन के लिए है, चिकित्सा निदान नहीं। आपात स्थिति में तुरंत आपातकालीन सेवाओं को कॉल करें।"
+              )}
+            </span>
+          </p>
+        </section>
+
 
         <section className="mt-12">
           <div className="mb-6 flex items-end justify-between gap-4">

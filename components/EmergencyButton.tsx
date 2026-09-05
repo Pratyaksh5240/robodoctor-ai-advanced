@@ -9,6 +9,12 @@ export default function EmergencyButton() {
   const localize = useLocalize();
 
   useEffect(() => {
+    const handleOpenModal = () => setIsOpen(true);
+    window.addEventListener("open-emergency-modal", handleOpenModal);
+    return () => window.removeEventListener("open-emergency-modal", handleOpenModal);
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsOpen(false);
@@ -137,4 +143,10 @@ export default function EmergencyButton() {
       )}
     </>
   );
+}
+
+export function openEmergencyModal() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("open-emergency-modal"));
+  }
 }
