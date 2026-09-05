@@ -227,19 +227,19 @@ export default function FloatingChatbot() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-lime-400 p-3.5 sm:px-5 sm:py-3.5 text-black font-extrabold shadow-2xl hover:scale-105 transition-all duration-300 active:scale-95"
+        className="group relative flex items-center gap-2.5 rounded-full border border-cyan-500/40 bg-slate-900/90 p-3.5 sm:px-5 sm:py-3.5 text-cyan-300 font-bold shadow-[0_8px_32px_rgba(6,182,212,0.25)] backdrop-blur-xl hover:bg-slate-800 hover:border-cyan-400 hover:text-white hover:scale-105 transition-all duration-300 active:scale-95 cursor-pointer"
       >
         <span className="text-2xl animate-pulse">🤖</span>
-        <span className="hidden sm:inline text-sm font-black tracking-wide">
+        <span className="hidden sm:inline text-sm font-bold tracking-wide">
           {localize("AI Assistant", "एआई सहायक")}
         </span>
 
         {/* Pulse ring animation */}
-        <span className="absolute -inset-1 rounded-full bg-cyan-400 opacity-30 group-hover:opacity-60 blur transition animate-pulse -z-10" />
+        <span className="absolute -inset-1 rounded-full bg-cyan-500/30 opacity-40 group-hover:opacity-75 blur transition animate-pulse -z-10" />
 
         {/* Unread badge dot */}
         {unread && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-slate-950 animate-bounce">
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-cyan-400 text-[9px] font-bold text-slate-950 ring-2 ring-slate-950 animate-bounce">
             !
           </span>
         )}
