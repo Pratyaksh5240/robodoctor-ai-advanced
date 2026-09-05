@@ -48,6 +48,7 @@ type ActiveProfileContextType = {
 const ActiveProfileContext = createContext<ActiveProfileContextType | null>(null);
 
 const STORAGE_KEY = "robodoctor-active-profile";
+const LOCAL_DEPENDENTS_KEY = "robodoctor-dependents-local";
 
 export function ActiveProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -80,10 +81,23 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Listen to Firestore dependents collection when user is logged in
+  // Listen to Firestore dependents collection when user is logged in,
+  // or read from localStorage when in Guest Mode
   useEffect(() => {
     if (!user) {
-      setDependents([]);
+      if (typeof window !== "undefined") {
+        const savedLocal = localStorage.getItem(LOCAL_DEPENDENTS_KEY);
+        if (savedLocal) {
+          try {
+            const parsed = JSON.parse(savedLocal) as Dependent[];
+            setDependents(parsed);
+          } catch {
+            setDependents([]);
+          }
+        } else {
+          setDependents([]);
+        }
+      }
       setLoadingDependents(false);
       return;
     }
@@ -102,14 +116,13 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
         setDependents(list);
         setLoadingDependents(false);
 
-        // Safely validate active profile ID against updated list
         const currentSelectedId = activeProfileIdRef.current;
         if (currentSelectedId && !list.some((d) => d.id === currentSelectedId)) {
           setActiveProfileId(null);
         }
       },
       (error) => {
-        console.error("Error loading dependents:", error);
+        console.error("Error loading dependents from Firestore:", error);
         setLoadingDependents(false);
       }
     );
@@ -123,19 +136,44 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     age?: number;
     gender?: string;
   }): Promise<string> => {
+    const createdAt = Date.now();
+
     if (!user) {
-      throw new Error("Must be signed in to add a family member.");
+      // Guest Mode: Store locally in localStorage
+      const localId = `dep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const newDependent: Dependent = { id: localId, ...data, createdAt };
+      const updatedList = [...dependents, newDependent];
+      setDependents(updatedList);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(updatedList));
+      }
+      return localId;
     }
+
+    // Signed-in User: Store in Firestore
     const depsRef = collection(db, "users", user.uid, "dependents");
     const newDoc = await addDoc(depsRef, {
       ...data,
-      createdAt: Date.now(),
+      createdAt,
     });
     return newDoc.id;
   };
 
   const deleteDependent = async (id: string): Promise<void> => {
-    if (!user) return;
+    if (!user) {
+      // Guest Mode: Remove locally
+      const updatedList = dependents.filter((d) => d.id !== id);
+      setDependents(updatedList);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(updatedList));
+      }
+      if (activeProfileIdRef.current === id) {
+        setActiveProfileId(null);
+      }
+      return;
+    }
+
+    // Signed-in User: Delete from Firestore
     const docRef = doc(db, "users", user.uid, "dependents", id);
     await deleteDoc(docRef);
     if (activeProfileIdRef.current === id) {

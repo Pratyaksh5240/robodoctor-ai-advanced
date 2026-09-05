@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { useLocalize } from "@/lib/useLocalize";
 
@@ -22,6 +23,12 @@ export default function ProfileSwitcher() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("Male");
   const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const activeLabel = activeProfile
     ? `${activeProfile.name} (${activeProfile.relationship})`
@@ -31,6 +38,7 @@ export default function ProfileSwitcher() {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
+    setErrorMsg("");
     try {
       const newId = await addDependent({
         name: name.trim(),
@@ -43,8 +51,15 @@ export default function ProfileSwitcher() {
       setAge("");
       setShowAddModal(false);
       setIsOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to add family member:", err);
+      setErrorMsg(
+        err?.message ||
+          localize(
+            "Failed to add family member. Please try again.",
+            "सदस्य नहीं जुड़ पाया। कृपया फिर कोशिश करें।"
+          )
+      );
     } finally {
       setSubmitting(false);
     }
@@ -161,7 +176,7 @@ export default function ProfileSwitcher() {
               setShowAddModal(true);
               setIsOpen(false);
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime-500/10 px-3 py-2.5 text-sm font-bold text-lime-400 hover:bg-lime-500/20 transition"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime-500/10 px-3 py-2.5 text-sm font-bold text-lime-400 hover:bg-lime-500/20 transition cursor-pointer"
           >
             <span>➕</span>
             <span>{localize("Add Family Member", "परिवार का सदस्य जोड़ें")}</span>
@@ -169,18 +184,18 @@ export default function ProfileSwitcher() {
         </div>
       )}
 
-      {/* Add Member Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[color:var(--border)] pb-4">
-              <h3 className="text-xl font-bold">
+      {/* Add Member Modal rendered via Portal */}
+      {showAddModal && mounted && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-[color:var(--border)] bg-slate-900 text-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="text-xl font-bold text-white">
                 {localize("Add Family Member", "परिवार का नया सदस्य जोड़ें")}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-lg text-[var(--muted)] hover:text-white"
+                className="text-lg text-slate-400 hover:text-white"
               >
                 ✕
               </button>
@@ -188,7 +203,7 @@ export default function ProfileSwitcher() {
 
             <form onSubmit={handleAddMember} className="mt-4 space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label className="mb-1 block text-sm font-medium text-slate-300">
                   {localize("Full Name", "पूरा नाम")}
                 </label>
                 <input
@@ -197,18 +212,18 @@ export default function ProfileSwitcher() {
                   placeholder={localize("e.g. Aarav Sharma", "उदा. आरव शर्मा")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3 text-sm"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-sm text-white placeholder-slate-500"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label className="mb-1 block text-sm font-medium text-slate-300">
                   {localize("Relationship", "संबंध")}
                 </label>
                 <select
                   value={relationship}
                   onChange={(e) => setRelationship(e.target.value)}
-                  className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3 text-sm"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-sm text-white"
                 >
                   <option value="Child">{localize("Child (Son / Daughter)", "बच्चा (बेटा / बेटी)")}</option>
                   <option value="Parent">{localize("Parent (Father / Mother)", "माता-पिता")}</option>
@@ -221,7 +236,7 @@ export default function ProfileSwitcher() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label className="mb-1 block text-sm font-medium text-slate-300">
                     {localize("Age", "उम्र")}
                   </label>
                   <input
@@ -231,17 +246,17 @@ export default function ProfileSwitcher() {
                     placeholder="e.g. 8"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3 text-sm"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-sm text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label className="mb-1 block text-sm font-medium text-slate-300">
                     {localize("Gender", "लिंग")}
                   </label>
                   <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
-                    className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3 text-sm"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-sm text-white"
                   >
                     <option value="Male">{localize("Male", "पुरुष")}</option>
                     <option value="Female">{localize("Female", "महिला")}</option>
@@ -250,11 +265,15 @@ export default function ProfileSwitcher() {
                 </div>
               </div>
 
+              {errorMsg && (
+                <p className="text-xs font-semibold text-rose-400 mt-1">{errorMsg}</p>
+              )}
+
               <div className="mt-6 flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="rounded-xl border border-[color:var(--border)] px-4 py-2.5 text-sm hover:opacity-80"
+                  className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800"
                 >
                   {localize("Cancel", "रद्द करें")}
                 </button>
@@ -270,7 +289,8 @@ export default function ProfileSwitcher() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
