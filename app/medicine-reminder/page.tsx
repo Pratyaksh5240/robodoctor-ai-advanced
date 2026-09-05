@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
@@ -21,7 +21,7 @@ import {
   Reminder,
 } from "@/lib/notificationScheduler";
 
-export default function MedicineReminderPage() {
+function MedicineReminderContent() {
   const { language } = useLanguage();
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -431,3 +431,12 @@ export default function MedicineReminderPage() {
     </div>
   );
 }
+
+export default function MedicineReminderPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] p-10 text-[var(--foreground)]">Loading medicine reminder...</div>}>
+      <MedicineReminderContent />
+    </Suspense>
+  );
+}
+

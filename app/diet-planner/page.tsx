@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
@@ -58,7 +58,7 @@ const mealPlans = {
   },
 };
 
-export default function DietPlannerPage() {
+function DietPlannerContent() {
   const localize = useLocalize();
   const searchParams = useSearchParams();
   const [goal, setGoal] = useState<keyof typeof mealPlans>("bp");
@@ -149,3 +149,12 @@ export default function DietPlannerPage() {
     </div>
   );
 }
+
+export default function DietPlannerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] p-10 text-[var(--foreground)]">Loading diet planner...</div>}>
+      <DietPlannerContent />
+    </Suspense>
+  );
+}
+
