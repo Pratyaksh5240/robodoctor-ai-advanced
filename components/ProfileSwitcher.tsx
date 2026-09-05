@@ -50,87 +50,107 @@ export default function ProfileSwitcher() {
     }
   };
 
+  const handleSelectProfile = (id: string | null) => {
+    setActiveProfileId(id);
+    setIsOpen(false);
+  };
+
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-left z-30">
       {/* Active Profile Dropdown Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium hover:bg-[color:var(--surface-strong)] transition"
+        className="flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-sm font-medium hover:bg-[color:var(--surface-strong)] transition shadow-sm"
       >
         <span className="text-base">👤</span>
-        <span className="max-w-[140px] truncate">{activeLabel}</span>
+        <span className="max-w-[150px] truncate font-bold text-lime-400">
+          {activeLabel}
+        </span>
         <span className="text-xs text-[var(--muted)]">▼</span>
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Backdrop overlay for closing dropdown on outside click */}
       {isOpen && (
         <div
-          className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-2 shadow-2xl backdrop-blur-xl"
-          onMouseLeave={() => setIsOpen(false)}
-        >
-          <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          className="fixed inset-0 z-40 bg-black/10"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-2 shadow-2xl backdrop-blur-xl">
+          <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
             {localize("Select Profile", "प्रोफ़ाइल चुनें")}
           </div>
 
           {/* Myself Option */}
           <button
             type="button"
-            onClick={() => {
-              setActiveProfileId(null);
-              setIsOpen(false);
-            }}
-            className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium ${
+            onClick={() => handleSelectProfile(null)}
+            className={`flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
               activeProfileId === null
-                ? "bg-lime-500/20 text-lime-300 font-bold"
-                : "hover:bg-[color:var(--surface)]"
+                ? "bg-lime-500/20 text-lime-300 font-bold border border-lime-500/30"
+                : "hover:bg-[color:var(--surface)] text-[var(--foreground)]"
             }`}
           >
-            <div className="flex items-center gap-2">
-              <span>👤</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">👤</span>
               <span>{localize("Myself (Account Owner)", "स्वयं (खाताधारक)")}</span>
             </div>
-            {activeProfileId === null && <span>✓</span>}
+            {activeProfileId === null && <span className="text-lime-400 font-bold">✓</span>}
           </button>
 
           {/* Dependents List */}
-          {dependents.map((dep) => (
-            <div
-              key={dep.id}
-              className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm ${
-                activeProfileId === dep.id
-                  ? "bg-lime-500/20 text-lime-300 font-bold"
-                  : "hover:bg-[color:var(--surface)]"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveProfileId(dep.id);
-                  setIsOpen(false);
-                }}
-                className="flex flex-1 items-center gap-2 text-left"
+          {dependents.map((dep) => {
+            const isSelected = activeProfileId === dep.id;
+            return (
+              <div
+                key={dep.id}
+                className={`mt-1 flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm transition ${
+                  isSelected
+                    ? "bg-lime-500/20 text-lime-300 font-bold border border-lime-500/30"
+                    : "hover:bg-[color:var(--surface)] text-[var(--foreground)]"
+                }`}
               >
-                <span>👶</span>
-                <span className="truncate">
-                  {dep.name} ({dep.relationship})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(localize(`Remove ${dep.name}?`, `क्या आप ${dep.name} को हटाना चाहते हैं?`))) {
-                    deleteDependent(dep.id);
-                  }
-                }}
-                className="ml-2 hidden text-xs text-rose-400 hover:text-rose-300 group-hover:inline"
-                title={localize("Delete Profile", "प्रोफ़ाइल हटाएं")}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => handleSelectProfile(dep.id)}
+                  className="flex flex-1 items-center gap-2.5 text-left py-0.5"
+                >
+                  <span className="text-lg">👶</span>
+                  <span className="truncate">
+                    {dep.name} <span className="text-xs opacity-75">({dep.relationship})</span>
+                  </span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {isSelected && <span className="text-lime-400 font-bold">✓</span>}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (
+                        confirm(
+                          localize(
+                            `Remove ${dep.name}?`,
+                            `क्या आप ${dep.name} को हटाना चाहते हैं?`
+                          )
+                        )
+                      ) {
+                        deleteDependent(dep.id);
+                      }
+                    }}
+                    className="rounded-md p-1 text-xs text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 transition"
+                    title={localize("Delete Profile", "प्रोफ़ाइल हटाएं")}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })}
 
           <hr className="my-2 border-[color:var(--border)]" />
 
@@ -141,7 +161,7 @@ export default function ProfileSwitcher() {
               setShowAddModal(true);
               setIsOpen(false);
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime-500/10 px-3 py-2.5 text-sm font-medium text-lime-400 hover:bg-lime-500/20 transition"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime-500/10 px-3 py-2.5 text-sm font-bold text-lime-400 hover:bg-lime-500/20 transition"
           >
             <span>➕</span>
             <span>{localize("Add Family Member", "परिवार का सदस्य जोड़ें")}</span>
@@ -158,6 +178,7 @@ export default function ProfileSwitcher() {
                 {localize("Add Family Member", "परिवार का नया सदस्य जोड़ें")}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
                 className="text-lg text-[var(--muted)] hover:text-white"
               >

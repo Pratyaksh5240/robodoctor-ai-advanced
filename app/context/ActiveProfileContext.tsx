@@ -7,6 +7,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { db } from "@/lib/firebase";
@@ -54,6 +55,9 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [loadingDependents, setLoadingDependents] = useState<boolean>(true);
 
+  const activeProfileIdRef = useRef<string | null>(activeProfileId);
+  activeProfileIdRef.current = activeProfileId;
+
   // Restore active profile selection from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -66,6 +70,7 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
 
   const setActiveProfileId = useCallback((id: string | null) => {
     setActiveProfileIdState(id);
+    activeProfileIdRef.current = id;
     if (typeof window !== "undefined") {
       if (id) {
         localStorage.setItem(STORAGE_KEY, id);
@@ -97,8 +102,9 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
         setDependents(list);
         setLoadingDependents(false);
 
-        // Reset to null if activeProfileId no longer exists
-        if (activeProfileId && !list.some((d) => d.id === activeProfileId)) {
+        // Safely validate active profile ID against updated list
+        const currentSelectedId = activeProfileIdRef.current;
+        if (currentSelectedId && !list.some((d) => d.id === currentSelectedId)) {
           setActiveProfileId(null);
         }
       },
@@ -109,7 +115,7 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     );
 
     return () => unsubscribe();
-  }, [user, activeProfileId, setActiveProfileId]);
+  }, [user, setActiveProfileId]);
 
   const addDependent = async (data: {
     name: string;
@@ -132,7 +138,7 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const docRef = doc(db, "users", user.uid, "dependents", id);
     await deleteDoc(docRef);
-    if (activeProfileId === id) {
+    if (activeProfileIdRef.current === id) {
       setActiveProfileId(null);
     }
   };
