@@ -80,7 +80,7 @@ type RiskResult = {
   usefulInformation?: UsefulHealthInfoItem[];
   urgent: boolean;
   message: string;
-  source?: "ml_model" | "rules_fallback";
+  source?: "ml_model" | "rules_fallback" | "framingham_engine";
 };
 
 type SpeechRecognitionConstructor = new () => {
@@ -796,6 +796,11 @@ export default function HealthCheck() {
                 <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-0.5 text-xs text-cyan-300 font-mono">
                   {result.model || "Framingham Heart Study Model"}
                 </span>
+                {result.source === "framingham_engine" && (
+                  <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-0.5 text-xs text-cyan-300 font-medium">
+                    ⚡ {localize("Framingham CVD Clinical Engine Active", "Framingham CVD क्लिनिकल इंजन सक्रिय")}
+                  </span>
+                )}
                 {result.source === "rules_fallback" && (
                   <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-0.5 text-xs text-amber-300 font-medium">
                     ⚠️ {localize("Using baseline estimate (ML service offline)", "बेसिक अनुमान प्रयुक्त (ML सर्विस ऑफलाइन)")}

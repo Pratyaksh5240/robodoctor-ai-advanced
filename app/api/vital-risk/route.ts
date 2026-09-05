@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { buildBaselineHealthAnalysis } from "@/lib/ai-health-assistant/riskWrapper";
 import { extractSymptomSignals } from "@/lib/symptomExtraction";
+import { calculateFraminghamRisk } from "@/lib/framinghamRisk";
 
 export async function POST(request: Request) {
   let body: any;
@@ -30,96 +30,66 @@ export async function POST(request: Request) {
 
     if (response.ok) {
       const data = await response.json();
+      const framingham = calculateFraminghamRisk({
+        age: Number(body.age || 0),
+        sex: body.sex,
+        heightCm: Number(body.heightCm || 0),
+        weightKg: Number(body.weightKg || 0),
+        bloodPressure: String(body.bloodPressure || "120/80"),
+        bloodSugar: body.bloodSugar !== null && body.bloodSugar !== undefined ? Number(body.bloodSugar) : null,
+        heartRate: body.heartRate !== null && body.heartRate !== undefined ? Number(body.heartRate) : null,
+        symptoms: String(body.symptoms || ""),
+        currentSmoker: body.currentSmoker,
+        cigsPerDay: body.cigsPerDay,
+        bpMeds: body.bpMeds,
+        prevalentStroke: body.prevalentStroke,
+        diabetes: body.diabetes,
+      });
+
       return NextResponse.json({
-        ...data,
+        ...framingham,
+        risk: data.risk || framingham.risk,
+        probabilities: data.probabilities || framingham.probabilities,
+        probability: framingham.probability,
+        priorityFinding: data.priorityFinding || framingham.priorityFinding,
+        recommendations:
+          Array.isArray(data.recommendations) && data.recommendations.length > 0
+            ? data.recommendations
+            : framingham.recommendations,
+        urgent: data.urgent !== undefined ? data.urgent : framingham.urgent,
         source: "ml_model",
       });
     }
   } catch (error) {
     clearTimeout(timeoutId);
-    console.warn("Vital Risk ML Service unreachable or timed out, executing baseline fallback:", error);
+    console.warn("Vital Risk ML Service unreachable or timed out, executing Framingham engine:", error);
   }
 
-  // Graceful Fallback: Use baseline clinical rules engine when Python ML backend is offline
+  // Graceful Fallback: Use Framingham CVD Risk Engine + Symptom Extractor
   try {
     const symptomsText = String(body.symptoms || "");
     const { signals } = await extractSymptomSignals(symptomsText);
 
-    const baseline = buildBaselineHealthAnalysis(
-      {
-        age: Number(body.age || 0),
-        heightCm: Number(body.heightCm || 0),
-        weightKg: Number(body.weightKg || 0),
-        bloodPressure: String(body.bloodPressure || ""),
-        sugar: body.bloodSugar !== null && body.bloodSugar !== undefined ? Number(body.bloodSugar) : null,
-        heartRate: body.heartRate !== null && body.heartRate !== undefined ? Number(body.heartRate) : null,
-        symptoms: symptomsText,
-      },
-      signals
-    );
-
-    const mappedRisk = baseline.riskLevel === "Emergency" ? "High" : baseline.riskLevel;
-
-    const probaLow = mappedRisk === "Low" ? 75.0 : 15.0;
-    const probaMod = mappedRisk === "Moderate" ? 70.0 : 20.0;
-    const probaHigh = mappedRisk === "High" ? 80.0 : 10.0;
-
-    // Select priority finding based on highest clinical severity (emergency > urgent > watch > info)
-    const severityRank: Record<string, number> = {
-      emergency: 4,
-      urgent: 3,
-      watch: 2,
-      info: 1,
-    };
-
-    const candidateFindings = [
-      ...baseline.urgentFlags.map((item) => ({ ...item, isUrgentFlag: true })),
-      ...baseline.possibleConcerns.map((item) => ({ ...item, isUrgentFlag: false })),
-    ];
-
-    candidateFindings.sort((a, b) => {
-      const diff = (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0);
-      if (diff !== 0) return diff;
-      if (a.isUrgentFlag && !b.isUrgentFlag) return -1;
-      if (b.isUrgentFlag && !a.isUrgentFlag) return 1;
-      return 0;
+    const framinghamResult = calculateFraminghamRisk({
+      age: Number(body.age || 0),
+      sex: body.sex,
+      heightCm: Number(body.heightCm || 0),
+      weightKg: Number(body.weightKg || 0),
+      bloodPressure: String(body.bloodPressure || "120/80"),
+      bloodSugar: body.bloodSugar !== null && body.bloodSugar !== undefined ? Number(body.bloodSugar) : null,
+      heartRate: body.heartRate !== null && body.heartRate !== undefined ? Number(body.heartRate) : null,
+      symptoms: symptomsText,
+      currentSmoker: body.currentSmoker,
+      cigsPerDay: body.cigsPerDay,
+      bpMeds: body.bpMeds,
+      prevalentStroke: body.prevalentStroke,
+      diabetes: body.diabetes,
+      extraSignals: signals,
     });
 
-    const topFinding = candidateFindings[0] || null;
-
-    const priorityFinding = topFinding
-      ? {
-          title: topFinding.label,
-          detail: topFinding.detail,
-          explanation: baseline.summary,
-          severity: topFinding.severity,
-        }
-      : null;
-
-    const recommendations = baseline.recommendations.map((rec, idx) => ({
-      id: `rec_fallback_${idx}`,
-      title: rec.severity === "urgent" || rec.severity === "emergency" ? "Urgent Action" : "Health Advice",
-      description: rec.text,
-      category: "general",
-      reason: baseline.summary,
-      score: 80,
-      priority: rec.severity === "emergency" ? "P1" : rec.severity === "urgent" ? "P2" : "P3",
-    }));
-
     return NextResponse.json({
-      risk: mappedRisk,
-      probabilities: {
-        Low: probaLow,
-        Moderate: probaMod,
-        High: probaHigh,
-      },
-      bmi: baseline.bmi ?? 0,
-      priorityFinding,
-      recommendations,
-      urgent: baseline.riskLevel === "Emergency" || baseline.urgentFlags.some(f => f.severity === "urgent" || f.severity === "emergency"),
-      message: baseline.summary,
-      symptomTags: baseline.symptomTags,
-      source: "rules_fallback",
+      ...framinghamResult,
+      source: "framingham_engine",
     });
   } catch (fallbackErr) {
     console.error("Vital Risk Fallback Analysis Failed:", fallbackErr);
