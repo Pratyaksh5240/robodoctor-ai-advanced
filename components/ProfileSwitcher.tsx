@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { useLocalize } from "@/lib/useLocalize";
 
@@ -24,11 +23,6 @@ export default function ProfileSwitcher() {
   const [gender, setGender] = useState("Male");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const activeLabel = activeProfile
     ? `${activeProfile.name} (${activeProfile.relationship})`
@@ -36,7 +30,11 @@ export default function ProfileSwitcher() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setErrorMsg(localize("Please enter member name.", "कृपया सदस्य का नाम दर्ज करें।"));
+      return;
+    }
+
     setSubmitting(true);
     setErrorMsg("");
     try {
@@ -158,7 +156,7 @@ export default function ProfileSwitcher() {
                       }
                     }}
                     className="rounded-md p-1 text-xs text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 transition"
-                    title={localize("Delete Profile", "प्रोफ़ाइल हटाएं")}
+                    title={localize("Delete Profile", "प्रोफ़ाइलएं")}
                   >
                     ✕
                   </button>
@@ -172,7 +170,9 @@ export default function ProfileSwitcher() {
           {/* Add Family Member Button */}
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
+              setErrorMsg("");
               setShowAddModal(true);
               setIsOpen(false);
             }}
@@ -184,9 +184,9 @@ export default function ProfileSwitcher() {
         </div>
       )}
 
-      {/* Add Member Modal rendered via Portal */}
-      {showAddModal && mounted && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+      {/* Add Member Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
           <div className="w-full max-w-md rounded-3xl border border-[color:var(--border)] bg-slate-900 text-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <h3 className="text-xl font-bold text-white">
@@ -289,8 +289,7 @@ export default function ProfileSwitcher() {
               </div>
             </form>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );
