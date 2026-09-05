@@ -10,7 +10,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
-import ProfileSwitcher from "@/components/ProfileSwitcher";
+import ProfileSwitcher, { openAddFamilyMemberModal } from "@/components/ProfileSwitcher";
 import { getVitalsStreak, VitalsStreak } from "@/lib/streakService";
 import { auth } from "@/lib/firebase";
 
@@ -320,7 +320,7 @@ export default function Home() {
     <div className="min-h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.16),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(251,146,60,0.16),transparent_24%),radial-gradient(circle_at_50%_80%,rgba(16,185,129,0.14),transparent_28%)]" />
 
-      <header className="relative z-10 flex items-center justify-between px-6 py-6 md:px-10">
+      <header className="relative z-50 flex items-center justify-between px-6 py-6 md:px-10">
         <div className="flex items-center gap-3">
           <Image src="/logo.png" alt="RoboDoctor AI" width={44} height={44} />
           <div>
@@ -388,6 +388,14 @@ export default function Home() {
               >
                 {uiCopy.startGuest}
               </Link>
+              <button
+                type="button"
+                onClick={() => openAddFamilyMemberModal()}
+                className="rounded-full border border-lime-400/40 bg-lime-500/10 px-7 py-4 font-semibold text-lime-400 hover:bg-lime-500/20 transition cursor-pointer flex items-center gap-2"
+              >
+                <span>➕</span>
+                <span>{localize("Add Family Member", "परिवार का सदस्य जोड़ें")}</span>
+              </button>
               <Link
                 href="/yoga-videos"
                 className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-7 py-4 font-semibold hover:opacity-90"

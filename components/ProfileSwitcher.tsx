@@ -29,6 +29,14 @@ export default function ProfileSwitcher() {
 
   useEffect(() => {
     setMounted(true);
+    const handleOpenModal = () => {
+      setErrorMsg("");
+      setShowAddModal(true);
+    };
+    window.addEventListener("open-add-family-modal", handleOpenModal);
+    return () => {
+      window.removeEventListener("open-add-family-modal", handleOpenModal);
+    };
   }, []);
 
   const activeLabel = activeProfile
@@ -303,4 +311,10 @@ export default function ProfileSwitcher() {
       {showAddModal && mounted && createPortal(modalJSX, document.body)}
     </div>
   );
+}
+
+export function openAddFamilyMemberModal() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("open-add-family-modal"));
+  }
 }
