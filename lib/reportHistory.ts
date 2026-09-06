@@ -19,6 +19,13 @@ export type HealthReportRecord = {
   bp: string;
   sugar: string;
   heartRate: string;
+  age?: number;
+  gender?: string;
+  heightCm?: number;
+  weightKg?: number;
+  bmi?: number;
+  symptoms?: string;
+  symptomTags?: string[];
 };
 
 export type SkinReportRecord = {
@@ -27,6 +34,9 @@ export type SkinReportRecord = {
   severity: string;
   score: number;
   summary: string;
+  age?: number;
+  gender?: string;
+  symptoms?: string;
 };
 
 export type UserProfileRecord = {

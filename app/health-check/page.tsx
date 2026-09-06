@@ -10,7 +10,7 @@ import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
-import { saveHealthReport } from "@/lib/reportHistory";
+import { saveHealthReport, saveUserProfile } from "@/lib/reportHistory";
 import { getVitalsStreak, updateVitalsStreakOnLog, VitalsStreak } from "@/lib/streakService";
 import {
   Language,
@@ -81,6 +81,7 @@ type RiskResult = {
   urgent: boolean;
   message: string;
   source?: "ml_model" | "rules_fallback" | "framingham_engine";
+  symptomTags?: string[];
 };
 
 type SpeechRecognitionConstructor = new () => {
@@ -359,9 +360,24 @@ export default function HealthCheck() {
           bp: formData.bp,
           sugar: String(sugar || ""),
           heartRate: String(heartRate || ""),
+          age: age || undefined,
+          gender: formData.sex === "male" ? "Male" : formData.sex === "female" ? "Female" : "Not Specified",
+          heightCm: height || undefined,
+          weightKg: weight || undefined,
+          bmi: data.bmi || (height && weight ? Math.round((weight / Math.pow(height / 100, 2)) * 10) / 10 : undefined),
+          symptoms: formData.symptoms || undefined,
+          symptomTags: data.symptomTags || undefined,
         },
         activeProfileId
       ).catch((e) => console.error("Error saving health report:", e));
+
+      // Persist demographics to profile so export always has patient age and gender
+      if (age) {
+        saveUserProfile(targetUserId, {
+          age,
+          gender: formData.sex === "male" ? "Male" : formData.sex === "female" ? "Female" : undefined,
+        }).catch((e) => console.error("Error saving user profile demographics:", e));
+      }
 
       updateVitalsStreakOnLog(targetUserId, activeProfileId)
         .then((updated) => {
