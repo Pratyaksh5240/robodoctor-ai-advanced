@@ -39,6 +39,22 @@ export type SkinReportRecord = {
   symptoms?: string;
 };
 
+export type LabReportRecord = {
+  createdAt: number;
+  gender?: "male" | "female";
+  fastingSugar?: string;
+  hba1c?: string;
+  hemoglobin?: string;
+  tsh?: string;
+  cholesterol?: string;
+  creatinine?: string;
+  platelets?: string;
+  wbc?: string;
+  overallStatus: string;
+  summary: string;
+  findingsCount: number;
+};
+
 export type UserProfileRecord = {
   patientName?: string;
   age?: number;
@@ -69,6 +85,12 @@ function getSkinStorageKey(userId?: string | null, dependentId?: string | null) 
   return `robodoctor_skin_reports_${u}_${d}`;
 }
 
+function getLabStorageKey(userId?: string | null, dependentId?: string | null) {
+  const u = userId && userId !== "guest" ? userId : "guest";
+  const d = dependentId || "myself";
+  return `robodoctor_lab_reports_${u}_${d}`;
+}
+
 function getProfileStorageKey(userId?: string | null, dependentId?: string | null) {
   const u = userId && userId !== "guest" ? userId : "guest";
   const d = dependentId || "myself";
@@ -77,6 +99,7 @@ function getProfileStorageKey(userId?: string | null, dependentId?: string | nul
 
 const GLOBAL_HEALTH_KEY = "robodoctor_health_history";
 const GLOBAL_SKIN_KEY = "robodoctor-skin-history";
+const GLOBAL_LAB_KEY = "robodoctor_lab_history";
 
 function safeReadLocal<T>(key: string): T[] {
   if (typeof window === "undefined") return [];
@@ -260,6 +283,66 @@ export async function saveSkinReport(
       });
     } catch (err) {
       console.warn("Cloud Firestore saveSkinReport skipped/failed (local save preserved):", err);
+    }
+  }
+}
+
+export async function loadLabReportsPage(
+  userId?: string | null,
+  maxItems = 20,
+  dependentId?: string | null
+): Promise<LabReportRecord[]> {
+  const specificKey = getLabStorageKey(userId, dependentId);
+  const localSpecific = safeReadLocal<LabReportRecord>(specificKey);
+  const localGlobal = safeReadLocal<LabReportRecord>(GLOBAL_LAB_KEY);
+  let current = mergeAndDedupe(localSpecific, localGlobal);
+
+  if (userId && userId !== "guest") {
+    try {
+      const path = getSubcollectionPath(userId, "labReports", dependentId);
+      const collectionRef = collection(db, path[0], ...path.slice(1));
+      const snapshot = await withTimeout(
+        getDocs(query(collectionRef, orderBy("createdAt", "desc"), limit(maxItems))),
+        1500
+      );
+      const cloudReports = snapshot.docs.map((doc) => doc.data() as LabReportRecord);
+      if (cloudReports.length > 0) {
+        current = mergeAndDedupe(cloudReports, current);
+        safeWriteLocal(specificKey, current);
+        safeWriteLocal(GLOBAL_LAB_KEY, current);
+      }
+    } catch (err) {
+      console.warn("Cloud Firestore loadLabReportsPage fallback to local:", err);
+    }
+  }
+
+  return current.slice(0, maxItems);
+}
+
+export async function saveLabReport(
+  userId?: string | null,
+  record?: LabReportRecord | null,
+  dependentId?: string | null
+): Promise<void> {
+  if (!record) return;
+
+  const specificKey = getLabStorageKey(userId, dependentId);
+  const localSpecific = safeReadLocal<LabReportRecord>(specificKey);
+  const localGlobal = safeReadLocal<LabReportRecord>(GLOBAL_LAB_KEY);
+  const merged = mergeAndDedupe([record], localSpecific, localGlobal).slice(0, 50);
+
+  safeWriteLocal(specificKey, merged);
+  safeWriteLocal(GLOBAL_LAB_KEY, merged);
+
+  if (userId && userId !== "guest") {
+    try {
+      const path = getSubcollectionPath(userId, "labReports", dependentId);
+      const collectionRef = collection(db, path[0], ...path.slice(1));
+      void withTimeout(addDoc(collectionRef, record), 2000).catch((err) => {
+        console.warn("Cloud Firestore saveLabReport skipped/failed:", err);
+      });
+    } catch (err) {
+      console.warn("Cloud Firestore saveLabReport skipped/failed:", err);
     }
   }
 }
