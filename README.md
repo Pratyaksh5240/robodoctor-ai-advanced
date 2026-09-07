@@ -85,10 +85,12 @@ graph TD
         C5 --> D5[Pharmacological Interaction Database]
     end
 
-    subgraph Cloud & Storage Tier
-        D1 & D2 & D3 & D4 --> E1[Firebase Authentication]
-        D1 & D2 & D3 & D4 --> E2[Firestore Cloud Database]
-        E1 & E2 --> E3[Dual-Layer LocalStorage Resilient Cache]
+    subgraph Database & Cloud Tier
+        D1 & D2 & D3 & D4 --> E1[Next.js Serverless REST API]
+        E1 --> E2[PBKDF2 / SHA-512 Auth Engine]
+        E1 --> E3[MongoDB Atlas & Mongoose ODM]
+        E3 --> E4[(8 Mongoose Collections: Users, Health, Labs, Skin, etc.)]
+        E1 & E3 <--> E5[Dual-Tier LocalStorage Resilient Cache]
     end
 
     subgraph Clinical Outputs
@@ -234,8 +236,9 @@ graph TD
 | **ML Serving** | **FastAPI**, Uvicorn, ASGI Server |
 | **Cardiovascular Engine**| Custom Framingham Log-Linear Cox Model (`lib/framinghamRisk.ts`) |
 | **Clinical Lab Engine** | Physiological Bounds & Staging Engine (`lib/labEvaluator.ts`) |
-| **Authentication & DB**| **Firebase Auth**, **Google Cloud Firestore** |
-| **Offline Resilience** | Dual-tier Firestore cloud write + LocalStorage caching |
+| **Primary Database** | **MongoDB Atlas** with **Mongoose ODM v9.9.5** |
+| **Authentication** | **Custom Cryptographic Auth** (Salted PBKDF2/SHA-512, HTTP-only Cookies) |
+| **Offline Resilience** | Dual-tier MongoDB Cloud Sync + LocalStorage Resilient Cache |
 | **Cloud Hosting** | **Vercel** (Global Edge Network) |
 
 ---
@@ -244,7 +247,14 @@ graph TD
 
 ```
 robodoctor-ai/
-├── app/                              # Next.js 16 App Router Pages
+├── app/                              # Next.js 16 App Router Pages & Backend APIs
+│   ├── api/                          # Serverless REST Endpoints (MongoDB Backed)
+│   │   ├── auth/                     # PBKDF2/SHA-512 signup, login, logout, me
+│   │   ├── reports/                  # Unified MongoDB report persistence (health/skin/lab)
+│   │   ├── profile/                  # Patient demographics
+│   │   ├── dependents/               # Family profile switcher
+│   │   ├── reminders/                # Scheduled medication & cron
+│   │   └── streaks/                  # Daily vital logging streaks
 │   ├── layout.tsx                    # Root layout with i18n & Theme providers
 │   ├── page.tsx                      # Modern Landing Dashboard
 │   ├── health-check/                 # Vital Check & Continuous Framingham CVD Risk
