@@ -1,47 +1,45 @@
 import mongoose, { Schema, model, models } from "mongoose";
 
 export interface IHealthRecord {
-  patientId?: string;
+  userId: string;
+  dependentId?: string;
+  createdAt: number;
+  riskLevel: string;
+  riskScore: number;
+  summary: string;
+  bp: string;
+  sugar: string;
+  heartRate: string;
   age?: number;
   gender?: string;
-  bloodPressureSystolic?: number;
-  bloodPressureDiastolic?: number;
-  heartRate?: number;
-  glucoseFasting?: number;
-  oxygenSaturation?: number;
-  symptoms?: string[];
-  riskCategory?: "low" | "moderate" | "high" | "critical";
-  riskScore?: number;
-  recommendations?: string[];
-  notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  heightCm?: number;
+  weightKg?: number;
+  bmi?: number;
+  symptoms?: string;
+  symptomTags?: string[];
 }
 
 const HealthRecordSchema = new Schema<IHealthRecord>(
   {
-    patientId: { type: String, index: true },
+    userId: { type: String, required: true, index: true },
+    dependentId: { type: String, default: "myself", index: true },
+    createdAt: { type: Number, required: true, index: true },
+    riskLevel: { type: String, required: true },
+    riskScore: { type: Number, required: true },
+    summary: { type: String, default: "" },
+    bp: { type: String, default: "" },
+    sugar: { type: String, default: "" },
+    heartRate: { type: String, default: "" },
     age: { type: Number },
     gender: { type: String },
-    bloodPressureSystolic: { type: Number },
-    bloodPressureDiastolic: { type: Number },
-    heartRate: { type: Number },
-    glucoseFasting: { type: Number },
-    oxygenSaturation: { type: Number },
-    symptoms: [{ type: String }],
-    riskCategory: {
-      type: String,
-      enum: ["low", "moderate", "high", "critical"],
-      default: "low",
-    },
-    riskScore: { type: Number, default: 0 },
-    recommendations: [{ type: String }],
-    notes: { type: String },
+    heightCm: { type: Number },
+    weightKg: { type: Number },
+    bmi: { type: Number },
+    symptoms: { type: String },
+    symptomTags: [{ type: String }],
   },
   { timestamps: true }
 );
 
-const HealthRecord =
-  models.HealthRecord || model<IHealthRecord>("HealthRecord", HealthRecordSchema);
-
+const HealthRecord = models.HealthRecord || model<IHealthRecord>("HealthRecord", HealthRecordSchema);
 export default HealthRecord;

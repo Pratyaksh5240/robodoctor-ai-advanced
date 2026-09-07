@@ -33,8 +33,6 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
-import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
 import { DEFAULT_VAPID_PUBLIC_KEY, urlBase64ToUint8Array } from "@/lib/vapidKeys";
 
 export async function requestNotificationPermission(userId?: string | null): Promise<PermissionState> {
@@ -74,17 +72,11 @@ export async function subscribeToWebPushNotifications(userId?: string | null): P
     }
 
     if (userId && subscription) {
-      const subJson = subscription.toJSON();
-      const subId = btoa(subscription.endpoint).slice(-20).replace(/[^a-zA-Z0-9]/g, "_");
-      await setDoc(
-        doc(db, "users", userId, "pushSubscriptions", subId),
-        {
-          subscription: subJson,
-          endpoint: subscription.endpoint,
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("robodoctor_push_sub", JSON.stringify(subscription.toJSON()));
+        } catch {}
+      }
     }
 
     return subscription;

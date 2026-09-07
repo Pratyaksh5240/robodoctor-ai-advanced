@@ -1,31 +1,31 @@
 import mongoose, { Schema, model, models } from "mongoose";
 
 export interface IReminder {
-  medicineName: string;
-  dosage?: string;
+  id: string;
+  userId: string;
+  dependentId?: string;
+  title: string;
   time: string;
-  days?: string[];
-  active?: boolean;
-  notes?: string;
-  pushSubscription?: object;
-  createdAt?: Date;
-  updatedAt?: Date;
+  dosage?: string;
+  notificationEnabled: boolean;
+  done: boolean;
+  createdAt: number;
 }
 
 const ReminderSchema = new Schema<IReminder>(
   {
-    medicineName: { type: String, required: true },
-    dosage: { type: String },
+    id: { type: String, required: true, index: true },
+    userId: { type: String, required: true, index: true },
+    dependentId: { type: String, default: "myself", index: true },
+    title: { type: String, required: true },
     time: { type: String, required: true },
-    days: [{ type: String }],
-    active: { type: Boolean, default: true },
-    notes: { type: String },
-    pushSubscription: { type: Object },
+    dosage: { type: String },
+    notificationEnabled: { type: Boolean, default: true },
+    done: { type: Boolean, default: false },
+    createdAt: { type: Number, default: Date.now },
   },
   { timestamps: true }
 );
 
-const Reminder =
-  models.Reminder || model<IReminder>("Reminder", ReminderSchema);
-
+const Reminder = models.Reminder || model<IReminder>("Reminder", ReminderSchema);
 export default Reminder;

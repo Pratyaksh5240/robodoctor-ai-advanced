@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { signOut } from "firebase/auth";
+import { auth, signOut } from "@/lib/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
@@ -12,7 +12,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import ProfileSwitcher, { openAddFamilyMemberModal } from "@/components/ProfileSwitcher";
 import { getVitalsStreak, VitalsStreak } from "@/lib/streakService";
-import { auth } from "@/lib/firebase";
 
 const productCards = [
   {

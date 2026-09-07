@@ -10,17 +10,6 @@ import {
   useRef,
 } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  addDoc,
-  setDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  orderBy,
-} from "firebase/firestore";
 
 export type Dependent = {
   id: string;
@@ -82,53 +71,44 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Listen to Firestore dependents collection when user is logged in,
-  // or read from localStorage when in Guest Mode
+  // Load dependents from MongoDB API or local storage
   useEffect(() => {
-    if (!user) {
-      if (typeof window !== "undefined") {
-        const savedLocal = localStorage.getItem(LOCAL_DEPENDENTS_KEY);
-        if (savedLocal) {
-          try {
-            const parsed = JSON.parse(savedLocal) as Dependent[];
-            setDependents(parsed);
-          } catch {
-            setDependents([]);
-          }
-        } else {
-          setDependents([]);
-        }
+    if (typeof window !== "undefined") {
+      const savedLocal = localStorage.getItem(LOCAL_DEPENDENTS_KEY);
+      if (savedLocal) {
+        try {
+          const parsed = JSON.parse(savedLocal) as Dependent[];
+          setDependents(parsed);
+        } catch {}
       }
+    }
+
+    if (!user || user.uid.startsWith("user_guest_")) {
       setLoadingDependents(false);
       return;
     }
 
     setLoadingDependents(true);
-    const depsRef = collection(db, "users", user.uid, "dependents");
-    const q = query(depsRef, orderBy("createdAt", "asc"));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const list: Dependent[] = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...(docSnap.data() as Omit<Dependent, "id">),
-        }));
-        setDependents(list);
-        setLoadingDependents(false);
-
-        const currentSelectedId = activeProfileIdRef.current;
-        if (currentSelectedId && !list.some((d) => d.id === currentSelectedId)) {
-          setActiveProfileId(null);
+    fetch(`/api/dependents?userId=${encodeURIComponent(user.uid)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.dependents)) {
+          setDependents(data.dependents);
+          if (typeof window !== "undefined") {
+            localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(data.dependents));
+          }
+          const currentSelectedId = activeProfileIdRef.current;
+          if (currentSelectedId && !data.dependents.some((d: Dependent) => d.id === currentSelectedId)) {
+            setActiveProfileId(null);
+          }
         }
-      },
-      (error) => {
-        console.error("Error loading dependents from Firestore:", error);
+      })
+      .catch((err) => {
+        console.warn("Failed to load dependents from MongoDB API:", err);
+      })
+      .finally(() => {
         setLoadingDependents(false);
-      }
-    );
-
-    return () => unsubscribe();
+      });
   }, [user, setActiveProfileId]);
 
   const addDependent = async (data: {
@@ -138,57 +118,58 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     gender?: string;
   }): Promise<string> => {
     const createdAt = Date.now();
+    const localId = `dep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const newDependent: Dependent = { id: localId, ...data, createdAt };
+    const updatedList = [...dependents, newDependent];
+    setDependents(updatedList);
 
-    if (!user) {
-      // Guest Mode: Store locally in localStorage
-      const localId = `dep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const newDependent: Dependent = { id: localId, ...data, createdAt };
-      const updatedList = [...dependents, newDependent];
-      setDependents(updatedList);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(updatedList));
-      }
-      return localId;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(updatedList));
     }
 
-    // Signed-in User: Synchronously generate doc ID and update local state, then save to Firestore
-    const depsRef = collection(db, "users", user.uid, "dependents");
-    const newDocRef = doc(depsRef);
-    const newId = newDocRef.id;
+    if (user && !user.uid.startsWith("user_guest_")) {
+      try {
+        const res = await fetch("/api/dependents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.uid, ...data }),
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (result.dependent && result.dependent.id) {
+            setDependents((prev) =>
+              prev.map((d) => (d.id === localId ? result.dependent : d))
+            );
+            return result.dependent.id;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to sync dependent to MongoDB API:", err);
+      }
+    }
 
-    const newDependent: Dependent = { id: newId, ...data, createdAt };
-    setDependents((prev) => [...prev, newDependent]);
-
-    // Save in background to Firestore without blocking the UI modal response
-    void setDoc(newDocRef, {
-      ...data,
-      createdAt,
-    }).catch((err) => {
-      console.error("Error writing family member to Firestore:", err);
-    });
-
-    return newId;
+    return localId;
   };
 
   const deleteDependent = async (id: string): Promise<void> => {
-    if (!user) {
-      // Guest Mode: Remove locally
-      const updatedList = dependents.filter((d) => d.id !== id);
-      setDependents(updatedList);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(updatedList));
-      }
-      if (activeProfileIdRef.current === id) {
-        setActiveProfileId(null);
-      }
-      return;
-    }
+    const updatedList = dependents.filter((d) => d.id !== id);
+    setDependents(updatedList);
 
-    // Signed-in User: Delete from Firestore
-    const docRef = doc(db, "users", user.uid, "dependents", id);
-    await deleteDoc(docRef);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LOCAL_DEPENDENTS_KEY, JSON.stringify(updatedList));
+    }
     if (activeProfileIdRef.current === id) {
       setActiveProfileId(null);
+    }
+
+    if (user && !user.uid.startsWith("user_guest_")) {
+      try {
+        await fetch(`/api/dependents?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(user.uid)}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        console.warn("Failed to delete dependent from MongoDB API:", err);
+      }
     }
   };
 

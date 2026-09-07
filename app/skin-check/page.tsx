@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, onAuthStateChanged } from "@/lib/auth";
 import { saveSkinReport, loadSkinReports, SkinReportRecord } from "@/lib/reportHistory";
 import { SkinAnalysis } from "@/lib/skinAnalysis";
 import { useLanguage, useLocalize, Language } from "@/app/context/LanguageContext";

@@ -30,10 +30,11 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 2500,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => {
-      console.log("Connected to MongoDB database successfully.");
+      console.log("Connected to MongoDB successfully.");
       return m;
     });
   }
@@ -42,7 +43,7 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error("Error connecting to MongoDB:", e);
+    console.warn("MongoDB connection fallback (working in resilient local/offline mode):", e);
     return null;
   }
 

@@ -14,7 +14,7 @@
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js%2016-Turbopack-000000?style=for-the-badge&logo=next.js" alt="Next.js"></a>
   <a href="https://pytorch.org"><img src="https://img.shields.io/badge/PyTorch-Deep%20Learning-EE4C2C?style=for-the-badge&logo=pytorch" alt="PyTorch"></a>
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-ML%20Backend-009688?style=for-the-badge&logo=fastapi" alt="FastAPI"></a>
-  <a href="https://firebase.google.com"><img src="https://img.shields.io/badge/Firebase-Auth%20%26%20Firestore-FFCA28?style=for-the-badge&logo=firebase" alt="Firebase"></a>
+  <a href="https://www.mongodb.com"><img src="https://img.shields.io/badge/MongoDB-Mongoose%20Database-47A248?style=for-the-badge&logo=mongodb" alt="MongoDB"></a>
 </p>
 
 <p align="center">
@@ -268,13 +268,15 @@ robodoctor-ai/
 │   ├── Navbar.tsx                    # Top Navigation Bar
 │   └── ThemeToggle.tsx               # Theme Controls
 ├── lib/                              # Core Clinical & Algorithmic Engines
+│   ├── db/mongodb.ts                 # MongoDB Connection Pool with Resilience Fallback
+│   ├── models/                       # Mongoose Schemas (User, HealthRecord, SkinReport, etc.)
+│   ├── auth.ts                       # Custom PBKDF2/SHA-512 Auth & Session Management
 │   ├── framinghamRisk.ts             # Framingham 10-year CVD Log-Linear Engine
 │   ├── labEvaluator.ts               # Clinical Staging & Physiological Bounds Evaluator
 │   ├── reportGenerator.ts            # SBAR Synthesis & Report Transformer
-│   ├── reportHistory.ts              # Resilient Local + Firestore Data Persistence
+│   ├── reportHistory.ts              # Dual-Tier Resilient Local + MongoDB Data Persistence
 │   ├── skinAnalysis.ts               # Symptom-Lesion Fusion Rules
 │   ├── drugInteractions.ts           # Pharmacological Interaction Knowledge Base
-│   ├── firebase.ts                   # Firebase Client Initializer
 │   └── uiI18n.ts                     # Multilingual Dictionary (EN, HI, ES, FR, DE, ZH, KO)
 ├── ml/                               # Machine Learning & Computer Vision Backend
 │   ├── api/                          # FastAPI REST Endpoints
@@ -332,19 +334,18 @@ Interactive Swagger API documentation will be available at [http://127.0.0.1:800
 Create a `.env.local` file in `robodoctor-ai/`:
 
 ```env
-# Firebase Cloud Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY="your_firebase_api_key"
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your_project.firebaseapp.com"
-NEXT_PUBLIC_FIREBASE_PROJECT_ID="your_project_id"
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your_project.appspot.com"
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="your_sender_id"
-NEXT_PUBLIC_FIREBASE_APP_ID="your_app_id"
+# MongoDB Connection String (Atlas Cluster or Local MongoDB)
+# Note: RoboDoctor AI includes automatic fallback resilience. If MONGODB_URI is omitted
+# or the database is unreachable, local storage persistence seamlessly prevents downtime.
+MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.mongodb.net/robodoctor?retryWrites=true&w=majority"
 
 # Google Gemini Vision & AI Assistant
 GEMINI_API_KEY="your_gemini_api_key"
+GEMINI_MODEL="gemini-3.6-flash"
+AI_HEALTH_ASSISTANT_GEMINI_MODEL="gemini-3.6-flash"
 
-# Python ML Endpoint (if running local or remote FastAPI)
-NEXT_PUBLIC_ML_API_URL="http://127.0.0.1:8000"
+# Python ML Endpoint (optional, for local PyTorch HAM10000 FastAPI server)
+ROBO_DOC_ML_SERVICE_URL="http://127.0.0.1:8000"
 ```
 
 ---

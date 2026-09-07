@@ -1,16 +1,3 @@
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  setDoc,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-
 export type HealthReportRecord = {
   createdAt: number;
   riskLevel: string;
@@ -136,14 +123,7 @@ function mergeAndDedupe<T extends { createdAt: number }>(...arrays: T[][]): T[] 
   return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Cloud operation timed out")), timeoutMs)
-    ),
-  ]);
-}
+// ================= HEALTH REPORTS =================
 
 export async function loadHealthReports(
   userId?: string | null,
@@ -157,29 +137,28 @@ export async function loadHealthReportsPage(
   maxItems = 20,
   dependentId?: string | null
 ): Promise<HealthReportRecord[]> {
-  // 1. Read from localStorage immediately
+  // 1. Read from local storage immediately for zero-delay UI
   const specificKey = getHealthStorageKey(userId, dependentId);
   const localSpecific = safeReadLocal<HealthReportRecord>(specificKey);
   const localGlobal = safeReadLocal<HealthReportRecord>(GLOBAL_HEALTH_KEY);
   let current = mergeAndDedupe(localSpecific, localGlobal);
 
-  // 2. Attempt Firestore sync if authenticated
-  if (userId && userId !== "guest") {
+  // 2. Fetch from MongoDB API
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getSubcollectionPath(userId, "healthReports", dependentId);
-      const collectionRef = collection(db, path[0], ...path.slice(1));
-      const snapshot = await withTimeout(
-        getDocs(query(collectionRef, orderBy("createdAt", "desc"), limit(maxItems))),
-        1500
-      );
-      const cloudReports = snapshot.docs.map((doc) => doc.data() as HealthReportRecord);
-      if (cloudReports.length > 0) {
-        current = mergeAndDedupe(cloudReports, current);
-        safeWriteLocal(specificKey, current);
-        safeWriteLocal(GLOBAL_HEALTH_KEY, current);
+      const depParam = encodeURIComponent(dependentId || "myself");
+      const uParam = encodeURIComponent(userId);
+      const res = await fetch(`/api/reports?type=health&userId=${uParam}&dependentId=${depParam}&limit=${maxItems}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.reports) && data.reports.length > 0) {
+          current = mergeAndDedupe(data.reports, current);
+          safeWriteLocal(specificKey, current);
+          safeWriteLocal(GLOBAL_HEALTH_KEY, current);
+        }
       }
     } catch (err) {
-      console.warn("Cloud Firestore loadHealthReportsPage fallback to local:", err);
+      console.warn("MongoDB loadHealthReportsPage sync fallback to local:", err);
     }
   }
 
@@ -193,7 +172,7 @@ export async function saveHealthReport(
 ): Promise<void> {
   if (!record) return;
 
-  // 1. Immediate local persistence
+  // 1. Immediate local storage persistence
   const specificKey = getHealthStorageKey(userId, dependentId);
   const localSpecific = safeReadLocal<HealthReportRecord>(specificKey);
   const localGlobal = safeReadLocal<HealthReportRecord>(GLOBAL_HEALTH_KEY);
@@ -202,19 +181,28 @@ export async function saveHealthReport(
   safeWriteLocal(specificKey, merged);
   safeWriteLocal(GLOBAL_HEALTH_KEY, merged);
 
-  // 2. Safe background Firestore write
-  if (userId && userId !== "guest") {
+  // 2. Safe background MongoDB API write
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getSubcollectionPath(userId, "healthReports", dependentId);
-      const collectionRef = collection(db, path[0], ...path.slice(1));
-      void withTimeout(addDoc(collectionRef, record), 2000).catch((err) => {
-        console.warn("Cloud Firestore saveHealthReport skipped/failed (local save preserved):", err);
+      void fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "health",
+          userId,
+          dependentId: dependentId || "myself",
+          record,
+        }),
+      }).catch((err) => {
+        console.warn("MongoDB saveHealthReport sync warning:", err);
       });
     } catch (err) {
-      console.warn("Cloud Firestore saveHealthReport skipped/failed (local save preserved):", err);
+      console.warn("MongoDB saveHealthReport sync warning:", err);
     }
   }
 }
+
+// ================= SKIN REPORTS =================
 
 export async function loadSkinReports(
   userId?: string | null,
@@ -228,29 +216,26 @@ export async function loadSkinReportsPage(
   maxItems = 20,
   dependentId?: string | null
 ): Promise<SkinReportRecord[]> {
-  // 1. Read from localStorage immediately
   const specificKey = getSkinStorageKey(userId, dependentId);
   const localSpecific = safeReadLocal<SkinReportRecord>(specificKey);
   const localGlobal = safeReadLocal<SkinReportRecord>(GLOBAL_SKIN_KEY);
   let current = mergeAndDedupe(localSpecific, localGlobal);
 
-  // 2. Attempt Firestore sync if authenticated
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getSubcollectionPath(userId, "skinReports", dependentId);
-      const collectionRef = collection(db, path[0], ...path.slice(1));
-      const snapshot = await withTimeout(
-        getDocs(query(collectionRef, orderBy("createdAt", "desc"), limit(maxItems))),
-        1500
-      );
-      const cloudReports = snapshot.docs.map((doc) => doc.data() as SkinReportRecord);
-      if (cloudReports.length > 0) {
-        current = mergeAndDedupe(cloudReports, current);
-        safeWriteLocal(specificKey, current);
-        safeWriteLocal(GLOBAL_SKIN_KEY, current);
+      const depParam = encodeURIComponent(dependentId || "myself");
+      const uParam = encodeURIComponent(userId);
+      const res = await fetch(`/api/reports?type=skin&userId=${uParam}&dependentId=${depParam}&limit=${maxItems}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.reports) && data.reports.length > 0) {
+          current = mergeAndDedupe(data.reports, current);
+          safeWriteLocal(specificKey, current);
+          safeWriteLocal(GLOBAL_SKIN_KEY, current);
+        }
       }
     } catch (err) {
-      console.warn("Cloud Firestore loadSkinReportsPage fallback to local:", err);
+      console.warn("MongoDB loadSkinReportsPage sync fallback to local:", err);
     }
   }
 
@@ -264,7 +249,6 @@ export async function saveSkinReport(
 ): Promise<void> {
   if (!record) return;
 
-  // 1. Immediate local persistence
   const specificKey = getSkinStorageKey(userId, dependentId);
   const localSpecific = safeReadLocal<SkinReportRecord>(specificKey);
   const localGlobal = safeReadLocal<SkinReportRecord>(GLOBAL_SKIN_KEY);
@@ -273,19 +257,27 @@ export async function saveSkinReport(
   safeWriteLocal(specificKey, merged);
   safeWriteLocal(GLOBAL_SKIN_KEY, merged);
 
-  // 2. Safe background Firestore write
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getSubcollectionPath(userId, "skinReports", dependentId);
-      const collectionRef = collection(db, path[0], ...path.slice(1));
-      void withTimeout(addDoc(collectionRef, record), 2000).catch((err) => {
-        console.warn("Cloud Firestore saveSkinReport skipped/failed (local save preserved):", err);
+      void fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "skin",
+          userId,
+          dependentId: dependentId || "myself",
+          record,
+        }),
+      }).catch((err) => {
+        console.warn("MongoDB saveSkinReport sync warning:", err);
       });
     } catch (err) {
-      console.warn("Cloud Firestore saveSkinReport skipped/failed (local save preserved):", err);
+      console.warn("MongoDB saveSkinReport sync warning:", err);
     }
   }
 }
+
+// ================= LAB REPORTS =================
 
 export async function loadLabReportsPage(
   userId?: string | null,
@@ -297,22 +289,21 @@ export async function loadLabReportsPage(
   const localGlobal = safeReadLocal<LabReportRecord>(GLOBAL_LAB_KEY);
   let current = mergeAndDedupe(localSpecific, localGlobal);
 
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getSubcollectionPath(userId, "labReports", dependentId);
-      const collectionRef = collection(db, path[0], ...path.slice(1));
-      const snapshot = await withTimeout(
-        getDocs(query(collectionRef, orderBy("createdAt", "desc"), limit(maxItems))),
-        1500
-      );
-      const cloudReports = snapshot.docs.map((doc) => doc.data() as LabReportRecord);
-      if (cloudReports.length > 0) {
-        current = mergeAndDedupe(cloudReports, current);
-        safeWriteLocal(specificKey, current);
-        safeWriteLocal(GLOBAL_LAB_KEY, current);
+      const depParam = encodeURIComponent(dependentId || "myself");
+      const uParam = encodeURIComponent(userId);
+      const res = await fetch(`/api/reports?type=lab&userId=${uParam}&dependentId=${depParam}&limit=${maxItems}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.reports) && data.reports.length > 0) {
+          current = mergeAndDedupe(data.reports, current);
+          safeWriteLocal(specificKey, current);
+          safeWriteLocal(GLOBAL_LAB_KEY, current);
+        }
       }
     } catch (err) {
-      console.warn("Cloud Firestore loadLabReportsPage fallback to local:", err);
+      console.warn("MongoDB loadLabReportsPage sync fallback to local:", err);
     }
   }
 
@@ -334,18 +325,27 @@ export async function saveLabReport(
   safeWriteLocal(specificKey, merged);
   safeWriteLocal(GLOBAL_LAB_KEY, merged);
 
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getSubcollectionPath(userId, "labReports", dependentId);
-      const collectionRef = collection(db, path[0], ...path.slice(1));
-      void withTimeout(addDoc(collectionRef, record), 2000).catch((err) => {
-        console.warn("Cloud Firestore saveLabReport skipped/failed:", err);
+      void fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "lab",
+          userId,
+          dependentId: dependentId || "myself",
+          record,
+        }),
+      }).catch((err) => {
+        console.warn("MongoDB saveLabReport sync warning:", err);
       });
     } catch (err) {
-      console.warn("Cloud Firestore saveLabReport skipped/failed:", err);
+      console.warn("MongoDB saveLabReport sync warning:", err);
     }
   }
 }
+
+// ================= USER PROFILE =================
 
 export async function getUserProfile(
   userId?: string | null,
@@ -360,27 +360,22 @@ export async function getUserProfile(
     } catch {}
   }
 
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const docRef = dependentId
-        ? doc(db, "users", userId, "dependents", dependentId)
-        : doc(db, "users", userId, "profile", "main");
-      const snapshot = await withTimeout(getDoc(docRef), 1500);
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const cloudProfile: UserProfileRecord = {
-          patientName: data.name || data.patientName,
-          age: data.age,
-          gender: data.gender,
-          updatedAt: data.updatedAt || data.createdAt,
-        };
-        if (typeof window !== "undefined") {
-          localStorage.setItem(profileKey, JSON.stringify(cloudProfile));
+      const depParam = encodeURIComponent(dependentId || "myself");
+      const uParam = encodeURIComponent(userId);
+      const res = await fetch(`/api/profile?userId=${uParam}&dependentId=${depParam}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.profile) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(profileKey, JSON.stringify(data.profile));
+          }
+          return data.profile;
         }
-        return cloudProfile;
       }
     } catch (err) {
-      console.warn("Cloud Firestore getUserProfile fallback to local:", err);
+      console.warn("MongoDB getUserProfile fallback to local:", err);
     }
   }
 
@@ -408,19 +403,21 @@ export async function saveUserProfile(
     } catch {}
   }
 
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const docRef = dependentId
-        ? doc(db, "users", userId, "dependents", dependentId)
-        : doc(db, "users", userId, "profile", "main");
-      void withTimeout(
-        setDoc(docRef, { ...profile, updatedAt: Date.now() }, { merge: true }),
-        2000
-      ).catch((err) => {
-        console.warn("Cloud Firestore saveUserProfile skipped/failed:", err);
+      void fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          dependentId: dependentId || "myself",
+          profile: updated,
+        }),
+      }).catch((err) => {
+        console.warn("MongoDB saveUserProfile sync warning:", err);
       });
     } catch (err) {
-      console.warn("Cloud Firestore saveUserProfile skipped/failed:", err);
+      console.warn("MongoDB saveUserProfile sync warning:", err);
     }
   }
 }

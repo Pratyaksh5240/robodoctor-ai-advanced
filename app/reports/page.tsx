@@ -3,8 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, onAuthStateChanged, signOut, User } from "@/lib/auth";
 import {
   HealthReportRecord,
   loadHealthReportsPage,

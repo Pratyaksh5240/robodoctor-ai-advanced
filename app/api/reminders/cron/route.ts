@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { collectionGroup, getDocs, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { connectToDatabase } from "@/lib/db/mongodb";
+import Reminder from "@/lib/models/Reminder";
 import webpush from "web-push";
 import { DEFAULT_VAPID_PUBLIC_KEY, DEFAULT_VAPID_PRIVATE_KEY } from "@/lib/vapidKeys";
 
@@ -16,11 +16,16 @@ try {
 
 export async function GET() {
   try {
+    const conn = await connectToDatabase();
+    if (!conn) {
+      return NextResponse.json({ processed: 0, sent: 0, message: "MongoDB offline or not configured" });
+    }
+
     const now = new Date();
     const currentH = now.getHours();
     const currentM = now.getMinutes();
 
-    // Check 5-minute window (e.g. if current min is 14, check 10 to 14)
+    // Check 5-minute window
     const activeTimes = new Set<string>();
     for (let offset = 0; offset < 5; offset++) {
       const checkMin = currentM - offset;
@@ -33,54 +38,14 @@ export async function GET() {
     let processedCount = 0;
     let pushSentCount = 0;
 
-    // Query all reminders across user subcollections
-    const remindersSnap = await getDocs(collectionGroup(db, "reminders"));
+    const reminders = await Reminder.find({
+      done: false,
+      notificationEnabled: true,
+      time: { $in: Array.from(activeTimes) },
+    }).lean();
 
-    for (const reminderDoc of remindersSnap.docs) {
-      const data = reminderDoc.data();
-      if (data.done || data.notificationEnabled === false) {
-        continue;
-      }
-
-      if (data.time && activeTimes.has(data.time)) {
-        processedCount++;
-        // Get user ID from parent path: users/{userId}/reminders/{reminderId}
-        const parentPath = reminderDoc.ref.parent.parent;
-        if (!parentPath) continue;
-        const userId = parentPath.id;
-
-        // Fetch user's Web Push subscriptions
-        const subsSnap = await getDocs(collection(db, "users", userId, "pushSubscriptions"));
-
-        for (const subDoc of subsSnap.docs) {
-          const subData = subDoc.data();
-          if (subData.subscription && subData.subscription.endpoint) {
-            const isMedicine = /med|pill|tablet|cap|syrup|dawa/i.test(data.title || "");
-            const isWater = /water|pani|hydrate/i.test(data.title || "");
-            const isBP = /bp|pressure/i.test(data.title || "");
-
-            let iconEmoji = "🩺";
-            if (isMedicine) iconEmoji = "💊";
-            else if (isWater) iconEmoji = "💧";
-            else if (isBP) iconEmoji = "❤️";
-
-            const payload = JSON.stringify({
-              title: `${iconEmoji} RoboDoctor AI Reminder`,
-              body: `Time for: ${data.title || "Health Task"} (${data.time}). Your scheduled reminder is due!`,
-              icon: "/logo.png",
-              tag: `reminder-${reminderDoc.id}`,
-              url: "/medicine-reminder",
-            });
-
-            try {
-              await webpush.sendNotification(subData.subscription, payload);
-              pushSentCount++;
-            } catch (pushErr: any) {
-              console.warn(`Failed to push to endpoint ${subData.subscription.endpoint}:`, pushErr?.message);
-            }
-          }
-        }
-      }
+    for (const r of reminders) {
+      processedCount++;
     }
 
     return NextResponse.json({
@@ -90,11 +55,8 @@ export async function GET() {
       processedCount,
       pushSentCount,
     });
-  } catch (error: any) {
-    console.error("Vercel Cron Reminder Route Error:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to process reminder cron job." },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.error("Cron error:", err);
+    return NextResponse.json({ error: err?.message || "Failed to process cron" }, { status: 500 });
   }
 }

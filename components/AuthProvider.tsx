@@ -2,9 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { User } from "firebase/auth";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import type { User } from "@/lib/auth";
+import { onAuthStateChanged, auth } from "@/lib/auth";
 
 const GUEST_SESSION_KEY = "robodoctor-guest-session";
 

@@ -8,9 +8,6 @@ import ProfileSwitcher from "@/components/ProfileSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { getSubcollectionPath } from "@/lib/reportHistory";
 import { useLocalize } from "@/lib/useLocalize";
 import {
   getNotificationPermissionState,
@@ -75,42 +72,45 @@ function MedicineReminderContent() {
     }
   }, [searchParams, localize]);
 
-  // Load reminders from Firestore if user signed in
+  // Load reminders from MongoDB API if user signed in
   useEffect(() => {
     if (!user) return;
-    async function loadFirestoreReminders() {
+    async function loadMongoReminders() {
       try {
-        const pathSegments = getSubcollectionPath(user!.uid, "reminders", activeProfileId);
-        const colRef = collection(db, pathSegments[0], ...pathSegments.slice(1));
-        const snap = await getDocs(colRef);
-        if (!snap.empty) {
-          const items: Reminder[] = [];
-          snap.forEach((d) => {
-            items.push(d.data() as Reminder);
-          });
-          setReminders(items);
-        } else {
-          setReminders([]);
+        const uParam = encodeURIComponent(user!.uid);
+        const dParam = encodeURIComponent(activeProfileId || "myself");
+        const res = await fetch(`/api/reminders?userId=${uParam}&dependentId=${dParam}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.reminders) && data.reminders.length > 0) {
+            setReminders(data.reminders);
+          }
         }
       } catch (err) {
-        console.warn("Failed to load Firestore reminders:", err);
+        console.warn("Failed to load MongoDB reminders:", err);
       }
     }
-    loadFirestoreReminders();
+    loadMongoReminders();
   }, [user, activeProfileId]);
 
-  // Save reminders to localStorage and Firestore
+  // Save reminders to localStorage and MongoDB API
   useEffect(() => {
     localStorage.setItem("robodoctor-reminders", JSON.stringify(reminders));
 
-    if (user) {
+    if (user && !user.uid.startsWith("user_guest_")) {
       reminders.forEach(async (r) => {
         try {
-          const pathSegments = getSubcollectionPath(user.uid, "reminders", activeProfileId);
-          const docRef = doc(db, pathSegments[0], ...pathSegments.slice(1), String(r.id));
-          await setDoc(docRef, r, { merge: true });
+          await fetch("/api/reminders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.uid,
+              dependentId: activeProfileId || "myself",
+              reminder: r,
+            }),
+          });
         } catch (err) {
-          console.warn("Failed to sync reminder to Firestore:", err);
+          console.warn("Failed to sync reminder to MongoDB API:", err);
         }
       });
     }

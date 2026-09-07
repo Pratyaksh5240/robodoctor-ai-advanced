@@ -1,6 +1,3 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-
 export type VitalsStreak = {
   currentStreak: number;
   longestStreak: number;
@@ -22,13 +19,6 @@ function getYesterdayStr(): string {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-export function getStreakDocPath(userId: string, dependentId?: string | null): [string, ...string[]] {
-  if (dependentId) {
-    return ["users", userId, "dependents", dependentId, "streaks", "vitals"];
-  }
-  return ["users", userId, "streaks", "vitals"];
 }
 
 function getStreakStorageKey(userId?: string | null, dependentId?: string | null) {
@@ -67,41 +57,29 @@ function safeWriteStreak(streak: VitalsStreak, userId?: string | null, dependent
   } catch {}
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Cloud operation timed out")), timeoutMs)
-    ),
-  ]);
-}
-
 export async function getVitalsStreak(
   userId?: string | null,
   dependentId?: string | null
 ): Promise<VitalsStreak> {
-  // 1. Read local streak immediately
   let streak = safeReadStreak(userId, dependentId);
 
-  // 2. Attempt Firestore sync in background if signed in
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getStreakDocPath(userId, dependentId);
-      const docRef = doc(db, path[0], ...path.slice(1));
-      const snap = await withTimeout(getDoc(docRef), 1500);
-      if (snap.exists()) {
-        const cloudData = snap.data() as VitalsStreak;
-        if (cloudData && typeof cloudData.currentStreak === "number") {
-          // Merge by taking the most recent or highest streak
-          const currentStreak = Math.max(streak.currentStreak, cloudData.currentStreak);
-          const longestStreak = Math.max(streak.longestStreak, cloudData.longestStreak, currentStreak);
-          const lastLoggedDate = cloudData.lastLoggedDate || streak.lastLoggedDate;
+      const depParam = encodeURIComponent(dependentId || "myself");
+      const uParam = encodeURIComponent(userId);
+      const res = await fetch(`/api/streaks?userId=${uParam}&dependentId=${depParam}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.streak && typeof data.streak.currentStreak === "number") {
+          const currentStreak = Math.max(streak.currentStreak, data.streak.currentStreak);
+          const longestStreak = Math.max(streak.longestStreak, data.streak.longestStreak, currentStreak);
+          const lastLoggedDate = data.streak.lastLoggedDate || streak.lastLoggedDate;
           streak = { currentStreak, longestStreak, lastLoggedDate };
           safeWriteStreak(streak, userId, dependentId);
         }
       }
     } catch (err) {
-      console.warn("Cloud Firestore getVitalsStreak fallback to local:", err);
+      console.warn("MongoDB getVitalsStreak fallback to local:", err);
     }
   }
 
@@ -133,19 +111,23 @@ export async function updateVitalsStreakOnLog(
     lastLoggedDate: today,
   };
 
-  // 1. Write to local storage immediately
   safeWriteStreak(updated, userId, dependentId);
 
-  // 2. Background Firestore write
-  if (userId && userId !== "guest") {
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
     try {
-      const path = getStreakDocPath(userId, dependentId);
-      const docRef = doc(db, path[0], ...path.slice(1));
-      void withTimeout(setDoc(docRef, updated, { merge: true }), 2000).catch((err) => {
-        console.warn("Cloud Firestore updateVitalsStreakOnLog skipped/failed (local streak preserved):", err);
+      void fetch("/api/streaks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          dependentId: dependentId || "myself",
+          streak: updated,
+        }),
+      }).catch((err) => {
+        console.warn("MongoDB updateVitalsStreakOnLog warning:", err);
       });
     } catch (err) {
-      console.warn("Cloud Firestore updateVitalsStreakOnLog skipped/failed (local streak preserved):", err);
+      console.warn("MongoDB updateVitalsStreakOnLog warning:", err);
     }
   }
 

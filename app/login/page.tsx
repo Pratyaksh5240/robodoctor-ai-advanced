@@ -2,8 +2,7 @@
 
 import { Suspense, useState } from "react";
 import type { FormEvent } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, signInWithEmailAndPassword } from "@/lib/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/app/context/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
