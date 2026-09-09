@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const targetUrl = `${mlServiceBaseUrl.replace(/\/+$/, "")}/predict-cad`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
     const response = await fetch(targetUrl, {

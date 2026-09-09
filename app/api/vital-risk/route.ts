@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const targetUrl = `${mlServiceBaseUrl.replace(/\/+$/, "")}/predict`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4000);
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
     const response = await fetch(targetUrl, {
