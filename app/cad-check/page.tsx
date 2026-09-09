@@ -5,6 +5,7 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import { useLocalize } from "@/app/context/LanguageContext";
 
 type CadFactor = {
   feature: string;
@@ -33,6 +34,8 @@ type CadResult = {
 };
 
 export default function CadCheckPage() {
+  const localize = useLocalize();
+
   const [age, setAge] = useState<number>(55);
   const [sex, setSex] = useState<string>("1");
   const [cp, setCp] = useState<number>(4);
@@ -54,34 +57,34 @@ export default function CadCheckPage() {
   const loadHighRiskPreset = () => {
     setAge(62);
     setSex("1");
-    setCp(4); // Asymptomatic / ischemic equivalent
+    setCp(4);
     setTrestbps(150);
     setChol(275);
     setFbs(true);
-    setRestecg(2); // LV hypertrophy
-    setThalach(125); // Lower peak HR
-    setExang(true); // Exercise angina
-    setOldpeak(2.6); // 2.6 mm ST depression
-    setSlope(2); // Flat ST
-    setCa(2); // 2 vessels stenosed
-    setThal(7); // Reversible defect
+    setRestecg(2);
+    setThalach(125);
+    setExang(true);
+    setOldpeak(2.6);
+    setSlope(2);
+    setCa(2);
+    setThal(7);
     setError(null);
   };
 
   const loadLowRiskPreset = () => {
     setAge(38);
     setSex("0");
-    setCp(2); // Atypical angina
+    setCp(2);
     setTrestbps(116);
     setChol(185);
     setFbs(false);
-    setRestecg(0); // Normal ECG
-    setThalach(172); // Excellent peak HR
-    setExang(false); // No exercise angina
-    setOldpeak(0.0); // No ST depression
-    setSlope(1); // Normal upsloping
-    setCa(0); // 0 vessels
-    setThal(3); // Normal thallium
+    setRestecg(0);
+    setThalach(172);
+    setExang(false);
+    setOldpeak(0.0);
+    setSlope(1);
+    setCa(0);
+    setThal(3);
     setError(null);
   };
 
@@ -136,7 +139,7 @@ export default function CadCheckPage() {
       const data = await response.json();
       setResult(data);
     } catch (err: any) {
-      setError(err.message || "Failed to calculate CAD diagnostic assessment.");
+      setError(err.message || localize("Failed to calculate CAD diagnostic assessment.", "सीएडी डायग्नोस्टिक मूल्यांकन गणना करने में विफल।"));
     } finally {
       setLoading(false);
     }
@@ -154,7 +157,7 @@ export default function CadCheckPage() {
               </span>
             </Link>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800">
-              CAD Angiography Screener
+              {localize("CAD Angiography Screener", "सीएडी एंजियोग्राफी स्क्रीनर")}
             </span>
           </div>
           <div className="flex items-center space-x-3">
@@ -162,7 +165,7 @@ export default function CadCheckPage() {
               href="/health-check"
               className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 transition"
             >
-              10-Yr Framingham Screener
+              {localize("10-Yr Framingham Screener", "10-वर्षीय फ्रेमिंगहैम स्क्रीनर")}
             </Link>
             <ThemeToggle />
             <LanguageSwitcher />
@@ -175,40 +178,55 @@ export default function CadCheckPage() {
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-950 via-slate-900 to-rose-950 text-white p-6 sm:p-8 shadow-xl border border-red-900/40">
           <div className="relative z-10 max-w-3xl space-y-3">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-semibold border border-red-500/30">
-              <span>Gold-Standard Cleveland Angiographic Benchmark</span>
+              <span>{localize("Gold-Standard Cleveland Angiographic Benchmark", "गोल्ड-स्टैंडर्ड क्लीवलैंड एंजियोग्राफिक बेंचमार्क")}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
-              <span>88.52% Validated Accuracy</span>
+              <span>{localize("88.52% Validated Accuracy", "88.52% प्रमाणित सटीकता")}</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Coronary Artery Disease (CAD) Diagnostic Screening
+              {localize("Coronary Artery Disease (CAD) Diagnostic Screening", "कोरोनरी आर्टरी डिजीज (CAD) डायग्नोस्टिक स्क्रीनिंग")}
             </h1>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              Trained on clinically verified cardiac catheterization outcomes (fluoroscopy and coronary angiography). 
-              Detects present hemodynamically significant stenosis (&gt;50% arterial luminal narrowing) with 
-              <strong className="text-white"> 88.52% accuracy</strong>, <strong className="text-white">95.24% ROC-AUC</strong>, and <strong className="text-white">92.86% clinical sensitivity</strong>.
+              {localize(
+                "Trained on clinically verified cardiac catheterization outcomes (fluoroscopy and coronary angiography). Detects present hemodynamically significant stenosis (>50% arterial luminal narrowing) with 88.52% accuracy, 95.24% ROC-AUC, and 92.86% clinical sensitivity.",
+                "क्लिनिकली सत्यापित कार्डियक कैथीeterization परिणामों (फ्लोरोस्कोपी और कोरोनरी एंजियोग्राफी) पर प्रशिक्षित। 88.52% सटीकता, 95.24% ROC-AUC और 92.86% नैदानिक संवेदनशीलता के साथ वर्तमान हेमोडायनामिक रूप से महत्वपूर्ण स्टेनोसिस (>50% धमनी संकुचन) का पता लगाता है।"
+              )}
             </p>
 
             {/* Benchmark stats */}
             <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
-                <div className="text-xs text-slate-400 uppercase font-medium">Test Accuracy</div>
+                <div className="text-xs text-slate-400 uppercase font-medium">
+                  {localize("Test Accuracy", "परीक्षण सटीकता")}
+                </div>
                 <div className="text-xl sm:text-2xl font-black text-emerald-400">88.52%</div>
-                <div className="text-[10px] text-slate-400">Held-out cohort (54/61)</div>
+                <div className="text-[10px] text-slate-400">
+                  {localize("Held-out cohort (54/61)", "होल्ड-आउट कोहोर्ट (54/61)")}
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
                 <div className="text-xs text-slate-400 uppercase font-medium">ROC-AUC</div>
                 <div className="text-xl sm:text-2xl font-black text-blue-400">95.24%</div>
-                <div className="text-[10px] text-slate-400">Near-perfect separation</div>
+                <div className="text-[10px] text-slate-400">
+                  {localize("Near-perfect separation", "उत्कृष्ट वर्गीकरण")}
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
-                <div className="text-xs text-slate-400 uppercase font-medium">CAD Sensitivity</div>
+                <div className="text-xs text-slate-400 uppercase font-medium">
+                  {localize("CAD Sensitivity", "सीएडी संवेदनशीलता")}
+                </div>
                 <div className="text-xl sm:text-2xl font-black text-rose-400">92.86%</div>
-                <div className="text-[10px] text-slate-400">26 of 28 CAD caught</div>
+                <div className="text-[10px] text-slate-400">
+                  {localize("26 of 28 CAD caught", "28 में से 26 सीएडी पहचाने")}
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
-                <div className="text-xs text-slate-400 uppercase font-medium">Ensemble</div>
+                <div className="text-xs text-slate-400 uppercase font-medium">
+                  {localize("Ensemble", "एंसेम्बल")}
+                </div>
                 <div className="text-base sm:text-lg font-bold text-amber-300 mt-1">RF + GB + LR</div>
-                <div className="text-[10px] text-slate-400">Calibrated soft voting</div>
+                <div className="text-[10px] text-slate-400">
+                  {localize("Calibrated soft voting", "कैलिब्रेटेड सॉफ्ट वोटिंग")}
+                </div>
               </div>
             </div>
           </div>
@@ -217,7 +235,7 @@ export default function CadCheckPage() {
         {/* Preset Quick-Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Quick Clinical Test Profiles:
+            {localize("Quick Clinical Test Profiles:", "त्वरित क्लिनिकल टेस्ट प्रोफाइल:")}
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -225,21 +243,21 @@ export default function CadCheckPage() {
               onClick={loadHighRiskPreset}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 transition"
             >
-              Load Confirmed CAD Case (~97% Risk)
+              {localize("Load Confirmed CAD Case (~97% Risk)", "पुष्ट सीएडी केस लोड करें (~97% जोखिम)")}
             </button>
             <button
               type="button"
               onClick={loadLowRiskPreset}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition"
             >
-              Load Healthy Non-CAD Case (~4% Risk)
+              {localize("Load Healthy Non-CAD Case (~4% Risk)", "स्वस्थ गैर-सीएडी केस लोड करें (~4% जोखिम)")}
             </button>
             <button
               type="button"
               onClick={loadBaselinePreset}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
             >
-              Reset to Baseline
+              {localize("Reset to Baseline", "बेसलाइन पर रीसेट करें")}
             </button>
           </div>
         </div>
@@ -255,13 +273,15 @@ export default function CadCheckPage() {
                   <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-xs">
                     1
                   </div>
-                  <h2 className="text-base font-bold">Demographics & Resting Hemodynamics</h2>
+                  <h2 className="text-base font-bold">
+                    {localize("Demographics & Resting Hemodynamics", "डेमोग्राफिक्स व रेस्टिंग हेमोडायनामिक्स")}
+                  </h2>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Patient Age (Years)
+                      {localize("Patient Age (Years)", "मरीज की उम्र (वर्ष)")}
                     </label>
                     <input
                       type="number"
@@ -275,21 +295,21 @@ export default function CadCheckPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Biological Sex
+                      {localize("Biological Sex", "जैविक लिंग")}
                     </label>
                     <select
                       value={sex}
                       onChange={(e) => setSex(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                     >
-                      <option value="1">Male (Higher baseline risk)</option>
-                      <option value="0">Female</option>
+                      <option value="1">{localize("Male (Higher baseline risk)", "पुरुष (अधिक बेसलाइन जोखिम)")}</option>
+                      <option value="0">{localize("Female", "महिला")}</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Resting Blood Pressure (mm Hg)
+                      {localize("Resting Blood Pressure (mm Hg)", "रेस्टिंग ब्लड प्रेशर (मिमी एचजी)")}
                     </label>
                     <input
                       type="number"
@@ -299,12 +319,14 @@ export default function CadCheckPage() {
                       onChange={(e) => setTrestbps(Number(e.target.value))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
-                    <span className="text-[11px] text-slate-400">Normal: 120 mm Hg</span>
+                    <span className="text-[11px] text-slate-400">
+                      {localize("Normal: 120 mm Hg", "सामान्य: 120 मिमी एचजी")}
+                    </span>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Serum Total Cholesterol (mg/dL)
+                      {localize("Serum Total Cholesterol (mg/dL)", "सीरम टोटल कोलेस्ट्रॉल (मिलीग्राम/डीएल)")}
                     </label>
                     <input
                       type="number"
@@ -314,7 +336,9 @@ export default function CadCheckPage() {
                       onChange={(e) => setChol(Number(e.target.value))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
-                    <span className="text-[11px] text-slate-400">Optimal: &lt;200 mg/dL</span>
+                    <span className="text-[11px] text-slate-400">
+                      {localize("Optimal: <200 mg/dL", "उचित: <200 मिलीग्राम/डीएल")}
+                    </span>
                   </div>
                 </div>
 
@@ -327,7 +351,10 @@ export default function CadCheckPage() {
                       className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300 dark:border-slate-700"
                     />
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                      Fasting Blood Sugar &gt; 120 mg/dL (Diabetic / Impaired fasting glucose)
+                      {localize(
+                        "Fasting Blood Sugar > 120 mg/dL (Diabetic / Impaired fasting glucose)",
+                        "फास्टिंग ब्लड शुगर > 120 मिलीग्राम/डीएल (डायबिटिक / बिगड़ा हुआ फास्टिंग ग्लूकोज)"
+                      )}
                     </span>
                   </label>
                 </div>
@@ -339,45 +366,47 @@ export default function CadCheckPage() {
                   <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-xs">
                     2
                   </div>
-                  <h2 className="text-base font-bold">Chest Pain & Resting ECG</h2>
+                  <h2 className="text-base font-bold">
+                    {localize("Chest Pain & Resting ECG", "सीने में दर्द व रेस्टिंग ईसीजी")}
+                  </h2>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Chest Pain Type (Anginal Classification)
+                      {localize("Chest Pain Type (Anginal Classification)", "सीने के दर्द का प्रकार (एंजाइनल वर्गीकरण)")}
                     </label>
                     <select
                       value={cp}
                       onChange={(e) => setCp(Number(e.target.value))}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                     >
-                      <option value={1}>Type 1: Typical Angina (Exertional, relieved by rest/nitrates)</option>
-                      <option value={2}>Type 2: Atypical Angina (Atypical chest discomfort)</option>
-                      <option value={3}>Type 3: Non-Anginal Pain (Musculoskeletal / gastrointestinal)</option>
-                      <option value={4}>Type 4: Asymptomatic / Silent Ischemia Equivalent</option>
+                      <option value={1}>{localize("Type 1: Typical Angina (Exertional, relieved by rest/nitrates)", "टाइप 1: विशिष्ट एनजाइना (परिश्रम से बढ़ता, आराम/नाइट्रेट से ठीक)")}</option>
+                      <option value={2}>{localize("Type 2: Atypical Angina (Atypical chest discomfort)", "टाइप 2: असामान्य एनजाइना (असामान्य सीने की बेचैनी)")}</option>
+                      <option value={3}>{localize("Type 3: Non-Anginal Pain (Musculoskeletal / gastrointestinal)", "टाइप 3: गैर-एंजाइनल दर्द (मांसपेशियों या पाचन संबंधी)")}</option>
+                      <option value={4}>{localize("Type 4: Asymptomatic / Silent Ischemia Equivalent", "टाइप 4: लक्षणहीन / साइलेंट इस्केमिया समकक्ष")}</option>
                     </select>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Resting ECG Assessment
+                        {localize("Resting ECG Assessment", "रेस्टिंग ईसीजी मूल्यांकन")}
                       </label>
                       <select
                         value={restecg}
                         onChange={(e) => setRestecg(Number(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       >
-                        <option value={0}>0: Normal Resting ECG</option>
-                        <option value={1}>1: ST-T Wave Abnormality (T inversion / ST elevation)</option>
-                        <option value={2}>2: Left Ventricular Hypertrophy (Estes criteria)</option>
+                        <option value={0}>{localize("0: Normal Resting ECG", "0: सामान्य रेस्टिंग ईसीजी")}</option>
+                        <option value={1}>{localize("1: ST-T Wave Abnormality (T inversion / ST elevation)", "1: एसटी-टी तरंग असामान्यता (टी उलटाव / एसटी उभार)")}</option>
+                        <option value={2}>{localize("2: Left Ventricular Hypertrophy (Estes criteria)", "2: लेफ्ट वेंट्रिकुलर हाइपरट्रॉफी (एस्टेस मानदंड)")}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Maximum Achieved Heart Rate (bpm)
+                        {localize("Maximum Achieved Heart Rate (bpm)", "अधिकतम प्राप्त हृदय गति (बीपीएम)")}
                       </label>
                       <input
                         type="number"
@@ -387,7 +416,9 @@ export default function CadCheckPage() {
                         onChange={(e) => setThalach(Number(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
-                      <span className="text-[11px] text-slate-400">Peak HR during stress testing</span>
+                      <span className="text-[11px] text-slate-400">
+                        {localize("Peak HR during stress testing", "स्ट्रेस टेस्ट के दौरान उच्चतम हृदय गति")}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -399,28 +430,30 @@ export default function CadCheckPage() {
                   <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-xs">
                     3
                   </div>
-                  <h2 className="text-base font-bold">Stress Testing & Angiographic Indicators</h2>
+                  <h2 className="text-base font-bold">
+                    {localize("Stress Testing & Angiographic Indicators", "स्ट्रेस टेस्टिंग व एंजियोग्राफिक संकेतक")}
+                  </h2>
                 </div>
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Exercise-Induced Angina
+                        {localize("Exercise-Induced Angina", "व्यायाम प्रेरित एनजाइना")}
                       </label>
                       <select
                         value={exang ? "1" : "0"}
                         onChange={(e) => setExang(e.target.value === "1")}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       >
-                        <option value="0">No (Exercise tolerated without angina)</option>
-                        <option value="1">Yes (Exertional chest tightness induced)</option>
+                        <option value="0">{localize("No (Exercise tolerated without angina)", "नहीं (बिना एनजाइना के व्यायाम सहन)")}</option>
+                        <option value="1">{localize("Yes (Exertional chest tightness induced)", "हाँ (परिश्रम से सीने में जकड़न)")}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Exercise ST Depression (oldpeak, mm)
+                        {localize("Exercise ST Depression (oldpeak, mm)", "व्यायाम एसटी डिप्रेशन (ओल्डपीक, मिमी)")}
                       </label>
                       <input
                         type="number"
@@ -431,54 +464,56 @@ export default function CadCheckPage() {
                         onChange={(e) => setOldpeak(Number(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
-                      <span className="text-[11px] text-slate-400">&gt;=1.0 mm indicates myocardial ischemia</span>
+                      <span className="text-[11px] text-slate-400">
+                        {localize(">=1.0 mm indicates myocardial ischemia", ">=1.0 मिमी मायोकार्डियल इस्केमिया दर्शाता है")}
+                      </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Peak ST Slope
+                        {localize("Peak ST Slope", "पीक एसटी स्लोप")}
                       </label>
                       <select
                         value={slope}
                         onChange={(e) => setSlope(Number(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       >
-                        <option value={1}>1: Upsloping (Normal)</option>
-                        <option value={2}>2: Flat (Ischemic)</option>
-                        <option value={3}>3: Downsloping (Severe)</option>
+                        <option value={1}>{localize("1: Upsloping (Normal)", "1: ऊपर की ओर ढलान (सामान्य)")}</option>
+                        <option value={2}>{localize("2: Flat (Ischemic)", "2: सपाट (इस्केमिक)")}</option>
+                        <option value={3}>{localize("3: Downsloping (Severe)", "3: नीचे की ओर ढलान (गंभीर)")}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Major Vessels Colored (ca)
+                        {localize("Major Vessels Colored (ca)", "प्रमुख रंगीन वाहिकाएं (सीए)")}
                       </label>
                       <select
                         value={ca}
                         onChange={(e) => setCa(Number(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       >
-                        <option value={0}>0 vessels (Clear fluoroscopy)</option>
-                        <option value={1}>1 vessel (Single-vessel disease)</option>
-                        <option value={2}>2 vessels (Bi-vessel disease)</option>
-                        <option value={3}>3 vessels (Triple-vessel disease)</option>
+                        <option value={0}>{localize("0 vessels (Clear fluoroscopy)", "0 वाहिकाएं (स्पष्ट फ्लोरोस्कोपी)")}</option>
+                        <option value={1}>{localize("1 vessel (Single-vessel disease)", "1 वाहिका (एकल वाहिका रोग)")}</option>
+                        <option value={2}>{localize("2 vessels (Bi-vessel disease)", "2 वाहिकाएं (द्वि-वाहिका रोग)")}</option>
+                        <option value={3}>{localize("3 vessels (Triple-vessel disease)", "3 वाहिकाएं (त्रि-वाहिका रोग)")}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                        Thallium Scintigraphy
+                        {localize("Thallium Scintigraphy", "थैलियम सिंटिग्राफी")}
                       </label>
                       <select
                         value={thal}
                         onChange={(e) => setThal(Number(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
                       >
-                        <option value={3}>3: Normal Perfusion</option>
-                        <option value={6}>6: Fixed Defect (Prior Infarct)</option>
-                        <option value={7}>7: Reversible Defect (Ischemia)</option>
+                        <option value={3}>{localize("3: Normal Perfusion", "3: सामान्य परफ्यूजन")}</option>
+                        <option value={6}>{localize("6: Fixed Defect (Prior Infarct)", "6: स्थिर दोष (पिछला इन्फार्क्ट)")}</option>
+                        <option value={7}>{localize("7: Reversible Defect (Ischemia)", "7: प्रतिवर्ती दोष (इस्केमिया)")}</option>
                       </select>
                     </div>
                   </div>
@@ -497,17 +532,17 @@ export default function CadCheckPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
-                    <span>Evaluating Coronary Angiography Markers...</span>
+                    <span>{localize("Evaluating Coronary Angiography Markers...", "कोरोनरी एंजियोग्राफी संकेतकों का मूल्यांकन हो रहा है...")}</span>
                   </span>
                 ) : (
-                  "Execute CAD Diagnostic Screening (88.52% Accuracy)"
+                  localize("Execute CAD Diagnostic Screening (88.52% Accuracy)", "सीएडी डायग्नोस्टिक स्क्रीनिंग निष्पादित करें (88.52% सटीकता)")
                 )}
               </button>
             </form>
 
             {error && (
               <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
-                <strong>Assessment Error:</strong> {error}
+                <strong>{localize("Assessment Error:", "मूल्यांकन त्रुटि:")}</strong> {error}
               </div>
             )}
           </div>
@@ -532,16 +567,16 @@ export default function CadCheckPage() {
                           : "bg-emerald-600 text-white"
                       }`}
                     >
-                      {result.risk_level} CAD Risk Tier
+                      {localize(result.risk_level, result.risk_level)} {localize("CAD Risk Tier", "सीएडी जोखिम स्तर")}
                     </span>
                     <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                      Model Conf: {result.confidence}%
+                      {localize("Model Conf:", "मॉडल विश्वास:")} {result.confidence}%
                     </span>
                   </div>
 
                   <div className="mt-4">
                     <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
-                      Diagnostic Probability of Stenosis (&gt;50%)
+                      {localize("Diagnostic Probability of Stenosis (>50%)", "स्टेनोसिस की नैदानिक संभावना (>50%)")}
                     </div>
                     <div className="flex items-baseline space-x-2 mt-1">
                       <span
@@ -554,17 +589,19 @@ export default function CadCheckPage() {
                         {result.cad_probability}%
                       </span>
                       <span className="text-xs text-slate-500 font-medium">
-                        {result.cad_presence ? "Significant CAD Detected" : "CAD Unlikely / Normal"}
+                        {result.cad_presence
+                          ? localize("Significant CAD Detected", "महत्वपूर्ण सीएडी का पता चला")
+                          : localize("CAD Unlikely / Normal", "सीएडी की संभावना कम / सामान्य")}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-4 p-3.5 rounded-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-medium leading-relaxed">
-                    {result.diagnostic_assessment}
+                    {localize(result.diagnostic_assessment, result.diagnostic_assessment)}
                   </div>
 
                   <div className="mt-4 text-xs text-slate-600 dark:text-slate-400">
-                    <strong>Triage:</strong> {result.triage_guidance}
+                    <strong>{localize("Triage:", "ट्राइएज:")}</strong> {localize(result.triage_guidance, result.triage_guidance)}
                   </div>
                 </div>
 
@@ -572,7 +609,7 @@ export default function CadCheckPage() {
                 {result.key_factors && result.key_factors.length > 0 && (
                   <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Top Diagnostic Biomarkers
+                      {localize("Top Diagnostic Biomarkers", "शीर्ष नैदानिक बायोमार्कर्स")}
                     </h3>
                     <div className="space-y-3">
                       {result.key_factors.slice(0, 5).map((factor, idx) => (
@@ -582,7 +619,7 @@ export default function CadCheckPage() {
                         >
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-semibold text-slate-800 dark:text-slate-200">
-                              {factor.label}
+                              {localize(factor.label, factor.label)}
                             </span>
                             <span
                               className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded ${
@@ -591,11 +628,13 @@ export default function CadCheckPage() {
                                   : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
                               }`}
                             >
-                              {factor.direction === "higher" ? "+ Increases Risk" : "- Lowers Risk"}
+                              {factor.direction === "higher"
+                                ? localize("+ Increases Risk", "+ जोखिम बढ़ाता है")
+                                : localize("- Lowers Risk", "- जोखिम घटाता है")}
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
-                            {factor.explanation}
+                            {localize(factor.explanation, factor.explanation)}
                           </p>
                         </div>
                       ))}
@@ -607,13 +646,13 @@ export default function CadCheckPage() {
                 {result.clinical_recommendations && result.clinical_recommendations.length > 0 && (
                   <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Cardiology Care Recommendations
+                      {localize("Cardiology Care Recommendations", "कार्डियोलॉजी देखभाल सिफारिशें")}
                     </h3>
                     <ul className="space-y-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
                       {result.clinical_recommendations.map((rec, idx) => (
                         <li key={idx} className="flex items-start space-x-2">
                           <span className="text-red-500 font-bold mt-0.5">•</span>
-                          <span>{rec}</span>
+                          <span>{localize(rec, rec)}</span>
                         </li>
                       ))}
                     </ul>
@@ -626,16 +665,24 @@ export default function CadCheckPage() {
                 <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto text-2xl font-bold">
                   CAD
                 </div>
-                <h3 className="text-lg font-bold">Ready for CAD Diagnostic Evaluation</h3>
+                <h3 className="text-lg font-bold">
+                  {localize("Ready for CAD Diagnostic Evaluation", "सीएडी डायग्नोस्टिक मूल्यांकन के लिए तैयार")}
+                </h3>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  Enter the patient hemodynamic and stress-test data or select one of the pre-filled clinical profiles above, then click <strong>Execute CAD Diagnostic Screening</strong>.
+                  {localize(
+                    "Enter the patient hemodynamic and stress-test data or select one of the pre-filled clinical profiles above, then click Execute CAD Diagnostic Screening.",
+                    "रोगी के हेमोडायनामिक और स्ट्रेस-टेस्ट डेटा दर्ज करें या ऊपर दिए गए क्लिनिकल प्रोफाइल में से किसी एक को चुनें, फिर सीएडी डायग्नोस्टिक स्क्रीनिंग निष्पादित करें पर क्लिक करें।"
+                  )}
                 </p>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-2">
                   <div className="font-semibold text-slate-700 dark:text-slate-300">
-                    Why Angiographic CAD achieves 88.52% Accuracy:
+                    {localize("Why Angiographic CAD achieves 88.52% Accuracy:", "एंजियोग्राफिक सीएडी 88.52% सटीकता क्यों प्राप्त करता है:")}
                   </div>
                   <p className="text-slate-500 dark:text-slate-400">
-                    Unlike 10-year epidemiological forecasts (Framingham) where unpredictable lifestyle changes over a decade introduce high Bayes noise, this model evaluates <em>present coronary lumen narrowing</em> using high-resolution stress ECG and fluoroscopy markers.
+                    {localize(
+                      "Unlike 10-year epidemiological forecasts (Framingham) where unpredictable lifestyle changes over a decade introduce high Bayes noise, this model evaluates present coronary lumen narrowing using high-resolution stress ECG and fluoroscopy markers.",
+                      "10-वर्षीय महामारी विज्ञान के पूर्वानुमानों (फ्रेमिंगहैम) के विपरीत, जहाँ एक दशक में जीवनशैली में अप्रत्याशित बदलाव बहुत अधिक शोर पैदा करते हैं, यह मॉडल उच्च-रिज़ॉल्यूशन स्ट्रेस ईसीजी और फ्लोरोस्कोपी मार्करों का उपयोग करके वर्तमान कोरोनरी ल्यूमेन संकुचन का सटीक मूल्यांकन करता है।"
+                    )}
                   </p>
                 </div>
               </div>

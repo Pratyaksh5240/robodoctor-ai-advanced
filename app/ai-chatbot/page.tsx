@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import { Language, useLanguage, useLocalize } from "@/app/context/LanguageContext";
@@ -365,6 +365,15 @@ export default function AIChatbotPage() {
   const [messages, setMessages] = useState<Message[]>(starter);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length <= 1) {
+        return starter;
+      }
+      return prev;
+    });
+  }, [starter]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useLocalize } from "@/lib/useLocalize";
@@ -83,6 +83,15 @@ export default function AIHealthAssistantPage() {
   const [messages, setMessages] = useState<AssistantConversationMessage[]>([
     starterMessage,
   ]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length <= 1) {
+        return [starterMessage];
+      }
+      return prev;
+    });
+  }, [starterMessage]);
   const [chatInput, setChatInput] = useState("");
   const [chatState, setChatState] = useState<ChatAssistantOutput | null>(null);
   const [riskState, setRiskState] = useState<{

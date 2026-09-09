@@ -39,6 +39,23 @@ export default function FloatingChatbot() {
     },
   ]);
 
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === "welcome-msg") {
+        return [
+          {
+            ...prev[0],
+            text: localize(
+              "Hello! I am RoboDoctor AI Assistant. Ask me anything about your symptoms, BP, sugar, medicines, or health risks.",
+              "नमस्ते! मैं RoboDoctor AI सहायक हूं। अपने लक्षण, बीपी, शुगर, दवाओं या स्वास्थ्य जोखिमों के बारे में कुछ भी पूछें।"
+            ),
+          },
+        ];
+      }
+      return prev;
+    });
+  }, [language]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };

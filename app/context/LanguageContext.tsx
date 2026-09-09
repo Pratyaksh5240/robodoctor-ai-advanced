@@ -4,6 +4,8 @@ import {
   createContext,
   ReactNode,
   useContext,
+  useEffect,
+  useState,
   useSyncExternalStore,
 } from "react";
 
@@ -247,15 +249,26 @@ const getLanguageSnapshot = (): Language => {
 const getServerLanguageSnapshot = (): Language => DEFAULT_LANGUAGE;
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const language = useSyncExternalStore(
+  const syncLanguage = useSyncExternalStore(
     subscribeToLanguage,
     getLanguageSnapshot,
     getServerLanguageSnapshot
   );
 
+  const [activeLanguage, setActiveLanguage] = useState<Language>(syncLanguage);
+
+  useEffect(() => {
+    setActiveLanguage(syncLanguage);
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = syncLanguage;
+    }
+  }, [syncLanguage]);
+
   const setLanguage = (nextLanguage: Language) => {
+    setActiveLanguage(nextLanguage);
     if (typeof window !== "undefined") {
       localStorage.setItem("robodoctor-language", nextLanguage);
+      document.documentElement.lang = nextLanguage;
       window.dispatchEvent(
         new StorageEvent("storage", { key: "robodoctor-language" })
       );
@@ -263,12 +276,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     listeners.forEach((listener) => listener());
   };
 
+  const currentLanguage = activeLanguage || syncLanguage;
+
   return (
     <LanguageContext.Provider
       value={{
-        language,
+        language: currentLanguage,
         setLanguage,
-        t: translations[language],
+        t: translations[currentLanguage] || translations[DEFAULT_LANGUAGE],
       }}
     >
       {children}
