@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, Suspense, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
@@ -23,16 +23,20 @@ function PrescriptionScanContent() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [sampleType, setSampleType] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
+  const [manualInput, setManualInput] = useState("");
   const [items, setItems] = useState<SelectableItem[]>([]);
   const [rawNotes, setRawNotes] = useState<string>("");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [source, setSource] = useState<string>("");
 
-  const loadSamplePreset = async (type: "cardiology" | "diabetes" | "paracetamol", path: string) => {
+  const loadSamplePreset = async (type: "cardiology" | "diabetes" | "paracetamol" | "vicks", path: string) => {
     try {
       setSampleType(type);
       setPreviewUrl(path);
       setItems([]);
+      setHasScanned(false);
+      setRawNotes("");
       setStatusMsg("");
       const res = await fetch(path);
       const blob = await res.blob();
@@ -53,6 +57,8 @@ function PrescriptionScanContent() {
     if (!file) return;
 
     setSampleType(null);
+    setHasScanned(false);
+    setRawNotes("");
     const nextPreviewUrl = URL.createObjectURL(file);
     const reader = new FileReader();
 
@@ -73,6 +79,7 @@ function PrescriptionScanContent() {
     if (!imageDataUrl) return;
 
     setIsScanning(true);
+    setHasScanned(true);
     setStatusMsg("");
 
     try {
@@ -109,6 +116,63 @@ function PrescriptionScanContent() {
     } finally {
       setIsScanning(false);
     }
+  };
+
+  const handleAddManual = (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    const query = manualInput.trim();
+    if (!query) return;
+
+    const queryLower = query.toLowerCase();
+    let name = query;
+    let dosage = "Standard adult dosage";
+    let freq = "As directed by physician / packaging";
+    let whenToEat = "Take with water as advised on packaging or by your physician.";
+    let howMuchToEat = "Follow the labeled adult dosage instructions.";
+    let harmOveruse = "Do not exceed maximum daily limits. Discontinue and consult your physician if adverse reactions occur.";
+    let purpose = "Medication added for safety screening and reminders.";
+
+    if (queryLower.includes("vicks") || queryLower.includes("vaporub")) {
+      name = "Vicks VapoRub (Camphor, Menthol & Eucalyptus)";
+      dosage = "10ml / 25ml Topical Rub";
+      freq = "Apply 2 to 3 times daily as needed";
+      whenToEat = "Rub gently on chest, throat, and back before bedtime, or add to hot water for steam inhalation. NEVER swallow.";
+      howMuchToEat = "Apply a generous layer. Do not apply inside nostrils or on broken skin.";
+      harmOveruse = "TOXIC IF SWALLOWED — Camphor can cause severe poisoning and seizures if ingested orally.";
+      purpose = "Topical decongestant & analgesic for cough, cold, and nasal blockage.";
+    } else if (queryLower.includes("volini") || queryLower.includes("moov") || queryLower.includes("iodex") || queryLower.includes("omnigel")) {
+      name = "Pain Relief Gel / Balm (Diclofenac / Methyl Salicylate)";
+      dosage = "Topical Gel / Spray";
+      freq = "Apply 2 to 3 times daily";
+      whenToEat = "Apply thin layer to painful joint or muscle. Wash hands thoroughly with soap after application.";
+      howMuchToEat = "Apply 2g to 4g to affected area 2-3 times daily.";
+      harmOveruse = "For external use only. Avoid contact with eyes or open cuts.";
+      purpose = "Topical pain relief for sprains, muscle stiffness, and backache.";
+    } else if (queryLower.includes("dolo") || queryLower.includes("paracetamol") || queryLower.includes("crocin") || queryLower.includes("calpol")) {
+      name = "Paracetamol (Dolo 650)";
+      dosage = "650mg";
+      freq = "Every 6 to 8 hours as needed (Max 3/day)";
+      whenToEat = "Take after food or milk with a full glass of water. Avoid taking on an empty stomach.";
+      howMuchToEat = "Adults: 1 tablet per dose (wait at least 6 hours). Do not exceed 3 tablets in 24 hours.";
+      harmOveruse = "Overdose causes severe liver damage and hepatic failure. Avoid alcohol completely.";
+      purpose = "Antipyretic & painkiller for fever and headaches.";
+    }
+
+    const newItem: SelectableItem = {
+      id: `manual-${Date.now()}`,
+      name,
+      dosageGuess: dosage,
+      frequencyGuess: freq,
+      whenToEat,
+      howMuchToEat,
+      harmOveruse,
+      purpose,
+      confidence: "high",
+      selected: true,
+    };
+
+    setItems((prev) => [newItem, ...prev]);
+    setManualInput("");
   };
 
   const updateItem = (id: string, key: keyof SelectableItem, value: any) => {
@@ -277,6 +341,18 @@ function PrescriptionScanContent() {
                     <span>💊</span>
                     <span>{localize("Paracetamol Blister Strip", "पैरासिटामोल स्ट्रिप")}</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => loadSamplePreset("vicks", "/samples/vicks_test.png")}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 ${
+                      sampleType === "vicks"
+                        ? "border-amber-400 bg-amber-500/25 text-white shadow-md shadow-amber-500/20"
+                        : "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200"
+                    }`}
+                  >
+                    <span>🧴</span>
+                    <span>{localize("Vicks VapoRub Tub", "विक बाम डिब्बी")}</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -339,27 +415,73 @@ function PrescriptionScanContent() {
 
           {/* Results & Confirmation Card */}
           <section className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] p-6">
-            <h2 className="text-2xl font-bold mb-4">
-              {localize("2. Review & Confirm Medicines", "2. दवाएं समीक्षा व पुष्टि करें")}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">
+                {localize("2. Review & Confirm Medicines", "2. दवाएं समीक्षा व पुष्टि करें")}
+              </h2>
+              {items.length > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 font-semibold border border-cyan-500/30">
+                  {localize("{count} item(s) found", "{count} दवाएं मिलीं", { count: items.length })}
+                </span>
+              )}
+            </div>
+
+            {/* Always display scan feedback if present */}
+            {rawNotes && (
+              <div className="mb-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3 text-xs text-cyan-200">
+                <span className="font-bold">ℹ️ {localize("Scan Result", "स्कैन परिणाम")}:</span> {rawNotes}{" "}
+                {source === "local_ocr"
+                  ? "(AI Vision OCR)"
+                  : source === "gemini_vision"
+                  ? "(Gemini Vision)"
+                  : ""}
+              </div>
+            )}
+
+            {/* Quick Manual Add Input Bar */}
+            <form onSubmit={handleAddManual} className="mb-5 flex gap-2">
+              <input
+                type="text"
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                placeholder={localize(
+                  "Type a medicine/balm name (e.g. Vicks, Dolo 650, Volini)...",
+                  "दवा या बाम का नाम लिखें (उदा. Vicks, Dolo 650, Volini)..."
+                )}
+                className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!manualInput.trim()}
+                className="rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-bold text-black hover:bg-cyan-400 disabled:opacity-40 transition whitespace-nowrap"
+              >
+                + {localize("Add Medicine", "दवा जोड़ें")}
+              </button>
+            </form>
 
             {items.length === 0 ? (
-              <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 text-center text-[var(--muted)]">
-                <span className="text-4xl mb-2">💊</span>
-                <p>
-                  {localize(
-                    "Upload a photo and click 'Extract Medicines' to view detected items.",
-                    "फोटो अपलोड करके 'Extract Medicines' पर क्लिक करें।"
-                  )}
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-8 text-center text-[var(--muted)]">
+                <span className="text-5xl mb-3">{hasScanned ? "🔍" : "💊"}</span>
+                <p className="font-semibold text-slate-200 text-sm">
+                  {hasScanned
+                    ? localize("No matching medicines could be read from this photo", "इस फोटो से कोई पहचानी जाने वाली दवा नहीं मिल सकी")
+                    : localize("Upload a photo and click 'Extract Medicines' to view detected items.", "फोटो अपलोड करके 'Extract Medicines' पर क्लिक करें।")}
                 </p>
+                {hasScanned ? (
+                  <p className="mt-2 text-xs text-slate-400 max-w-md">
+                    {localize(
+                      "Tips: Ensure clear lighting, avoid glare on glossy blister packs or circular tubs, or use the '+ Add Medicine' bar above to type the name directly.",
+                      "सुझाव: सुनिश्चित करें कि रोशनी अच्छी हो, बोतल या पन्नी पर चमक न हो, या ऊपर दिए गए '+ दवा जोड़ें' विकल्प से सीधे नाम लिख लें।"
+                    )}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-400">
+                    {localize("You can also type any medicine above to add it immediately.", "आप तुरंत जोड़ने के लिए ऊपर किसी भी दवा का नाम भी टाइप कर सकते हैं।")}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
-                {rawNotes && (
-                  <p className="text-xs text-[var(--muted)] bg-[color:var(--surface)] p-3 rounded-xl">
-                    ℹ️ {rawNotes} {source === "openai_vision" ? "(AI Vision OCR)" : ""}
-                  </p>
-                )}
 
                 <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
                   {items.map((item) => (

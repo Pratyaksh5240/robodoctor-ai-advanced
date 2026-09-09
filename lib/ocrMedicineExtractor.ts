@@ -1,4 +1,5 @@
 import { createWorker } from "tesseract.js";
+import sharp from "sharp";
 import path from "path";
 
 export type ScannedMedicineItem = {
@@ -25,6 +26,118 @@ interface ClinicalDrugRule {
 }
 
 const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
+  // OTC & HOUSEHOLD MEDICINES (Topical Balms, Ointments, Syrups)
+  {
+    id: "vicks",
+    canonicalName: "Vicks VapoRub (Camphor, Menthol & Eucalyptus)",
+    aliases: ["vicks", "vaporub", "vapo rub", "action 500", "vaporub classic"],
+    defaultDosage: "10ml / 25ml / 50ml Topical Rub",
+    defaultFrequency: "Apply 2 to 3 times daily or as needed",
+    whenToEat: "Topical application or steam inhalation: Rub gently on chest, throat, and back before bedtime. Or add 1-2 teaspoons into hot water for steam inhalation. NEVER swallow or ingest orally.",
+    howMuchToEat: "Adults and children over 2 years: Apply a generous layer to chest, throat, and back. Do not apply inside nostrils or on broken/damaged skin.",
+    harmOveruse: "TOXIC IF SWALLOWED — Camphor can cause severe central nervous system seizures and poisoning if ingested orally. Do not heat directly in microwave.",
+    purpose: "Topical decongestant & analgesic: relieves cough, nasal congestion, body aches, and cold symptoms.",
+  },
+  {
+    id: "volini",
+    canonicalName: "Volini / Pain Relief Gel (Diclofenac & Methyl Salicylate)",
+    aliases: ["volini", "moov", "iodex", "omnigel", "relispray", "fastum", "move"],
+    defaultDosage: "Topical Gel / Spray",
+    defaultFrequency: "Apply 2 to 3 times daily",
+    whenToEat: "Apply a thin layer to the affected painful area and massage gently until absorbed. Wash hands thoroughly with soap after application.",
+    howMuchToEat: "Apply 2g to 4g to painful area 2-3 times daily as needed for pain.",
+    harmOveruse: "For external use only. Do not apply to open cuts, burns, or eyes. Excessive application over large body surfaces can cause systemic NSAID toxicity.",
+    purpose: "Topical NSAID pain relief: relieves joint pain, muscle sprains, neck stiffness, and backache.",
+  },
+  {
+    id: "benadryl",
+    canonicalName: "Cough Syrup (Diphenhydramine / Expectorant)",
+    aliases: ["benadryl", "ascoril", "corex", "grilinctus", "chericof", "alex", "zedex", "cofsils", "koflet", "cough syrup"],
+    defaultDosage: "5ml - 10ml Oral Liquid",
+    defaultFrequency: "Every 6 to 8 hours as needed (1-1-1)",
+    whenToEat: "Take 5ml to 10ml after food using a calibrated medicine cup. Shake the bottle well before each dose.",
+    howMuchToEat: "Adults: 5ml to 10ml up to 3 times daily (do not exceed 30ml in 24 hours).",
+    harmOveruse: "May cause significant drowsiness, dizziness, and impaired alertness. Avoid driving, machinery, and alcohol.",
+    purpose: "Antitussive and expectorant: relieves productive cough, bronchial irritation, and throat tickle.",
+  },
+  {
+    id: "digene",
+    canonicalName: "Digene / Antacid (Magnesium & Aluminium Hydroxide)",
+    aliases: ["digene", "gelusil", "eno", "gaviscon", "polycrol", "antacid"],
+    defaultDosage: "10ml Liquid or 2 Chewable Tablets",
+    defaultFrequency: "After meals and at bedtime as needed",
+    whenToEat: "Take 10ml of liquid or chew 1 to 2 tablets thoroughly 30 minutes after meals and at bedtime.",
+    howMuchToEat: "Adults: 10ml to 20ml per dose. Do not exceed 6 doses in 24 hours.",
+    harmOveruse: "Prolonged excessive use can alter bowel habits (aluminum causes constipation, magnesium causes diarrhea) and interfere with drug absorption.",
+    purpose: "Antacid: rapid neutralization of gastric acid, relieving heartburn, acidity, sour stomach, and indigestion.",
+  },
+  {
+    id: "otrivin",
+    canonicalName: "Otrivin / Nasivion (Xylometazoline Nasal Decongestant)",
+    aliases: ["otrivin", "nasivion", "xylometazoline", "nasal drops", "nasal spray"],
+    defaultDosage: "0.1% / 1-2 Sprays per nostril",
+    defaultFrequency: "2 to 3 times daily (Max 5 consecutive days)",
+    whenToEat: "Blow nose gently before use. Administer 1 to 2 drops/sprays into each nostril while breathing in gently.",
+    howMuchToEat: "1 to 2 drops in each nostril, 2-3 times daily. Strictly do NOT exceed 5 consecutive days of continuous use.",
+    harmOveruse: "Rebound congestion (rhinitis medicamentosa): nose becomes permanently blocked if used beyond 5 days. Can also elevate blood pressure.",
+    purpose: "Nasal vasoconstrictor: opens blocked nasal passages and relieves sinus congestion within 2 minutes.",
+  },
+  {
+    id: "betadine",
+    canonicalName: "Betadine / Antiseptic (Povidone-Iodine / Framycetin)",
+    aliases: ["betadine", "soframycin", "neosporin", "burnol", "povidone", "antiseptic ointment"],
+    defaultDosage: "5% / 10% Topical Ointment",
+    defaultFrequency: "Apply 1 to 2 times daily",
+    whenToEat: "Clean the wound or abrasion with water, pat dry, and apply a thin layer with sterile cotton or bandage.",
+    howMuchToEat: "Apply small pea-sized amount directly to cut, scrape, or minor burn.",
+    harmOveruse: "For external use only. Avoid prolonged use on large open burns to prevent systemic iodine absorption and thyroid disruption.",
+    purpose: "Broad-spectrum antiseptic: destroys bacteria, viruses, and fungi to prevent infection in cuts and burns.",
+  },
+  {
+    id: "dettol",
+    canonicalName: "Dettol / Savlon Antiseptic Liquid (Chloroxylenol / Cetrimide)",
+    aliases: ["dettol", "savlon", "chloroxylenol"],
+    defaultDosage: "Diluted Liquid Solution",
+    defaultFrequency: "As needed for first-aid skin cleansing",
+    whenToEat: "ALWAYS dilute with water (1 tablespoon in 250ml water) before applying to skin. NEVER drink or ingest.",
+    howMuchToEat: "Use diluted solution with clean cotton to swab cuts or minor scrapes.",
+    harmOveruse: "EXTREMELY TOXIC IF SWALLOWED. Can cause severe throat chemical burns, laryngeal edema, respiratory failure, and poisoning.",
+    purpose: "Topical first-aid antiseptic and disinfectant for minor wounds, cuts, and scrapes.",
+  },
+  {
+    id: "electral",
+    canonicalName: "Electral / ORS (WHO Oral Rehydration Salts)",
+    aliases: ["electral", "ors", "prolyte", "oral rehydration"],
+    defaultDosage: "1 Sachet in 1 Litre Water",
+    defaultFrequency: "Sip throughout the day during dehydration",
+    whenToEat: "Mix complete sachet in 1 litre of clean boiled and cooled water. Sip slowly over 24 hours.",
+    howMuchToEat: "Adults: 1 to 2 litres daily during active diarrhea, vomiting, or heavy sweating.",
+    harmOveruse: "Do not mix with milk, fruit juices, or soft drinks. Discard any solution left over after 24 hours.",
+    purpose: "Electrolyte replacement: replenishes sodium, potassium, chloride, and glucose during diarrhea and heat exhaustion.",
+  },
+  {
+    id: "zandu_balm",
+    canonicalName: "Zandu Balm / Tiger Balm (Menthol & Herbal Camphor)",
+    aliases: ["zandu balm", "tiger balm", "amrutanjan", "headache balm"],
+    defaultDosage: "Topical Herbal Balm",
+    defaultFrequency: "Apply gently to forehead/temples as needed",
+    whenToEat: "Apply a small amount and massage gently on temples, forehead, or nape of neck for tension headaches.",
+    howMuchToEat: "Small pea-sized amount as needed. For external use only.",
+    harmOveruse: "Avoid contact with eyes, eyelids, nostrils, or irritated skin. Do not swallow.",
+    purpose: "Herbal pain-relieving balm for tension headaches, cold congestion, and neck stiffness.",
+  },
+  {
+    id: "strepsils",
+    canonicalName: "Strepsils / Throat Lozenges (Dichlorobenzyl Alcohol)",
+    aliases: ["strepsils", "vicks drops", "halls", "cofsils lozenges", "lozenges"],
+    defaultDosage: "1 Lozenge every 2 to 3 hours",
+    defaultFrequency: "Every 2-3 hours as needed (Max 8-10/day)",
+    whenToEat: "Place 1 lozenge in mouth and dissolve slowly. Do not chew or swallow whole.",
+    howMuchToEat: "Adults: 1 lozenge every 2 to 3 hours as needed.",
+    harmOveruse: "Choking hazard in children under 6 years. High sugar content in standard lozenges should be monitored by diabetics.",
+    purpose: "Antibacterial and soothing relief for sore throat, throat tickle, and hoarseness.",
+  },
+
   // CARDIOVASCULAR
   {
     id: "atorvastatin",
@@ -62,7 +175,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "atenolol",
     canonicalName: "Atenolol",
-    aliases: ["atenolol", "aten", "tenormin", "betacard"],
+    aliases: ["atenolol", "tenormin", "betacard"],
     defaultDosage: "50mg",
     defaultFrequency: "Once daily in morning (1-0-0)",
     whenToEat: "Take in the morning with a full glass of water, ideally with or after breakfast.",
@@ -73,7 +186,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "aspirin",
     canonicalName: "Ecosprin (Enteric-Coated Aspirin)",
-    aliases: ["aspirin", "ecosprin", "acetylsalicylic", "disprin", "asa", "ecospirin"],
+    aliases: ["aspirin", "ecosprin", "acetylsalicylic", "disprin", "ecospirin"],
     defaultDosage: "75mg",
     defaultFrequency: "Once daily strictly after lunch or dinner (0-1-0)",
     whenToEat: "Take strictly after a full meal with water. Never consume on an empty stomach to prevent gastric mucosal damage.",
@@ -130,7 +243,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "glimepiride",
     canonicalName: "Glimepiride",
-    aliases: ["glimepiride", "amaryl", "zoryl", "gp", "glimy"],
+    aliases: ["glimepiride", "amaryl", "zoryl", "glimy"],
     defaultDosage: "1mg",
     defaultFrequency: "Once daily in morning 15 mins before breakfast (1-0-0)",
     whenToEat: "Take exactly 15 minutes before breakfast. Never skip breakfast after taking this medication.",
@@ -141,7 +254,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "dapagliflozin",
     canonicalName: "Dapagliflozin",
-    aliases: ["dapagliflozin", "forxiga", "dapa", "oxra", "dapacip"],
+    aliases: ["dapagliflozin", "forxiga", "oxra", "dapacip"],
     defaultDosage: "10mg",
     defaultFrequency: "Once daily in morning with water (1-0-0)",
     whenToEat: "Take once daily in the morning. Drink plenty of water throughout the day.",
@@ -154,7 +267,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "pantoprazole",
     canonicalName: "Pantoprazole Sodium",
-    aliases: ["pantoprazole", "pan", "pantocid", "pantodac", "protonix", "pantop"],
+    aliases: ["pantoprazole", "pantocid", "pantodac", "protonix", "pantop"],
     defaultDosage: "40mg",
     defaultFrequency: "Once daily 30-45 minutes before breakfast (1-0-0)",
     whenToEat: "Take 30 to 45 minutes before your first meal/breakfast in the morning with plain water.",
@@ -222,7 +335,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "diclofenac",
     canonicalName: "Diclofenac Sodium",
-    aliases: ["diclofenac", "voveran", "voltaren", "dicloran", "nac"],
+    aliases: ["diclofenac", "voveran", "voltaren", "dicloran"],
     defaultDosage: "50mg",
     defaultFrequency: "Twice daily after meals (1-0-1)",
     whenToEat: "Take strictly after meals with a full glass of water. Swallow tablet whole.",
@@ -235,7 +348,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "amoxicillin",
     canonicalName: "Amoxicillin / Clavulanate",
-    aliases: ["amoxicillin", "augmentin", "clavam", "moxikind", "amox", "mox", "novamox"],
+    aliases: ["amoxicillin", "augmentin", "clavam", "moxikind", "mox", "novamox"],
     defaultDosage: "625mg",
     defaultFrequency: "Twice daily for 5 to 7 days (1-0-1)",
     whenToEat: "Take at the start of or immediately after a meal to reduce stomach irritation.",
@@ -281,7 +394,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "levocetirizine",
     canonicalName: "Levocetirizine",
-    aliases: ["levocetirizine", "levocet", "xyzal", "teczine", "1-cet"],
+    aliases: ["levocetirizine", "levocet", "xyzal", "teczine"],
     defaultDosage: "5mg",
     defaultFrequency: "Once daily at bedtime (0-0-1)",
     whenToEat: "Take once daily at bedtime with water.",
@@ -316,7 +429,7 @@ const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
   {
     id: "vitamind3",
     canonicalName: "Vitamin D3 (Cholecalciferol)",
-    aliases: ["cholecalciferol", "vitamin d3", "calcirol", "d3", "depura", "uprise-d3"],
+    aliases: ["cholecalciferol", "vitamin d3", "calcirol", "depura", "uprise-d3"],
     defaultDosage: "60,000 IU",
     defaultFrequency: "Once weekly with milk for 8 weeks (0-0-1/week)",
     whenToEat: "Take once a week with milk or a meal containing healthy fats for optimal fat-soluble absorption.",
@@ -331,15 +444,48 @@ export async function extractMedicinesFromImage(
 ): Promise<{ medicines: ScannedMedicineItem[]; rawNotes: string; recognizedCount: number }> {
   let worker;
   try {
+    // Sharp high-fidelity image preprocessing:
+    // 1. Auto-orient based on mobile EXIF tags
+    // 2. Resize small gallery photos up to 1600px width
+    // 3. Normalize contrast and sharpen edges for optimal character recognition
+    let processedBuffer = imageBuffer;
+    try {
+      processedBuffer = await sharp(imageBuffer)
+        .rotate()
+        .resize({ width: 1600, fit: "inside", withoutEnlargement: false })
+        .grayscale()
+        .normalize()
+        .sharpen({ sigma: 1.2 })
+        .png()
+        .toBuffer();
+    } catch (sharpErr) {
+      console.warn("Sharp preprocessing notice:", sharpErr);
+      processedBuffer = imageBuffer;
+    }
+
     const workerPath = path.resolve(
       process.cwd(),
       "node_modules/tesseract.js/src/worker-script/node/index.js"
     );
-    worker = await createWorker("eng", 1, {
-      workerPath,
-    });
-    const ret = await worker.recognize(imageBuffer);
-    const ocrText = ret.data.text || "";
+    worker = await createWorker("eng", 1, { workerPath });
+
+    // Primary Pass
+    const ret = await worker.recognize(processedBuffer);
+    let ocrText = ret.data.text || "";
+
+    // Secondary Inverted Pass if primary text is sparse (common with dark bottles/tubs like Vicks blue lid!)
+    if (ocrText.replace(/\s+/g, "").length < 40) {
+      try {
+        const invertedBuffer = await sharp(processedBuffer)
+          .negate({ alpha: false })
+          .toBuffer();
+        const ret2 = await worker.recognize(invertedBuffer);
+        if (ret2.data.text && ret2.data.text.length > 10) {
+          ocrText = ocrText + "\n" + ret2.data.text;
+        }
+      } catch (_) {}
+    }
+
     await worker.terminate();
 
     const normalized = ocrText.toLowerCase();
@@ -350,7 +496,7 @@ export async function extractMedicinesFromImage(
       const isMatch = rule.aliases.some((alias) => {
         const regex = new RegExp(`\\b${alias}\\b`, "i");
         if (regex.test(ocrText)) return true;
-        if (alias.length >= 6 && normalized.includes(alias.toLowerCase())) {
+        if (alias.length >= 5 && normalized.includes(alias.toLowerCase())) {
           return true;
         }
         return false;
@@ -372,7 +518,7 @@ export async function extractMedicinesFromImage(
 
         // Extract dosage from local snippet with OCR digit cleanup
         let extractedDosage = rule.defaultDosage;
-        const dosageMatch = snippet.match(/([0-9SsoO]+(?:\.[0-9]+)?\s*(?:mg|mcg|iu|ml|g)\b)/i);
+        const dosageMatch = snippet.match(/([0-9SsoO]+(?:\.[0-9]+)?\s*(?:mg|mcg|iu|ml|g|gm)\b)/i);
         if (dosageMatch && dosageMatch[1]) {
           const rawCandidate = dosageMatch[1].trim();
           const cleanDose = rawCandidate
@@ -424,10 +570,10 @@ export async function extractMedicinesFromImage(
       };
     }
 
-    // Secondary fallback: Look for structured lines starting with Tab, Cap, or numbers
+    // Secondary fallback: Extract any labeled formulation lines (balm, rub, ml, gm, tab, syrup, cough, relief)
     const lines = ocrText.split("\n").map((l) => l.trim()).filter((l) => l.length > 3);
     const candidateLines = lines.filter((l) =>
-      /(?:tab|cap|syp|inj|rx|tablet|capsule|\bmg\b|\bmcg\b)/i.test(l) &&
+      /(?:tab|cap|syp|inj|rx|tablet|capsule|balm|rub|gel|cream|ointment|lotion|drops?|spray|syrup|\bmg\b|\bmcg\b|\bml\b|\bgm\b|cough|cold|relief|pain)/i.test(l) &&
       !/(?:hospital|clinic|doctor|patient|date|phone|reg|institute|dr\.)/i.test(l)
     );
 
@@ -436,12 +582,12 @@ export async function extractMedicinesFromImage(
       if (cleanLine.length > 3) {
         foundItems.push({
           name: cleanLine,
-          dosageGuess: "As labeled on prescription",
-          frequencyGuess: "Follow prescribing doctor's instructions",
-          whenToEat: "Take with water as directed by your physician or pharmacist.",
-          howMuchToEat: "Strictly adhere to the prescribed quantity on the prescription label.",
-          harmOveruse: "Do not exceed prescribed limits. Consult your physician if adverse reactions occur.",
-          purpose: "Prescription medication identified via optical character scan.",
+          dosageGuess: "As labeled on packaging",
+          frequencyGuess: "Follow product packaging / doctor instructions",
+          whenToEat: "Use or consume strictly as directed on the manufacturer packaging or by your physician.",
+          howMuchToEat: "Adhere to the labeled adult dosage. Do not exceed maximum daily limits.",
+          harmOveruse: "Excessive or inappropriate use can cause adverse reactions. Discontinue and consult a doctor if irritation occurs.",
+          purpose: "Healthcare product / medication identified via optical packaging scan.",
           confidence: "medium",
         });
       }
@@ -450,7 +596,7 @@ export async function extractMedicinesFromImage(
     if (foundItems.length > 0) {
       return {
         medicines: foundItems,
-        rawNotes: `Detected ${foundItems.length} prescription item(s) from document text.`,
+        rawNotes: `Detected ${foundItems.length} medicine item(s) from packaging text.`,
         recognizedCount: foundItems.length,
       };
     }
@@ -458,7 +604,7 @@ export async function extractMedicinesFromImage(
     // No text found
     return {
       medicines: [],
-      rawNotes: "No clear medicine names or prescription text could be detected in this photo. Please ensure the medicine name, salt, or prescription text is in sharp focus, well-lit, and laid flat.",
+      rawNotes: "No clear medicine names or packaging text could be detected in this photo. Please ensure the brand name label is front-facing, well-lit, and in sharp focus.",
       recognizedCount: 0,
     };
   } catch (err: any) {

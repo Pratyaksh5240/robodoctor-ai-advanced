@@ -130,6 +130,21 @@ const samplePresets: Record<string, { medicines: ScannedMedicineItem[]; rawNotes
     ],
     rawNotes: "Analgesic Blister Strip: Paracetamol IP 650mg verified with strict liver safety thresholds.",
   },
+  vicks: {
+    medicines: [
+      {
+        name: "Vicks VapoRub (Camphor, Menthol & Eucalyptus)",
+        dosageGuess: "10ml / 25ml / 50ml Topical Rub",
+        frequencyGuess: "Apply 2 to 3 times daily or as needed",
+        whenToEat: "Topical application or steam inhalation: Rub gently on chest, throat, and back before bedtime. Or add 1-2 teaspoons into hot water for steam inhalation. NEVER swallow or ingest orally.",
+        howMuchToEat: "Adults and children over 2 years: Apply a generous layer to chest, throat, and back. Do not apply inside nostrils or on broken/damaged skin.",
+        harmOveruse: "TOXIC IF SWALLOWED — Camphor can cause severe central nervous system seizures and poisoning if ingested orally. Do not heat directly in microwave.",
+        purpose: "Topical decongestant & analgesic: relieves cough, nasal congestion, body aches, and cold symptoms.",
+        confidence: "high",
+      },
+    ],
+    rawNotes: "OTC Topical Balms & Rubs: Vicks VapoRub Classic with external application and steam inhalation guidelines.",
+  },
 };
 
 function fallbackExtraction(sampleType?: string, textHint?: string): ScanResponse {
