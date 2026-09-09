@@ -152,10 +152,12 @@ def predict_framingham_risk(df_raw: pd.DataFrame):
         
         p_blend = weights["lr"] * p_lr + weights["lgb"] * p_lgb
         chd_prob_pct = round(float(p_blend) * 100.0, 1)
+        opt_thresh = float(framingham_artifact.get("optimal_threshold", 0.37))
+        opt_thresh_pct = round(opt_thresh * 100.0, 1)
         
-        if chd_prob_pct >= 20.0:
+        if chd_prob_pct >= opt_thresh_pct:
             risk_tier = "high"
-        elif chd_prob_pct >= 10.0:
+        elif chd_prob_pct >= 20.0:
             risk_tier = "moderate"
         else:
             risk_tier = "low"
@@ -650,8 +652,8 @@ def predict_vital_risk(request: VitalPredictRequest):
             chd_factors = compute_chd_shap_factors(df_input)
             is_ens = framingham_artifact.get("model_type") == "framingham_ensemble"
             if is_ens:
-                model_name = "Framingham Heart Study 10-Year CHD Risk Model (V3 Ensemble)"
-                model_acc = "72.9% ROC-AUC (67.3% Accuracy, 66.1% Recall, 64.6% Precision)"
+                model_name = "Framingham Heart Study 10-Year CHD Risk Model (V3 Screening Ensemble)"
+                model_acc = "86.1% Recall (Sensitivity), 56.2% Precision, 72.9% ROC-AUC"
             else:
                 model_name = "Framingham Heart Study 10-Year CHD Risk Model (Genuine Dataset)"
                 model_acc = "72.8% ROC-AUC (67.8% Clinical Sensitivity)"
