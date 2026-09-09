@@ -54,6 +54,8 @@ export default function FamilyHistoryPage() {
   const [importText, setImportText] = useState("");
   const [parsedImport, setParsedImport] = useState<ParsedSbarResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -92,28 +94,103 @@ export default function FamilyHistoryPage() {
     loadData();
   }, [user]);
 
-  // Handle SBAR File Upload & Ingestion for Family Tree
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Handle SBAR File Upload & Ingestion for Family Tree (Supports PDF, JSON, TXT)
+  const processUploadedFile = (file: File) => {
     if (!file) return;
     setImportError(null);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const raw = event.target?.result as string;
-        setImportText(raw);
-        const parsed = parseSbarFileContent(raw);
-        if (parsed.familyHistory.length === 0) {
-          setImportError(localize("No family hereditary conditions found in file. Please ensure it is a valid SBAR report or pedigree record.", "फाइल में कोई पारिवारिक स्वास्थ्य इतिहास नहीं मिला।"));
-        } else {
-          setParsedImport(parsed);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+    if (isPdf) {
+      setIsParsingFile(true);
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const fileDataUrl = event.target?.result as string;
+          const res = await fetch("/api/sbar-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileDataUrl }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Server responded with ${res.status}`);
+          }
+
+          const data = await res.json();
+          const parsed = data.result as ParsedSbarResult;
+
+          if (data.rawText) {
+            setImportText(data.rawText);
+          }
+
+          // If familyHistory is empty, but conditions are present, adapt them to family members
+          if (parsed && (!parsed.familyHistory || parsed.familyHistory.length === 0) && parsed.conditions?.length) {
+            parsed.familyHistory = parsed.conditions.map(c => ({
+              relation: "Family Relative",
+              condition: c.name,
+              ageOfOnset: null,
+              notes: c.notes || "Imported from SBAR document",
+            }));
+          }
+
+          if (!parsed || !parsed.familyHistory?.length) {
+            setImportError(
+              localize(
+                "No family pedigree records could be automatically detected in this PDF. Extracted text is placed in the box below for review.",
+                "इस PDF में कोई पारिवारिक स्वास्थ्य स्थिति नहीं मिली। निकाला गया टेक्स्ट नीचे दिया गया है।"
+              )
+            );
+          } else {
+            setParsedImport(parsed);
+          }
+        } catch (err: any) {
+          setImportError(err.message || "Failed to extract family data from PDF.");
+        } finally {
+          setIsParsingFile(false);
         }
-      } catch (err: any) {
-        setImportError(err.message || "Failed to parse SBAR file.");
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const raw = event.target?.result as string;
+          setImportText(raw);
+          const parsed = parseSbarFileContent(raw);
+          if ((!parsed.familyHistory || parsed.familyHistory.length === 0) && parsed.conditions?.length) {
+            parsed.familyHistory = parsed.conditions.map(c => ({
+              relation: "Family Relative",
+              condition: c.name,
+              ageOfOnset: null,
+              notes: c.notes || "Imported from SBAR document",
+            }));
+          }
+          if (!parsed.familyHistory || parsed.familyHistory.length === 0) {
+            setImportError(
+              localize(
+                "No family hereditary conditions found in file. Please ensure it is a valid SBAR report or pedigree record.",
+                "फाइल में कोई पारिवारिक स्वास्थ्य इतिहास नहीं मिला।"
+              )
+            );
+          } else {
+            setParsedImport(parsed);
+          }
+        } catch (err: any) {
+          setImportError(err.message || "Failed to parse SBAR file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+    e.target.value = "";
   };
 
   const handleParsePastedText = () => {
@@ -121,7 +198,15 @@ export default function FamilyHistoryPage() {
     setImportError(null);
     try {
       const parsed = parseSbarFileContent(importText);
-      if (parsed.familyHistory.length === 0) {
+      if ((!parsed.familyHistory || parsed.familyHistory.length === 0) && parsed.conditions?.length) {
+        parsed.familyHistory = parsed.conditions.map(c => ({
+          relation: "Family Relative",
+          condition: c.name,
+          ageOfOnset: null,
+          notes: c.notes || "Imported from pasted text",
+        }));
+      }
+      if (!parsed.familyHistory || parsed.familyHistory.length === 0) {
         setImportError(localize("No family conditions detected in text. Format as SBAR or JSON with familyHistory.", "टेक्स्ट में कोई पारिवारिक स्वास्थ्य स्थिति नहीं मिली।"));
       } else {
         setParsedImport(parsed);
@@ -1069,23 +1154,51 @@ export default function FamilyHistoryPage() {
             </div>
 
             {/* File Dropzone */}
-            <div className="border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 rounded-2xl p-6 text-center bg-indigo-950/10 transition space-y-3">
-              <div className="text-3xl">🌳</div>
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) processUploadedFile(file);
+              }}
+              className={`block border-2 border-dashed rounded-2xl p-6 text-center transition cursor-pointer ${
+                isDraggingFile
+                  ? "border-indigo-400 bg-indigo-950/40 scale-[1.01]"
+                  : "border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-950/10"
+              }`}
+            >
+              <div className="text-3xl mb-2">🌳</div>
               <div>
-                <label className="cursor-pointer font-bold text-indigo-400 hover:text-indigo-300 text-sm">
-                  <span>{localize("Click to select SBAR file (.json, .txt, .sbar)", "SBAR फाइल चुनें (.json, .txt, .sbar)")}</span>
-                  <input
-                    type="file"
-                    accept=".json,.txt,.sbar,.md"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
+                <span className="font-bold text-indigo-400 hover:text-indigo-300 text-sm">
+                  {isDraggingFile
+                    ? localize("Drop your SBAR PDF or JSON file here", "अपनी SBAR PDF या JSON फाइल यहाँ छोड़ें")
+                    : localize("Click to select or drag & drop SBAR file (.pdf, .json, .txt, .sbar)", "SBAR फाइल चुनें या ड्रैग करें (.pdf, .json, .txt, .sbar)")}
+                </span>
+                <input
+                  type="file"
+                  accept=".pdf,.json,.txt,.sbar,.md,application/pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {localize("Or paste SBAR family history text below", "या नीचे SBAR टेक्स्ट पेस्ट करें")}
+                  {localize("Supports clinical SBAR PDF reports, JSON exports, and pedigree text notes", "क्लिनिकल SBAR PDF रिपोर्ट, JSON एक्सपोर्ट और वंशावली नोट्स समर्थित")}
                 </p>
               </div>
-            </div>
+              {isParsingFile && (
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 animate-pulse pt-2">
+                  <span className="animate-spin">⏳</span>
+                  <span>{localize("AI is analyzing and extracting SBAR clinical data from PDF...", "AI PDF से SBAR डेटा निकाल रहा है...")}</span>
+                </div>
+              )}
+            </label>
 
             {/* Paste Text Fallback */}
             <div>

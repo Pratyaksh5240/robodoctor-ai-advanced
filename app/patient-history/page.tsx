@@ -37,6 +37,8 @@ export default function PatientHistoryPage() {
   const [importText, setImportText] = useState("");
   const [parsedImport, setParsedImport] = useState<ParsedSbarResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
   // Synthesize SBAR clinical data for direct export
@@ -93,28 +95,85 @@ export default function PatientHistoryPage() {
     loadData();
   }, [user, activeProfileId]);
 
-  // Handle SBAR File Upload & Parsing
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Handle SBAR File Upload & Ingestion (Supports PDF, JSON, TXT)
+  const processUploadedFile = (file: File) => {
     if (!file) return;
     setImportError(null);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const raw = event.target?.result as string;
-        setImportText(raw);
-        const parsed = parseSbarFileContent(raw);
-        if (parsed.conditions.length === 0) {
-          setImportError(localize("No chronic conditions found in file. Please ensure it is a valid SBAR report or text note.", "फाइल में कोई पुरानी स्थिति नहीं मिली।"));
-        } else {
-          setParsedImport(parsed);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+    if (isPdf) {
+      setIsParsingFile(true);
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const fileDataUrl = event.target?.result as string;
+          const res = await fetch("/api/sbar-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileDataUrl }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Server responded with ${res.status}`);
+          }
+
+          const data = await res.json();
+          const parsed = data.result as ParsedSbarResult;
+
+          if (data.rawText) {
+            setImportText(data.rawText);
+          }
+
+          if (!parsed || (!parsed.conditions?.length && !parsed.familyHistory?.length)) {
+            setImportError(
+              localize(
+                "No chronic conditions could be automatically identified in this PDF. The extracted text has been placed in the box below for your review.",
+                "इस PDF में स्वचालित रूप से कोई पुरानी स्थिति नहीं मिली। निकाला गया टेक्स्ट नीचे दिया गया है।"
+              )
+            );
+          } else {
+            setParsedImport(parsed);
+          }
+        } catch (err: any) {
+          setImportError(err.message || "Failed to extract data from PDF.");
+        } finally {
+          setIsParsingFile(false);
         }
-      } catch (err: any) {
-        setImportError(err.message || "Failed to parse SBAR file.");
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const raw = event.target?.result as string;
+          setImportText(raw);
+          const parsed = parseSbarFileContent(raw);
+          if (parsed.conditions.length === 0) {
+            setImportError(
+              localize(
+                "No chronic conditions found in file. Please ensure it is a valid SBAR report or text note.",
+                "फाइल में कोई पुरानी स्थिति नहीं मिली।"
+              )
+            );
+          } else {
+            setParsedImport(parsed);
+          }
+        } catch (err: any) {
+          setImportError(err.message || "Failed to parse SBAR file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+    e.target.value = "";
   };
 
   const handleParsePastedText = () => {
@@ -1185,23 +1244,51 @@ export default function PatientHistoryPage() {
             </div>
 
             {/* File Dropzone */}
-            <div className="border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/60 rounded-2xl p-6 text-center bg-emerald-950/10 transition space-y-3">
-              <div className="text-3xl">📄</div>
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) processUploadedFile(file);
+              }}
+              className={`block border-2 border-dashed rounded-2xl p-6 text-center transition cursor-pointer ${
+                isDraggingFile
+                  ? "border-emerald-400 bg-emerald-950/40 scale-[1.01]"
+                  : "border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-950/10"
+              }`}
+            >
+              <div className="text-3xl mb-2">📄</div>
               <div>
-                <label className="cursor-pointer font-bold text-emerald-400 hover:text-emerald-300 text-sm">
-                  <span>{localize("Click to select SBAR file (.json, .txt, .sbar)", "SBAR फाइल चुनें (.json, .txt, .sbar)")}</span>
-                  <input
-                    type="file"
-                    accept=".json,.txt,.sbar,.md"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
+                <span className="font-bold text-emerald-400 hover:text-emerald-300 text-sm">
+                  {isDraggingFile
+                    ? localize("Drop your SBAR PDF or JSON file here", "अपनी SBAR PDF या JSON फाइल यहाँ छोड़ें")
+                    : localize("Click to select or drag & drop SBAR file (.pdf, .json, .txt, .sbar)", "SBAR फाइल चुनें या ड्रैग करें (.pdf, .json, .txt, .sbar)")}
+                </span>
+                <input
+                  type="file"
+                  accept=".pdf,.json,.txt,.sbar,.md,application/pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {localize("Or paste SBAR report text below", "या नीचे SBAR टेक्स्ट पेस्ट करें")}
+                  {localize("Supports clinical SBAR PDF reports, discharge summaries, and JSON exports", "क्लिनिकल SBAR PDF रिपोर्ट, डिस्चार्ज सारांश और JSON एक्सपोर्ट समर्थित")}
                 </p>
               </div>
-            </div>
+              {isParsingFile && (
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 animate-pulse pt-2">
+                  <span className="animate-spin">⏳</span>
+                  <span>{localize("AI is analyzing and extracting SBAR clinical data from PDF...", "AI PDF से SBAR डेटा निकाल रहा है...")}</span>
+                </div>
+              )}
+            </label>
 
             {/* Paste Text Fallback */}
             <div>
