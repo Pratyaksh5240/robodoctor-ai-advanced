@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 type VideoItem = {
@@ -236,6 +237,35 @@ export default function YogaVideosPage() {
             </Link>
           </div>
         </div>
+
+                {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Therapeutic Yoga & Movement Library", "चिकित्सीय योग एवं व्यायाम लाइब्रेरी")}
+          title={localize("How to Find the Right Exercise & Yoga Session", "सही योग और व्यायाम सत्र कैसे खोजें")}
+          purpose={localize(
+            "Discover verified, doctor-friendly yoga and physical exercise routines tailored for back pain, joint stiffness, stress relief, weight loss, and cardio conditioning.",
+            "पीठ दर्द, जोड़ों की जकड़न, मानसिक तनाव, वजन घटाने और हृदय स्वास्थ्य के लिए अनुकूलित प्रमाणित योग और व्यायाम वीडियो खोजें।"
+          )}
+          inputs={[
+            localize("Search keywords: e.g. 'pushups', 'back pain', 'sciatica', 'neck stiffness', 'weight loss', 'breathing'", "खोज शब्द: जैसे 'पुश-अप्स', 'कमर दर्द', 'गर्दन में अकड़न', 'वजन घटाना', 'प्राणायाम'"),
+            localize("Category filters: All, Back Pain, Stress & Anxiety, Weight Loss, or Desk Relief", "श्रेणी फिल्टर: सभी, पीठ दर्द, तनाव व चिंता, वजन घटाना, या ऑफिस थकान"),
+            localize("Quick tag chips for instant 1-click curated searches", "तुरंत परिणाम के लिए त्वरित टैग बटन"),
+          ]}
+          steps={[
+            localize("Select a category filter or type your symptom/fitness target in the search box", "श्रेणी चुनें या सर्च बॉक्स में अपना लक्षण या फिटनेस लक्ष्य टाइप करें"),
+            localize("Browse high-definition video guides with duration and focus indications", "अवधि और स्वास्थ्य लाभ के विवरण के साथ एचडी वीडियो गाइड देखें"),
+            localize("Click and practice along directly within the player at your own comfortable pace", "अपनी सुविधानुसार गति से सीधे प्लेयर में वीडियो देखकर अभ्यास करें"),
+          ]}
+          outputs={[
+            localize("Curated YouTube clinical yoga and posture-correction video streams", "आसन सुधार और दर्द निवारक प्रमाणित योग वीडियो स्ट्रीम"),
+            localize("Clear medical focus descriptions (e.g. core strengthening, lumbar spine decompression)", "स्पष्ट चिकित्सीय लाभ विवरण (जैसे रीढ़ की हड्डी पर दबाव कम करना, कोर ताकत)"),
+            localize("Category & tag associations for easily finding complementary exercises", "संबंधित व्यायाम खोजने के लिए श्रेणी और टैग मार्गदर्शन"),
+          ]}
+          tip={localize(
+            "Tip: Always practice within your comfort zone. If you have active spinal disc herniation or severe joint pain, consult your physician before attempting deep twists or forward bends.",
+            "सुझाव: हमेशा अपनी आरामदायक सीमा में ही अभ्यास करें। यदि आपको स्लिप डिस्क या जोड़ों में गंभीर दर्द है, तो गहरे मुड़ने वाले आसनों से पहले डॉक्टर से परामर्श करें।"
+          )}
+        />
 
         {/* Search Bar & Button Section */}
         <div className="mb-8 rounded-[32px] border border-white/10 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-md">

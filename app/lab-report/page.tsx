@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { auth, onAuthStateChanged, User } from "@/lib/auth";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useLocalize } from "@/app/context/LanguageContext";
 import {
   evaluateLabForm,
@@ -347,6 +348,36 @@ export default function LabReportPage() {
             </Link>
           </div>
         </div>
+
+        {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Lab & Blood Test Explainer", "लैब व रक्त परीक्षण विश्लेषक")}
+          title={localize("How to Understand Your Lab Reports", "अपनी लैब रिपोर्ट को कैसे समझें")}
+          purpose={localize(
+            "Translate complex medical blood test results into simple, plain language. Understand what your numbers mean, which values are out of range, and what to ask your physician.",
+            "जटिल मेडिकल रक्त परीक्षण परिणामों को सरल, आसान भाषा में समझें। जानें कि आपके नंबरों का क्या अर्थ है, कौन से मान सामान्य सीमा से बाहर हैं, और डॉक्टर से क्या पूछना है।"
+          )}
+          inputs={[
+            localize("Biological Sex (Male or Female, to adjust hormone/hemoglobin reference ranges)", "जैविक लिंग (पुरुष या महिला, हीमोग्लोबिन संदर्भ सीमा के लिए)"),
+            localize("Blood test values: Hemoglobin, Fasting Sugar, HbA1c, TSH, Cholesterol, Creatinine, Platelets, WBC", "रक्त परीक्षण मान: हीमोग्लोबिन, फास्टिंग शुगर, HbA1c, थायरॉयड, कोलेस्ट्रॉल, क्रिएटिनिन, प्लेटलेट्स, डब्ल्यूबीसी"),
+            localize("Or click a 'Quick Preset' (Healthy, Anemia, Diabetes, or Infection) for instant test values", "या तुरंत परीक्षण के लिए 'त्वरित उदाहरण' (स्वस्थ, एनीमिया, शुगर, या संक्रमण) पर क्लिक करें"),
+          ]}
+          steps={[
+            localize("Select your biological sex and fill your laboratory numbers", "अपना लिंग चुनें और लैब रिपोर्ट के अनुसार नंबर भरें"),
+            localize("Click 'Analyze Lab Values' to evaluate all markers", "'लैब मानों का विश्लेषण करें' पर क्लिक करें"),
+            localize("Review color-coded cards with plain-language explanations", "आसान भाषा में रंग-कोडित कार्ड और स्पष्टीकरण पढ़ें"),
+          ]}
+          outputs={[
+            localize("Normal vs High vs Low flags for each specific organ marker", "प्रत्येक विशिष्ट अंग मार्कर के लिए सामान्य बनाम उच्च बनाम कम फ्लैग"),
+            localize("Critical alert banners if any value indicates immediate urgency", "यदि कोई मान तत्काल आपातकाल दर्शाता है तो महत्वपूर्ण चेतावनी"),
+            localize("Plain-language clinical meaning (e.g. renal load, oxygen transport)", "सरल भाषा में चिकित्सीय प्रभाव (जैसे किडनी लोड, ऑक्सीजन स्तर)"),
+            localize("Curated follow-up discussion questions for your physician", "आपके डॉक्टर से पूछने के लिए तैयार किए गए आवश्यक सवाल"),
+          ]}
+          tip={localize(
+            "Tip: You don't have to fill all 8 fields! Even entering just 1 or 2 values (e.g. only Hemoglobin or only Fasting Sugar) provides complete clinical guidance for those tests.",
+            "सुझाव: आपको सभी 8 फ़ील्ड भरने की आवश्यकता नहीं है! केवल 1 या 2 मान (उदा. केवल हीमोग्लोबिन या केवल शुगर) दर्ज करने पर भी आपको संपूर्ण मार्गदर्शन मिलेगा।"
+          )}
+        />
 
         {/* Biological Sex Toggle & Preset Buttons Strip */}
         <div className="mb-8 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 md:p-5 shadow-sm">

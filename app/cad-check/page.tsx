@@ -5,6 +5,7 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useLocalize } from "@/app/context/LanguageContext";
 
 type CadFactor = {
@@ -231,6 +232,37 @@ export default function CadCheckPage() {
             </div>
           </div>
         </div>
+
+        {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Angiographic CAD Screening", "एंजियोग्राफिक सीएडी स्क्रीनिंग")}
+          title={localize("How to Screen for Coronary Artery Disease", "कोरोनरी आर्टरी डिजीज की जांच कैसे करें")}
+          purpose={localize(
+            "This diagnostic tool assesses your probability of significant coronary artery narrowing (>50% blockage) using clinically validated stress-test and angiography markers (88.52% accuracy).",
+            "यह नैदानिक ​​उपकरण नैदानिक ​​रूप से मान्य स्ट्रेस-टेस्ट और एंजियोग्राफी मार्करों (88.52% सटीकता) का उपयोग करके महत्वपूर्ण कोरोनरी धमनी संकुचन (>50% रुकावट) की संभावना का आकलन करता है।"
+          )}
+          inputs={[
+            localize("Patient Demographics: Age and biological sex", "रोगी जनसांख्यिकी: उम्र और जैविक लिंग"),
+            localize("Symptoms: Chest pain type (typical, atypical, or silent)", "लक्षण: सीने में दर्द का प्रकार (विशिष्ट, असामान्य, या शांत)"),
+            localize("Vitals: Resting blood pressure, cholesterol, fasting sugar", "जीवन संकेत: आराम का बीपी, कोलेस्ट्रॉल, खाली पेट शुगर"),
+            localize("Stress Markers: Max heart rate, ST depression & slope", "स्ट्रेस संकेतक: अधिकतम हृदय गति, एसटी डिप्रेशन और स्लोप"),
+          ]}
+          steps={[
+            localize("Enter patient numbers or choose a 'Quick Profile' above", "रोगी डेटा भरें या ऊपर 'त्वरित प्रोफाइल' चुनें"),
+            localize("Click 'Execute CAD Diagnostic Screening'", "'सीएडी डायग्नोस्टिक स्क्रीनिंग निष्पादित करें' पर क्लिक करें"),
+            localize("Inspect probability, risk tier, and cardiology guidance", "संभावना, जोखिम स्तर और हृदय रोग विशेषज्ञ की सलाह देखें"),
+          ]}
+          outputs={[
+            localize("Diagnostic Probability of Stenosis (>50% blockage)", "स्टेनोसिस की नैदानिक संभावना (>50% रुकावट)"),
+            localize("CAD Risk Tier (Low, Moderate, High, or Critical)", "सीएडी जोखिम स्तर (कम, मध्यम, उच्च, या गंभीर)"),
+            localize("Key contributing biomarkers (what drove the risk up/down)", "मुख्य बायोमार्कर्स (किस वजह से जोखिम बढ़ा या घटा)"),
+            localize("Actionable Cardiology Care & Triage Recommendations", "कार्डियोलॉजी देखभाल और ट्राइएज सिफारिशें"),
+          ]}
+          tip={localize(
+            "Tip: For a quick demonstration, click 'Load Confirmed CAD Case (~97% Risk)' or 'Load Healthy Non-CAD Case (~4% Risk)' to automatically populate all clinical indicators.",
+            "सुझाव: त्वरित प्रदर्शन के लिए, सभी नैदानिक संकेतकों को स्वचालित रूप से भरने के लिए 'पुष्ट सीएडी केस लोड करें' या 'स्वस्थ केस लोड करें' पर क्लिक करें।"
+          )}
+        />
 
         {/* Preset Quick-Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">

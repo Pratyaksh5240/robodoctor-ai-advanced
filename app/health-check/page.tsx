@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { saveHealthReport, saveUserProfile } from "@/lib/reportHistory";
@@ -475,6 +476,36 @@ export default function HealthCheck() {
           </Link>
         </div>
       </div>
+
+      <FeatureGuide
+        badge={localize("10-Year Heart & Vital Check", "10-वर्षीय हृदय व जीवन संकेत जांच")}
+        title={localize("How to Check Your Health Risk", "अपने स्वास्थ्य जोखिम की जांच कैसे करें")}
+        purpose={localize(
+          "This tool calculates your 10-year cardiovascular risk score and checks if your daily blood pressure, sugar, and heart rate readings are in a safe range.",
+          "यह उपकरण आपके 10-वर्षीय हृदय जोखिम स्कोर की गणना करता है और जांचता है कि आपका दैनिक बीपी, शुगर और पल्स सुरक्षित सीमा में हैं या नहीं।"
+        )}
+        inputs={[
+          localize("Your Age, Biological Sex, Height & Weight", "आपकी उम्र, लिंग, लंबाई और वजन"),
+          localize("Blood Pressure (e.g. 120/80 mmHg) & Heart Rate", "ब्लड प्रेशर (उदा. 120/80 mmHg) और पल्स दर"),
+          localize("Blood Sugar level (fasting or random)", "ब्लड शुगर का स्तर (खाली पेट या रैंडम)"),
+          localize("Any current symptoms or discomfort", "वर्तमान में कोई लक्षण या असुविधा"),
+        ]}
+        steps={[
+          localize("Type your numbers or click 'Speak' to talk", "अपने नंबर लिखें या बोलने के लिए 'बोलें' दबाएं"),
+          localize("Click 'Analyze Health' for instant screening", "तुरंत जांच के लिए 'स्वास्थ्य विश्लेषण करें' दबाएं"),
+          localize("Read your risk score and follow the advice", "अपना जोखिम स्कोर पढ़ें और सुझावों का पालन करें"),
+        ]}
+        outputs={[
+          localize("Overall Risk Tier (Low, Moderate, or High)", "समग्र जोखिम स्तर (कम, मध्यम, या उच्च)"),
+          localize("10-year cardiovascular risk percentage", "10-वर्षीय हृदय जोखिम प्रतिशत"),
+          localize("Personalized lifestyle and nutrition advice", "व्यक्तिगत जीवनशैली और पोषण सलाह"),
+          localize("Emergency red-flag warning if readings are critical", "गंभीर रीडिंग होने पर आपातकालीन रेड-फ्लैग चेतावनी"),
+        ]}
+        tip={localize(
+          "Don't know your exact BP or sugar? Check 'I don't know these readings' to get educational guidance based on your age, body weight, and symptoms.",
+          "क्या आपको अपना बीपी या शुगर नहीं पता? अपनी उम्र, वजन और लक्षणों के आधार पर मार्गदर्शन पाने के लिए 'मुझे ये रीडिंग नहीं पता' चुनें।"
+        )}
+      />
 
       <motion.button
         onClick={startVoiceInput}

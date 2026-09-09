@@ -9,6 +9,7 @@ import { useLanguage } from "@/app/context/LanguageContext";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { useLocalize } from "@/lib/useLocalize";
+import FeatureGuide from "@/components/FeatureGuide";
 import {
   getNotificationPermissionState,
   requestNotificationPermission,
@@ -220,6 +221,35 @@ function MedicineReminderContent() {
             </Link>
           </div>
         </div>
+
+                {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Dose Tracking & Desktop Push Alarms", "दवा शेड्यूलिंग व डेस्कटॉप अलार्म")}
+          title={localize("How to Schedule Medication & Health Reminders", "दवा और स्वास्थ्य रिमाइंडर कैसे सेट करें")}
+          purpose={localize(
+            "Never miss a dose, blood pressure check, or hydration break. Set desktop notifications and voice alerts that alert you on your computer even when your browser tab is closed.",
+            "कभी भी कोई दवा, बीपी जांच या पानी पीने का समय न भूलें। डेस्कटॉप नोटिफिकेशन और वॉयस अलार्म सेट करें जो ब्राउज़र टैब बंद होने पर भी आपको सूचित करते हैं।"
+          )}
+          inputs={[
+            localize("Reminder Title: Medicine name (e.g. Metformin 500mg), BP Check, or Drink Water", "रिमाइंडर नाम: दवा का नाम (जैसे मेटफॉर्मिन 500mg), बीपी चेक, या पानी पिएं"),
+            localize("Target Time: 24-hour time of day (e.g. 08:30 AM, 02:00 PM, 09:00 PM)", "नियत समय: दिन का समय (जैसे सुबह 08:30, दोपहर 02:00, रात 09:00)"),
+            localize("Or click Quick Presets (Morning Blood Pressure, Evening Statin, Hydration, Post-Dinner Walk)", "या त्वरित बटन (सुबह बीपी चेक, रात की दवा, पानी का ब्रेक) पर क्लिक करें"),
+          ]}
+          steps={[
+            localize("Click 'Enable Real Desktop Notifications' and grant browser permission", "'डेस्कटॉप नोटिफिकेशन सक्षम करें' पर क्लिक करें और अनुमति दें"),
+            localize("Enter the medicine name and schedule time, or tap a quick preset", "दवा का नाम और समय दर्ज करें, या किसी त्वरित बटन पर टैप करें"),
+            localize("Click 'Save Reminder' — your computer will pop up an alert and play audio when it is time", "'रिमाइंडर सेव करें' दबाएं — समय होने पर आपका कंप्यूटर पॉपअप और ध्वनि सूचना देगा"),
+          ]}
+          outputs={[
+            localize("Operating System desktop notification banners on Windows, Mac, or Linux", "विंडोज, मैक या लिनक्स पर सीधे ऑपरेटिंग सिस्टम नोटिफिकेशन पॉपअप"),
+            localize("Voice alert announcement speaking the exact medication and instructions out loud", "ध्वनि उद्घोषणा जो दवा का नाम और निर्देश बोलकर सुनाती है"),
+            localize("Persistent schedule card with one-click 'Take Now' adherence logger and deletion control", "दवा लेने का रिकॉर्ड दर्ज करने और रिमाइंडर हटाने की सुविधा वाला शेड्यूल कार्ड"),
+          ]}
+          tip={localize(
+            "Tip: Click 'Test Notification' right after enabling permissions to confirm that Windows Focus Assist or OS Do Not Disturb isn't silencing your alarms.",
+            "सुझाव: अनुमति देने के बाद 'टेस्ट नोटिफिकेशन' पर क्लिक करके सुनिश्चित करें कि विंडोज फोकस असिस्ट आपकी अलर्ट को रोक तो नहीं रहा है।"
+          )}
+        />
 
         {/* Notification Permission Control Status Bar */}
         <div className="mb-8 rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6">

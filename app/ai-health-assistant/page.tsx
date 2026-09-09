@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { useLocalize } from "@/lib/useLocalize";
+import FeatureGuide from "@/components/FeatureGuide";
 import type {
   AssistantConversationMessage,
   BaselineAnalysisSummary,
@@ -303,6 +304,36 @@ export default function AIHealthAssistantPage() {
             {status}
           </div>
         )}
+
+                {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Clinical AI Assistant & Symptom Triage", "क्लिनिकल एआई सहायक व लक्षण ट्राइएज")}
+          title={localize("How to Use the Interactive Symptom Assistant", "इंटरएक्टिव लक्षण सहायक का उपयोग कैसे करें")}
+          purpose={localize(
+            "Engage in a structured medical consultation. Provide symptoms and baseline vitals to receive automated clinical triage, risk tier analysis, and actionable next steps.",
+            "एक व्यवस्थित स्वास्थ्य परामर्श प्राप्त करें। लक्षण और बुनियादी वाइटल्स दर्ज करें ताकि स्वचालित क्लिनिकल ट्राइएज, जोखिम विश्लेषण और उचित अगला कदम जान सकें।"
+          )}
+          inputs={[
+            localize("Patient profile: Age, height, weight, BP, blood sugar, and pulse rate", "मरीज का विवरण: उम्र, ऊंचाई, वजन, बीपी, ब्लड शुगर और हृदय गति"),
+            localize("Detailed symptoms: Location, severity, duration, and what makes it better or worse", "विस्तृत लक्षण: दर्द/परेशानी का स्थान, तीव्रता, कितने दिनों से है और कब घटता/बढ़ता है"),
+            localize("Clinical notes or past medical conditions you are currently managing", "अतिरिक्त चिकित्सीय विवरण या पुरानी बीमारियां जिनका इलाज चल रहा है"),
+          ]}
+          steps={[
+            localize("Fill in your baseline profile vitals or start typing symptoms directly", "अपनी बुनियादी प्रोफाइल व वाइटल्स भरें या सीधे लक्षण लिखना शुरू करें"),
+            localize("Engage with the AI as it asks targeted follow-up clarifying questions", "एआई द्वारा पूछे गए स्पष्टीकरण सवालों के जवाब दें"),
+            localize("Review the comprehensive risk assessment and structured clinical recommendations", "व्यापक जोखिम मूल्यांकन और व्यवस्थित चिकित्सीय सिफारिशों की समीक्षा करें"),
+          ]}
+          outputs={[
+            localize("Triage Risk Classification (Low, Moderate, High, or Immediate Emergency)", "ट्राइएज जोखिम वर्गीकरण (कम, मध्यम, उच्च, या तत्काल आपातकालीन)"),
+            localize("Symptom breakdown with potential differential clinical possibilities", "संभावित नैदानिक कारणों के साथ विस्तृत लक्षण विश्लेषण"),
+            localize("Personalized lifestyle, home-monitoring, and medical consultation plan", "व्यक्तिगत जीवनशैली, घरेलू निगरानी और डॉक्टर परामर्श योजना"),
+            localize("Exportable summary to share with your healthcare provider", "अपने डॉक्टर के साथ साझा करने योग्य परामर्श सारांश"),
+          ]}
+          tip={localize(
+            "Tip: The more details you share (like duration of symptoms and resting vitals), the more precise and helpful the triage guidance will be.",
+            "सुझाव: आप जितनी अधिक जानकारी साझा करेंगे (जैसे लक्षण कितने दिनों से हैं और आराम के समय वाइटल्स), ट्राइएज मार्गदर्शन उतना ही सटीक और उपयोगी होगा।"
+          )}
+        />
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <section className="rounded-[30px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">

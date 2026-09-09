@@ -7,6 +7,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import {
@@ -476,6 +477,36 @@ export default function PatientHistoryPage() {
             </Link>
           </div>
         </div>
+
+        {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Longitudinal History & SBAR Ingestion", "दीर्घकालिक इतिहास व एसबीएआर आयात")}
+          title={localize("How to Track Conditions & Import SBAR Reports", "बीमारियों को ट्रैक करने और एसबीएआर रिपोर्ट आयात करने का तरीका")}
+          purpose={localize(
+            "Maintain a structured timeline of your health conditions, medication changes, and hospital discharges. Easily import doctor notes and generate SBAR summaries.",
+            "अपनी स्वास्थ्य स्थितियों, दवाओं के बदलाव और अस्पताल डिस्चार्ज का एक संरचित रिकॉर्ड रखें। डॉक्टर के पर्चे आसानी से आयात करें और एसबीएआर सारांश बनाएं।"
+          )}
+          inputs={[
+            localize("Condition name (e.g. Hypertension, Type 2 Diabetes, Asthma)", "बीमारी का नाम (जैसे हाइपरटेंशन, टाइप 2 डायबिटीज, अस्थमा)"),
+            localize("Status: Active (ongoing), Managed (under control), or Resolved", "स्थिति: सक्रिय (चल रही है), नियंत्रित, या ठीक हो चुकी"),
+            localize("Medication changes: Drug name, dose, reason, and prescribing doctor", "दवा बदलाव: दवा का नाम, खुराक, बदलने का कारण और डॉक्टर"),
+            localize("Or import directly: Drag and drop an SBAR PDF / hospital discharge file", "या सीधे आयात करें: एसबीएआर पीडीएफ / डिस्चार्ज फाइल ड्रैग और ड्रॉप करें"),
+          ]}
+          steps={[
+            localize("Click 'Log New Condition' or 'Upload SBAR File'", "'नई स्थिति जोड़ें' या 'एसबीएआर फाइल अपलोड करें' पर क्लिक करें"),
+            localize("Record new medications or dosage adjustments as they occur", "समय-समय पर नई दवाएं या खुराक में बदलाव दर्ज करें"),
+            localize("Export clean clinical SBAR report for your next doctor appointment", "अपने अगले डॉक्टर अपॉइंटमेंट के लिए क्लिनिकल एसबीएआर रिपोर्ट डाउनलोड करें"),
+          ]}
+          outputs={[
+            localize("Color-coded status timeline (Active vs Managed vs Resolved)", "रंग-कोडित स्थिति समयरेखा (सक्रिय बनाम नियंत्रित बनाम ठीक)"),
+            localize("Frequent Medication Change Alerts (>3 changes prompts specialist review)", "अक्सर दवा बदलाव चेतावनी (3 से अधिक बदलाव पर डॉक्टर समीक्षा सलाह)"),
+            localize("Standardized Hospital-Grade SBAR clinical summary ready to print", "प्रिंट के लिए तैयार मानकीकृत अस्पताल-ग्रेड एसबीएआर सारांश"),
+          ]}
+          tip={localize(
+            "Tip: You can drag and drop any PDF discharge summary directly into the 'Upload SBAR File' window to instantly populate conditions and prescriptions with zero manual typing.",
+            "सुझाव: बिना टाइप किए तुरंत बीमारियों और दवाओं को भरने के लिए 'एसबीएआर फाइल अपलोड करें' विंडो में किसी भी डिस्चार्ज पीडीएफ को सीधे ड्रैग-एंड-ड्रॉप कर सकते हैं।"
+          )}
+        />
 
         {/* Analytics & Longitudinal Trends Dashboard */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

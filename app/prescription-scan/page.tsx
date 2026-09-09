@@ -6,6 +6,7 @@ import { ChangeEvent, Suspense, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useLocalize } from "@/lib/useLocalize";
 import { ScannedMedicineItem } from "@/app/api/prescription-scan/route";
 
@@ -141,6 +142,36 @@ function PrescriptionScanContent() {
             </Link>
           </div>
         </div>
+
+        {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("AI Vision OCR Scanner", "एआई विज़न ओसीआर स्कैनर")}
+          title={localize("How to Scan Prescriptions & Medication Strips", "पर्चे और दवा की स्ट्रिप को कैसे स्कैन करें")}
+          purpose={localize(
+            "Quickly digitize handwritten or printed doctor prescriptions and medicine boxes to extract medicine names, strengths, timings, and schedules.",
+            "दवाओं के नाम, खुराक की ताकत, समय और शेड्यूल निकालने के लिए हाथ से लिखे या प्रिंट किए गए डॉक्टर के पर्चे और दवा के डिब्बों को तुरंत डिजिटाइज़ करें।"
+          )}
+          inputs={[
+            localize("A clear, flat photo of your doctor's Rx prescription", "अपने डॉक्टर के पर्चे (Rx) की एक साफ, सीधी फोटो"),
+            localize("Or a photo of the medication strip / box label showing the salt or brand name", "या दवा की स्ट्रिप / बॉक्स लेबल की फोटो जिसमें दवा का नाम दिख रहा हो"),
+            localize("Or select a pre-loaded sample prescription to test the scanner", "या स्कैनर का परीक्षण करने के लिए पहले से लोड किए गए नमूना पर्चे का चयन करें"),
+          ]}
+          steps={[
+            localize("Upload an image file or capture directly using your camera", "इमेज फाइल अपलोड करें या कैमरे से सीधे फोटो खींचें"),
+            localize("Click 'Run AI Prescription Scan' to extract text", "टेक्स्ट निकालने के लिए 'प्रिस्क्रिप्शन स्कैन चलाएं' पर क्लिक करें"),
+            localize("Review detected medicines and click 'Add to Reminders' if desired", "पहचानी गई दवाओं की समीक्षा करें और चाहें तो 'रिमाइंडर में जोड़ें' दबाएं"),
+          ]}
+          outputs={[
+            localize("Clean list of extracted medicine names with strengths (e.g. 500mg)", "ताकत (जैसे 500mg) के साथ निकाली गई दवाओं की स्पष्ट सूची"),
+            localize("Dosage instructions (e.g. 1-0-1, Once daily, Twice daily)", "खुराक निर्देश (जैसे 1-0-1, दिन में एक बार, दिन में दो बार)"),
+            localize("Timing advice (Before meals, After food, Bedtime)", "समय की सलाह (खाने से पहले, भोजन के बाद, सोते समय)"),
+            localize("One-click button to send medications to your reminder schedule", "दवाओं को सीधे अपने रिमाइंडर शेड्यूल में भेजने के लिए सिंगल-क्लिक बटन"),
+          ]}
+          tip={localize(
+            "Tip: Ensure the paper is well-lit and laid flat. Avoid flash reflection on glossy medicine strips for the highest optical character recognition accuracy.",
+            "सुझाव: सुनिश्चित करें कि कागज पर अच्छी रोशनी हो और वह मुड़ा न हो। उच्चतम सटीकता के लिए चमकदार दवा की पन्नी पर फ्लैश की चमक से बचें।"
+          )}
+        />
 
         {/* Warning Disclaimer Box */}
         <div className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">

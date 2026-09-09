@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { Language, useLanguage, useLocalize } from "@/app/context/LanguageContext";
 import { translateUi } from "@/lib/uiI18n";
 
@@ -442,6 +443,36 @@ export default function AIChatbotPage() {
             </Link>
           </div>
         </div>
+
+                {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("24/7 AI Health Companion", "24/7 एआई स्वास्थ्य साथी")}
+          title={localize("How to Chat with RoboDoctor AI", "RoboDoctor AI के साथ चैट कैसे करें")}
+          purpose={localize(
+            "Ask general health questions, explore daily symptoms, check vital readings (BP, pulse, blood sugar), and receive immediate non-emergency guidance.",
+            "सामान्य स्वास्थ्य प्रश्न पूछें, दैनिक लक्षणों का पता लगाएं, वाइटल्स (बीपी, पल्स, शुगर) जांचें और तत्काल गैर-आपातकालीन मार्गदर्शन प्राप्त करें।"
+          )}
+          inputs={[
+            localize("Type any health inquiry or symptom in simple everyday language", "साधारण बोलचाल की भाषा में कोई भी स्वास्थ्य प्रश्न या लक्षण लिखें"),
+            localize("Optional numbers: Your recent BP (e.g. 130/85), fasting sugar, or pulse rate", "वैकल्पिक आंकड़े: हालिया बीपी (जैसे 130/85), फास्टिंग शुगर, या पल्स"),
+            localize("Or click Quick Topic buttons (Fever, Blood Pressure, High Sugar, Chest Discomfort)", "या त्वरित विषय बटन (बुखार, बीपी, शुगर, सीने में भारीपन) पर क्लिक करें"),
+          ]}
+          steps={[
+            localize("Type your question or click a recommended topic chip", "अपना प्रश्न टाइप करें या अनुशंसित विषय बटन चुनें"),
+            localize("RoboDoctor screens for clinical red flags and evaluates your parameters", "RoboDoctor संभावित आपातकालीन संकेतों और आपके मापदंडों की जांच करता है"),
+            localize("Read practical explanations, home management steps, and doctor visit recommendations", "व्यावहारिक स्पष्टीकरण, घरेलू देखभाल के उपाय और डॉक्टर परामर्श सलाह पढ़ें"),
+          ]}
+          outputs={[
+            localize("Conversational guidance tailored directly to your symptoms and concerns", "आपके लक्षणों और चिंताओं के अनुसार तैयार बातचीत मार्गदर्शन"),
+            localize("Urgency flags: Clear alerts if symptoms require urgent in-person medical evaluation", "तात्कालिकता अलर्ट: यदि लक्षणों के लिए तुरंत अस्पताल जाने की आवश्यकता हो तो स्पष्ट चेतावनी"),
+            localize("Self-care steps: Hydration, rest, temperature monitoring, and dietary notes", "स्व-देखभाल उपाय: पानी पीना, आराम, तापमान निगरानी और आहार संबंधी सुझाव"),
+            localize("Specialist recommendations & links to deeper RoboDoctor screening modules", "विशेषज्ञ डॉक्टर की सिफारिशें और RoboDoctor के अन्य जांच टूल्स के लिंक"),
+          ]}
+          tip={localize(
+            "Tip: In life-threatening emergencies (crushing chest pain, sudden numbness/paralysis, severe shortness of breath), call 112 or your nearest emergency ambulance immediately.",
+            "सुझाव: जीवन-घातक आपात स्थिति (सीने में तेज दर्द, अचानक सुन्नता/लकवा, सांस लेने में अत्यधिक परेशानी) में तुरंत 112 या स्थानीय एम्बुलेंस को कॉल करें।"
+          )}
+        />
 
         <div className="rounded-[32px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
           <div className="mb-4 flex flex-wrap gap-3">

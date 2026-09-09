@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import {
   DRUG_DATABASE,
   PRESET_COMBINATIONS,
@@ -184,6 +185,36 @@ function MedicineCheckerContent() {
             </div>
           </div>
         </section>
+
+                {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Medication Safety & Interaction Guard", "दवा सुरक्षा एवं इंटरैक्शन गार्ड")}
+          title={localize("How to Check Your Medicine Combinations", "अपनी दवाओं के संयोजन की जांच कैसे करें")}
+          purpose={localize(
+            "Prevent adverse drug events by checking if two or more medications, vitamins, or over-the-counter drugs interact dangerously, increase bleeding risks, or require spaced dosing.",
+            "यह जांचें कि दो या दो से अधिक दवाएं, सप्लीमेंट्स या दर्द निवारक आपस में सुरक्षित हैं या नहीं, ताकि खतरनाक रिएक्शन, ब्लीडिंग जोखिम और गलत समय पर दवा लेने से बचा जा सके।"
+          )}
+          inputs={[
+            localize("Search medications by generic name (e.g. Metformin, Paracetamol, Atorvastatin) or common brand names", "दवा के जेनरिक नाम (जैसे मेटफॉर्मिन, पैरासिटामोल, एटोरवास्टेटिन) या ब्रांड नाम से खोजें"),
+            localize("Select 2 or more medicines to test mutual compatibility", "आपसी सुरक्षा जांचने के लिए 2 या अधिक दवाएं चुनें"),
+            localize("Or click 'Try Common Medicine Combinations' presets to see sample interactions", "या नमूना देखने के लिए 'त्वरित उदाहरण' बटनों में से किसी एक पर क्लिक करें"),
+          ]}
+          steps={[
+            localize("Search and click '+' to add each medication to your active list", "दवा खोजें और अपनी सक्रिय सूची में जोड़ने के लिए '+' दबाएं"),
+            localize("The engine cross-references drug pairs against clinical pharmacological rules", "सिस्टम तुरंत चिकित्सीय फॉर्माकोलॉजिकल नियमों के अनुसार दवाओं की जांच करता है"),
+            localize("Inspect the color-coded severity banner, risk breakdown, and food/alcohol warnings", "रंग-कोडित सुरक्षा बैनर, जोखिम विवरण और भोजन/शराब चेतावनियों की समीक्षा करें"),
+          ]}
+          outputs={[
+            localize("Overall safety badge: Safe (Green), Minor (Blue), Moderate (Amber), or Severe (Red)", "समग्र सुरक्षा रेटिंग: सुरक्षित (हरा), मामूली (नीला), मध्यम (नारंगी), या गंभीर (लाल)"),
+            localize("Pairwise interaction explanation with exact mechanism of conflict", "दवाओं के बीच टकराव का सटीक वैज्ञानिक कारण और प्रभाव"),
+            localize("Recommended dosing intervals (e.g. take 2 hours apart, take with food)", "खुराक के बीच आवश्यक समयांतराल (जैसे 2 घंटे का अंतर रखें, खाने के साथ लें)"),
+            localize("Food, caffeine, and alcohol restrictions for your selected regimen", "आपके चुने हुए नुस्खे के लिए भोजन, चाय-कॉफी और शराब से जुड़े परहेज"),
+          ]}
+          tip={localize(
+            "Tip: You can transfer medicines directly from the Prescription Scanner into this checker with a single click!",
+            "सुझाव: आप प्रिस्क्रिप्शन स्कैनर से एक क्लिक में सीधे अपनी दवाएं इस चेकर में ला सकते हैं!"
+          )}
+        />
 
         {/* Quick Presets */}
         <section className="space-y-3">

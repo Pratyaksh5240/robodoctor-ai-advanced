@@ -10,6 +10,7 @@ import { useLanguage, useLocalize, Language } from "@/app/context/LanguageContex
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { translateUi } from "@/lib/uiI18n";
 
@@ -525,6 +526,37 @@ export default function SkinCheckPage() {
             </Link>
           </div>
         </div>
+
+        {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("AI Skin Rash & Lesion Triage", "एआई त्वचा व दाने की जांच")}
+          title={localize("How to Analyze Skin Concerns", "त्वचा की समस्या का विश्लेषण कैसे करें")}
+          purpose={localize(
+            "This module uses computer vision and symptom triage to evaluate rashes, spots, or irritations, and provides self-care guidance and urgency levels.",
+            "यह मॉड्यूल त्वचा के दाने, धब्बे या जलन का मूल्यांकन करने और उचित देखभाल व तात्कालिकता स्तर प्रदान करने के लिए कंप्यूटर विजन और लक्षण ट्राइएज का उपयोग करता है।"
+          )}
+          inputs={[
+            localize("A clear, focused photo of the skin area", "प्रभावित त्वचा की एक साफ और केंद्रित फोटो"),
+            localize("Body location (face, arm, chest, leg, etc.)", "शरीर का हिस्सा (चेहरा, हाथ, छाती, पैर, आदि)"),
+            localize("Duration (how many days or weeks it has been present)", "अवधि (यह समस्या कितने दिनों या हफ्तों से है)"),
+            localize("Sensations: Itching, pain, burning, fever, or spreading", "लक्षण: खुजली, दर्द, जलन, बुखार, या तेजी से फैलना"),
+          ]}
+          steps={[
+            localize("Upload or capture a photo using your camera", "कैमरे से फोटो लें या गैलरी से अपलोड करें"),
+            localize("Select the body location and check your symptoms", "शरीर का हिस्सा चुनें और अपने लक्षण मार्क करें"),
+            localize("Click 'Run Skin Analysis' to review instant triage", "'त्वचा विश्लेषण चलाएं' पर क्लिक करके त्वरित निष्कर्ष देखें"),
+          ]}
+          outputs={[
+            localize("Severity assessment (Low, Moderate, High, or Urgent)", "गंभीरता मूल्यांकन (कम, मध्यम, उच्च, या तत्काल)"),
+            localize("Possible dermatological matches & visual explanations", "संभावित त्वचा स्थितियां और दृश्य विवरण"),
+            localize("Red-flag emergency warning signs to watch for", "सावधानी योग्य आपातकालीन रेड-फ्लैग संकेत"),
+            localize("Recommended home precautions vs when to consult a doctor", "घरेलू सावधानियां बनाम डॉक्टर को कब दिखाना है"),
+          ]}
+          tip={localize(
+            "Tip: For best results, use good daylight or a flash, hold your camera steady about 10-15 cm away, and ensure the skin issue is in sharp focus.",
+            "सुझाव: सर्वोत्तम परिणामों के लिए, अच्छी रोशनी का उपयोग करें, कैमरे को 10-15 सेमी दूर स्थिर रखें और सुनिश्चित करें कि फोटो धुंधली न हो।"
+          )}
+        />
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">

@@ -6,6 +6,7 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useAuth } from "@/components/AuthProvider";
 import {
   getFamilyHistory,
@@ -460,6 +461,37 @@ export default function FamilyHistoryPage() {
             </Link>
           </div>
         </div>
+
+        {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Family Health Tree & Genetics", "पारिवारिक स्वास्थ्य व आनुवंशिकी")}
+          title={localize("How to Map Your Family Medical History", "अपने पारिवारिक चिकित्सीय इतिहास को कैसे मैप करें")}
+          purpose={localize(
+            "Track major illnesses across parents, grandparents, and siblings. Identify hereditary patterns (e.g. early heart disease, diabetes, breast/colon cancer) before symptoms appear.",
+            "माता-पिता, दादा-दादी, नाना-नानी और भाई-बहनों की प्रमुख बीमारियों को ट्रैक करें। लक्षण दिखने से पहले आनुवंशिक पैटर्न (जैसे जल्दी हृदय रोग, मधुमेह, कैंसर) को पहचानें।"
+          )}
+          inputs={[
+            localize("Family member: Paternal or Maternal side (Father, Mother, Grandparent, Sibling)", "रिश्तेदार: पिता या माता पक्ष (पिता, माता, दादा/दादी, नाना/नानी, भाई/बहन)"),
+            localize("Medical condition (e.g. Heart Attack, Stroke, Hypertension, Diabetes, Cancer)", "स्वास्थ्य स्थिति (जैसे दिल का दौरा, स्ट्रोक, बीपी, शुगर, कैंसर)"),
+            localize("Age of onset (how old they were when first diagnosed)", "शुरुआत की उम्र (पहली बार बीमारी का पता चलने पर उम्र)"),
+            localize("Or upload: Directly import family SBAR PDF or clinic records", "या अपलोड करें: सीधे पारिवारिक एसबीएआर पीडीएफ या क्लिनिक रिकॉर्ड आयात करें"),
+          ]}
+          steps={[
+            localize("Click 'Add Family Record' or select a relative on the tree", "'नया रिकॉर्ड जोड़ें' पर क्लिक करें या ट्री पर रिश्तेदार चुनें"),
+            localize("Specify the diagnosis and age of onset", "बीमारी और शुरुआत की उम्र दर्ज करें"),
+            localize("Review multi-relative patterns and targeted screening advisories", "बहु-रिश्तेदार पैटर्न और लक्षित स्क्रीनिंग सलाह की समीक्षा करें"),
+          ]}
+          outputs={[
+            localize("Interactive multi-generation pedigree family health chart", "इंटरएक्टिव बहु-पीढ़ी वंशावली पारिवारिक स्वास्थ्य चार्ट"),
+            localize("Hereditary pattern alerts (flags conditions appearing in 2+ relatives)", "आनुवंशिक पैटर्न चेतावनी (2+ रिश्तेदारों में दिखने वाली बीमारियों की पहचान)"),
+            localize("Early-onset risk warnings (<55 in males, <65 in females)", "शुरुआती उम्र जोखिम चेतावनी (पुरुषों में <55, महिलाओं में <65 वर्ष)"),
+            localize("Physician discussion guide tailored for your next checkup", "आपके अगले चेकअप के लिए विशेष रूप से तैयार डॉक्टर चर्चा गाइड"),
+          ]}
+          tip={localize(
+            "Tip: Knowing if a first-degree relative had a heart attack or cancer before age 55 is one of the strongest clinical predictors for earlier preventative screenings.",
+            "सुझाव: यह जानना कि क्या किसी करीबी रिश्तेदार को 55 वर्ष से पहले दिल का दौरा या कैंसर हुआ था, प्रारंभिक निवारक जांच के लिए सबसे महत्वपूर्ण नैदानिक संकेतकों में से एक है।"
+          )}
+        />
 
         {/* Multi-Relative Pattern Advisory Banner (Non-Diagnostic) */}
         {detectedPatterns.length > 0 && (

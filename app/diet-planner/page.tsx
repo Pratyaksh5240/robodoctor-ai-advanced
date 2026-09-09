@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
+import FeatureGuide from "@/components/FeatureGuide";
 import { useLanguage, useLocalize } from "@/app/context/LanguageContext";
 
 const mealPlans = {
@@ -100,6 +101,34 @@ function DietPlannerContent() {
             </Link>
           </div>
         </div>
+
+                {/* Feature Usage Guide */}
+        <FeatureGuide
+          badge={localize("Evidence-Based Medical Nutrition", "चिकित्सीय पोषण एवं डाइट योजना")}
+          title={localize("How to Use the Therapeutic Diet Planner", "चिकित्सीय डाइट प्लानर का उपयोग कैसे करें")}
+          purpose={localize(
+            "Get structured, whole-food meal plans designed specifically for chronic condition management: Hypertension (DASH diet), Diabetes (glycemic control), or Healthy Weight.",
+            "हाई बीपी (DASH डाइट), डायबिटीज (ब्लड शुगर संतुलन) या स्वस्थ वजन घटाने के लिए विशेष रूप से डिज़ाइन की गई संतुलित भोजन योजना प्राप्त करें।"
+          )}
+          inputs={[
+            localize("Select your health goal: Blood Pressure Control, Blood Sugar Support, or Weight Management", "अपना स्वास्थ्य लक्ष्य चुनें: बीपी नियंत्रण, ब्लड शुगर संतुलन, या वजन प्रबंधन"),
+            localize("Optionally access via pre-set clinical links directly from Health Check or CAD screening", "या हेल्थ चेक / सीएडी स्क्रीनिंग के बाद सीधे अनुशंसित डाइट लिंक पर आएं"),
+          ]}
+          steps={[
+            localize("Choose your primary wellness or chronic disease management target", "अपना प्राथमिक स्वास्थ्य लक्ष्य या पुरानी बीमारी प्रबंधन विकल्प चुनें"),
+            localize("View the balanced daily 4-meal roadmap (Breakfast, Lunch, Snack, Dinner)", "दैनिक 4 समय के संतुलित भोजन का शेड्यूल (नाश्ता, दोपहर का खाना, स्नैक, रात का खाना) देखें"),
+            localize("Adopt nutrient-dense Indian and international whole-food options with low sodium and steady carbs", "कम नमक, कम चीनी और उच्च फाइबर वाले पौष्टिक आहार विकल्पों को दिनचर्या में शामिल करें"),
+          ]}
+          outputs={[
+            localize("Tailored 4-meal daily outline with portion and ingredient guidance", "सामग्री और मात्रा के सुझावों के साथ दिनभर का 4-समय का भोजन ढांचा"),
+            localize("Specific nutrient focus (e.g. low-sodium potassium-rich for BP, high-fiber for sugar)", "विशिष्ट पोषक तत्वों पर ध्यान (जैसे बीपी के लिए कम सोडियम, शुगर के लिए उच्च फाइबर)"),
+            localize("Practical snack substitutions to prevent sugar spikes and hunger dips", "शुगर स्पाइक्स और कमजोरी से बचने के लिए स्वस्थ स्नैक्स विकल्प"),
+          ]}
+          tip={localize(
+            "Tip: Combine your dietary adjustments with adequate hydration and 20-30 minutes of gentle walking for the most significant improvements in BP and glucose levels.",
+            "सुझाव: बीपी और शुगर में बेहतरीन सुधार के लिए डाइट के साथ पर्याप्त पानी पिएं और रोजाना 20-30 मिनट टहलें।"
+          )}
+        />
 
         <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
           <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
