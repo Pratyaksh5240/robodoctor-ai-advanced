@@ -2,6 +2,8 @@ import type {
   HealthReportRecord,
   SkinReportRecord,
   UserProfileRecord,
+  PatientConditionRecord,
+  FamilyHistoryRecord,
 } from "@/lib/reportHistory";
 
 export interface SbarReportData {
@@ -38,6 +40,23 @@ export interface SbarReportData {
     totalCholesterol?: number;
   };
   currentMedicines: string[];
+  // Chronic Conditions & Longitudinal History (Feature A)
+  chronicConditions?: Array<{
+    name: string;
+    diagnosedDate: string;
+    status: string;
+    changeCount: number;
+    currentMedicine?: string;
+    historySummary: string;
+  }>;
+  // Family Health History & Generational Patterns (Feature C)
+  familyHistory?: Array<{
+    relation: string;
+    condition: string;
+    ageOfOnset?: number | null;
+    notes?: string;
+  }>;
+  familyHistoryPatterns?: string[];
   // Assessment
   overallRiskLevel: "low" | "moderate" | "high" | "urgent";
   riskScore: number;
@@ -96,7 +115,42 @@ export function generateSampleSbarData(): SbarReportData {
       tsh: 2.4,
       totalCholesterol: 215,
     },
-    currentMedicines: ["Metformin 500mg", "Amlodipine 5mg", "Multivitamins"],
+    currentMedicines: ["Metformin (500mg twice daily)", "Amlodipine (5mg once daily)", "Multivitamins"],
+    chronicConditions: [
+      {
+        name: "Type 2 Diabetes",
+        diagnosedDate: "2023-04-10",
+        status: "active",
+        changeCount: 2,
+        currentMedicine: "Metformin 500mg twice daily",
+        historySummary: "Metformin 500mg [2023-04-10 - Present]: Initiated at diagnosis",
+      },
+      {
+        name: "Stage 1 Essential Hypertension",
+        diagnosedDate: "2024-01-15",
+        status: "managed",
+        changeCount: 1,
+        currentMedicine: "Amlodipine 5mg",
+        historySummary: "Amlodipine 5mg [2024-01-15 - Present]: Initiated for BP control",
+      },
+    ],
+    familyHistory: [
+      {
+        relation: "Father",
+        condition: "Type 2 Diabetes",
+        ageOfOnset: 52,
+        notes: "Oral medication managed",
+      },
+      {
+        relation: "Paternal Grandfather",
+        condition: "Coronary Artery Disease",
+        ageOfOnset: 64,
+        notes: "History of MI",
+      },
+    ],
+    familyHistoryPatterns: [
+      "Type 2 Diabetes in Father and Paternal Grandfather",
+    ],
     overallRiskLevel: "moderate",
     riskScore: 62,
     redFlags: [
@@ -140,9 +194,11 @@ export function mapRecordsToSbar(
   skinReport?: SkinReportRecord | null,
   profile?: UserProfileRecord | null,
   fallbackName?: string,
-  mode: SbarExportMode = "vitals_only"
+  mode: SbarExportMode = "vitals_only",
+  conditions?: PatientConditionRecord[] | null,
+  familyHistory?: FamilyHistoryRecord[] | null
 ): SbarReportData {
-  // If neither report is available, return default template
+  // If neither report is available, return default template populated with real conditions/family history if available
   if (!healthReport && !skinReport) {
     const sample = generateSampleSbarData();
     if (profile?.patientName || fallbackName) {
@@ -150,6 +206,44 @@ export function mapRecordsToSbar(
     }
     if (profile?.age) sample.age = profile.age;
     if (profile?.gender) sample.gender = profile.gender;
+
+    if (conditions && conditions.length > 0) {
+      sample.chronicConditions = conditions.map((c) => {
+        const activeMed = (c.medicationHistory || []).find(
+          (m) => !m.endDate || m.endDate.toLowerCase() === "present"
+        );
+        return {
+          name: c.name,
+          diagnosedDate: c.diagnosedDate,
+          status: c.status,
+          changeCount: (c.medicationHistory || []).length,
+          currentMedicine: activeMed ? `${activeMed.medicineName} ${activeMed.dosage}` : undefined,
+          historySummary: (c.medicationHistory || [])
+            .map((m) => `${m.medicineName} (${m.dosage}) [${m.startDate} - ${m.endDate || "Present"}]: ${m.reasonForChange}`)
+            .join("; "),
+        };
+      });
+
+      const activeMeds: string[] = [];
+      conditions.forEach((c) => {
+        (c.medicationHistory || []).forEach((m) => {
+          if (!m.endDate || m.endDate.toLowerCase() === "present") {
+            activeMeds.push(`${m.medicineName} (${m.dosage})`);
+          }
+        });
+      });
+      if (activeMeds.length > 0) sample.currentMedicines = activeMeds;
+    }
+
+    if (familyHistory && familyHistory.length > 0) {
+      sample.familyHistory = familyHistory.map((f) => ({
+        relation: f.relation,
+        condition: f.condition,
+        ageOfOnset: f.ageOfOnset,
+        notes: f.notes,
+      }));
+    }
+
     return sample;
   }
 
@@ -195,12 +289,69 @@ export function mapRecordsToSbar(
     profile?.gender ||
     "Not Specified";
 
+  // Synthesize chronic conditions from module
+  const chronicConditionsList = (conditions || []).map((c) => {
+    const activeMed = (c.medicationHistory || []).find(
+      (m) => !m.endDate || m.endDate.toLowerCase() === "present"
+    );
+    const histSumm = (c.medicationHistory || [])
+      .map(
+        (m) =>
+          `${m.medicineName} (${m.dosage}) [${m.startDate} - ${
+            m.endDate || "Present"
+          }]: ${m.reasonForChange}`
+      )
+      .join("; ");
+    return {
+      name: c.name,
+      diagnosedDate: c.diagnosedDate,
+      status: c.status,
+      changeCount: (c.medicationHistory || []).length,
+      currentMedicine: activeMed
+        ? `${activeMed.medicineName} ${activeMed.dosage}`
+        : undefined,
+      historySummary: histSumm || "No medication changes recorded",
+    };
+  });
+
+  // Extract active medications from patient conditions
+  const activeMedicationsList: string[] = [];
+  (conditions || []).forEach((c) => {
+    (c.medicationHistory || []).forEach((m) => {
+      if (!m.endDate || m.endDate.toLowerCase() === "present") {
+        activeMedicationsList.push(`${m.medicineName} (${m.dosage})`);
+      }
+    });
+  });
+
+  // Synthesize family history & multi-relative patterns
+  const familyHistoryList = (familyHistory || []).map((f) => ({
+    relation: f.relation,
+    condition: f.condition,
+    ageOfOnset: f.ageOfOnset,
+    notes: f.notes,
+  }));
+
+  const famPatterns: string[] = [];
+  const famCounts: Record<string, string[]> = {};
+  (familyHistory || []).forEach((f) => {
+    const k = (f.condition || "").toLowerCase().trim();
+    if (!k) return;
+    if (!famCounts[k]) famCounts[k] = [];
+    if (!famCounts[k].includes(f.relation)) famCounts[k].push(f.relation);
+  });
+  Object.entries(famCounts).forEach(([cond, rels]) => {
+    if (rels.length >= 2) {
+      famPatterns.push(`${cond.charAt(0).toUpperCase() + cond.slice(1)} across ${rels.join(", ")}`);
+    }
+  });
+
   // --- 1. VITALS ONLY MODE ---
   if (activeMode === "vitals_only" && healthReport) {
     const bpVal = healthReport.bp
       ? healthReport.bp.includes("mmHg")
-        ? healthReport.bp
-        : `${healthReport.bp} mmHg`
+      ? healthReport.bp
+      : `${healthReport.bp} mmHg`
       : "120/80 mmHg";
     const sugarVal = parseFloat(healthReport.sugar) || 100;
     const hrVal = parseFloat(healthReport.heartRate) || 72;
@@ -269,11 +420,14 @@ export function mapRecordsToSbar(
             ? Number((healthReport.weightKg / Math.pow(healthReport.heightCm / 100, 2)).toFixed(1))
             : 24.2),
       },
-      skinScreening: undefined, // Isolated: No skin details
+      skinScreening: undefined,
       labValues: {
         fastingSugar: sugarVal,
       },
-      currentMedicines: [],
+      currentMedicines: activeMedicationsList,
+      chronicConditions: chronicConditionsList,
+      familyHistory: familyHistoryList,
+      familyHistoryPatterns: famPatterns,
       overallRiskLevel,
       riskScore: healthReport.riskScore,
       redFlags,
@@ -347,7 +501,10 @@ export function mapRecordsToSbar(
         highRiskFlag: skinReport.severity === "High" || skinReport.severity === "Urgent",
         uncertainFlag: false,
       },
-      currentMedicines: [],
+      currentMedicines: activeMedicationsList,
+      chronicConditions: chronicConditionsList,
+      familyHistory: familyHistoryList,
+      familyHistoryPatterns: famPatterns,
       overallRiskLevel,
       riskScore: skinReport.score,
       redFlags,
@@ -398,39 +555,30 @@ export function mapRecordsToSbar(
   const redFlags: Array<{ title: string; detail: string; severity: string }> = [];
   if (healthReport?.summary) {
     redFlags.push({
-      title: "Vital Risk Triage Assessment",
+      title: "Vital Signs Risk Flag",
       detail: healthReport.summary,
-      severity: rawHealthRisk.includes("high") ? "high" : rawHealthRisk.includes("moderate") ? "moderate" : "low",
+      severity: rawHealthRisk.includes("high") ? "high" : "moderate",
     });
   }
-  if (skinReport) {
+  if (skinReport?.summary) {
     redFlags.push({
-      title: `Skin Lesion Finding (${skinReport.bodyPart})`,
-      detail: `${skinReport.summary} (Assessed Severity: ${skinReport.severity})`,
-      severity: rawSkinRisk.includes("high") ? "high" : rawSkinRisk.includes("moderate") ? "moderate" : "low",
+      title: `Dermoscopic Pattern (${skinReport.bodyPart})`,
+      detail: `${skinReport.summary} (Assessed: ${skinReport.severity})`,
+      severity: rawSkinRisk.includes("high") ? "high" : "moderate",
     });
   }
 
   const precautions = [
-    "Schedule a comprehensive physician follow-up to review both cardiovascular readings and skin findings.",
-    "Monitor blood pressure and blood sugar regularly (morning and evening).",
-    "Maintain heart-healthy nutrition and adequate hydration.",
+    "Schedule a comprehensive physician appointment covering both vital signs and dermatological screening.",
+    "Do not alter or cease any current medication without explicit consultation with your prescribing doctor.",
+    "Monitor vital signs and lesion characteristics consistently, noting any changes in frequency or appearance.",
   ];
-  if (skinReport) {
-    precautions.push(
-      `Protect the examined ${skinReport.bodyPart} area from excessive sun exposure with broad-spectrum SPF 50+.`
-    );
-  }
 
-  let recommendedFollowUp = "Arrange a primary care routine consultation within 2 to 4 weeks.";
+  let recommendedFollowUp = "Arrange a clinical consultation with your primary physician within 1 to 2 weeks.";
   if (overallRiskLevel === "urgent" || overallRiskLevel === "high") {
     recommendedFollowUp =
-      "Seek immediate clinical consultation or emergency care within 24 to 48 hours.";
-  } else if (overallRiskLevel === "moderate") {
-    recommendedFollowUp = "Arrange a primary physician consultation within 1 to 2 weeks.";
+      "Urgent medical attention recommended within 24 to 48 hours for clinical evaluation.";
   }
-
-  const maxScore = Math.max(healthReport?.riskScore || 0, skinReport?.score || 0);
 
   return {
     reportId,
@@ -438,15 +586,12 @@ export function mapRecordsToSbar(
     patientName,
     age: resolvedAge,
     gender: resolvedGender,
-    primaryChiefComplaint: [
-      healthReport?.summary,
-      skinReport ? `Dermatological evaluation on ${skinReport.bodyPart}` : null,
-    ]
-      .filter(Boolean)
-      .join(" | ") || "Combined vital signs and skin screening summary",
+    primaryChiefComplaint:
+      healthReport?.summary ||
+      (skinReport ? `Dermatological screening for ${skinReport.bodyPart}` : "Comprehensive Health Screening"),
     symptomsList,
-    symptomDuration: "Recent health screening",
-    affectedBodyPart: skinReport ? `${skinReport.bodyPart.toUpperCase()} & General Vitals` : "General Vitals",
+    symptomDuration: "Recent combined screening",
+    affectedBodyPart: skinReport ? `Cardiovascular System & ${skinReport.bodyPart.toUpperCase()} Skin` : "General Vitals",
     vitals: {
       bloodPressure: bpVal,
       bloodSugar: sugarVal,
@@ -470,13 +615,15 @@ export function mapRecordsToSbar(
     labValues: {
       fastingSugar: sugarVal,
     },
-    currentMedicines: [],
+    currentMedicines: activeMedicationsList,
+    chronicConditions: chronicConditionsList,
+    familyHistory: familyHistoryList,
+    familyHistoryPatterns: famPatterns,
     overallRiskLevel,
-    riskScore: maxScore || healthReport?.riskScore || skinReport?.score || 50,
+    riskScore: Math.round(((healthReport?.riskScore || 50) + (skinReport?.score || 50)) / 2),
     redFlags,
     detectedDrugInteractions: [],
     precautions,
     recommendedFollowUp,
   };
 }
-

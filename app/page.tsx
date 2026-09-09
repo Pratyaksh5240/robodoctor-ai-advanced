@@ -179,6 +179,28 @@ const productCards = [
     href: "/first-aid",
     accent: "from-orange-400/30 to-amber-400/30",
   },
+  {
+    key: "patienthistory",
+    titleEn: "Patient History",
+    titleHi: "रोगी का इतिहास",
+    descriptionEn:
+      "Track chronic conditions, longitudinal medication adjustments, prescription change frequency, and stability trends.",
+    descriptionHi:
+      "पुरानी बीमारियों, दवाओं के बदलाव की समयरेखा, नुस्खे में बदलाव की आवृत्ति और स्वास्थ्य रुझानों को ट्रैक करें।",
+    href: "/patient-history",
+    accent: "from-cyan-400/30 to-blue-500/30",
+  },
+  {
+    key: "familyhistory",
+    titleEn: "Family History Tree",
+    titleHi: "पारिवारिक स्वास्थ्य वृक्ष",
+    descriptionEn:
+      "Pedigree family tree mapping conditions across blood relatives with multi-relative pattern advisory flags.",
+    descriptionHi:
+      "रक्त संबंधियों में बीमारियों का वंशावली चार्ट और बहु-रिश्तेदार पैटर्न की पहचान।",
+    href: "/family-history",
+    accent: "from-indigo-400/30 to-purple-500/30",
+  },
 ];
 
 const strengthPointsList = [

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "antihypertensives",
+    "category": "Blood Pressure Management",
+    "title": "Antihypertensive Medication Classes",
+    "condition_trigger": "elevated_bp",
+    "general_purpose": "Antihypertensive medications are commonly used to lower blood pressure, reduce vascular resistance, and protect against long-term stroke and heart strain.",
+    "medication_classes": [
+      "ACE Inhibitors (e.g. Enalapril, Lisinopril)",
+      "Angiotensin II Receptor Blockers / ARBs (e.g. Losartan, Telmisartan)",
+      "Calcium Channel Blockers (e.g. Amlodipine)",
+      "Thiazide Diuretics (e.g. Chlorthalidone, Hydrochlorothiazide)"
+    ],
+    "safety_considerations": "Choice of blood pressure medication depends on kidney function, heart rate, age, and co-existing medical conditions.",
+    "contraindications_warnings": "ACE inhibitors and ARBs must not be used during pregnancy. Diuretics require routine electrolyte and kidney function monitoring.",
+    "clinician_discussion_points": "Discuss with your doctor or pharmacist which blood pressure class best aligns with your blood pressure targets and medical history."
+  },
+  {
+    "id": "statins_lipid_lowering",
+    "category": "Cholesterol & Lipid Management",
+    "title": "Statin & Lipid-Lowering Therapy",
+    "condition_trigger": "elevated_cholesterol",
+    "general_purpose": "Lipid-lowering medications help decrease LDL ('bad') cholesterol, stabilize arterial plaques, and lower long-term risk of coronary heart disease events.",
+    "medication_classes": [
+      "HMG-CoA Reductase Inhibitors / Statins (e.g. Atorvastatin, Rosuvastatin)",
+      "Cholesterol Absorption Inhibitors (e.g. Ezetimibe)"
+    ],
+    "safety_considerations": "Statins are widely prescribed for primary and secondary cardiovascular prevention when elevated lipid risk is identified.",
+    "contraindications_warnings": "Statins are contraindicated during pregnancy and active liver disease. Report unexplainable muscle aches or weakness to a clinician.",
+    "clinician_discussion_points": "Ask your healthcare provider if a lipid panel review and cardiovascular risk discussion is appropriate for your profile."
+  },
+  {
+    "id": "antidiabetics",
+    "category": "Blood Glucose & Metabolic Management",
+    "title": "Blood Glucose & Antidiabetic Agents",
+    "condition_trigger": "elevated_glucose",
+    "general_purpose": "Antidiabetic medications help regulate blood glucose levels, improve insulin sensitivity, and protect small and large blood vessels.",
+    "medication_classes": [
+      "Biguanides (e.g. Metformin)",
+      "SGLT2 Inhibitors (e.g. Empagliflozin, Dapagliflozin)",
+      "GLP-1 Receptor Agonists (e.g. Semaglutide)",
+      "DPP-4 Inhibitors (e.g. Sitagliptin)"
+    ],
+    "safety_considerations": "Metformin is typically first-line therapy for type 2 diabetes management alongside lifestyle modifications.",
+    "contraindications_warnings": "Severe kidney impairment requires dosage adjustment or medication switching. Watch for signs of hypoglycemia when combined with sulfonylureas or insulin.",
+    "clinician_discussion_points": "Discuss HbA1c screening and fasting blood glucose targets with your clinician."
+  },
+  {
+    "id": "antiplatelet_awareness",
+    "category": "Arterial Protection & Antiplatelet Awareness",
+    "title": "Antiplatelet Therapy Awareness",
+    "condition_trigger": "high_cardiovascular_risk",
+    "general_purpose": "Antiplatelet therapy reduces blood platelet aggregation to prevent blood clot formation in narrow or hardened arteries.",
+    "medication_classes": [
+      "Low-Dose Aspirin (75–100 mg daily)",
+      "P2Y12 Inhibitors (e.g. Clopidogrel)"
+    ],
+    "safety_considerations": "Antiplatelets are prescribed based on individualized cardiovascular risk vs bleeding risk evaluation.",
+    "contraindications_warnings": "Never start daily aspirin for heart protection without explicit doctor authorization due to gastrointestinal bleeding and hemorrhagic stroke risks.",
+    "clinician_discussion_points": "Inquire with your doctor whether antiplatelet benefit outweighs bleeding risk for your specific profile."
+  }
+]

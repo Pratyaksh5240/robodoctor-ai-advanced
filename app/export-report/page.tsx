@@ -21,6 +21,10 @@ import {
   saveUserProfile,
   SkinReportRecord,
   UserProfileRecord,
+  getConditions,
+  getFamilyHistory,
+  PatientConditionRecord,
+  FamilyHistoryRecord,
 } from "@/lib/reportHistory";
 
 export default function ExportReportPage() {
@@ -32,6 +36,8 @@ export default function ExportReportPage() {
   const [healthReports, setHealthReports] = useState<HealthReportRecord[]>([]);
   const [skinReports, setSkinReports] = useState<SkinReportRecord[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfileRecord | null>(null);
+  const [conditions, setConditions] = useState<PatientConditionRecord[]>([]);
+  const [familyHistory, setFamilyHistory] = useState<FamilyHistoryRecord[]>([]);
 
   const [exportMode, setExportMode] = useState<SbarExportMode>("vitals_only");
   const [selectedHealthIndex, setSelectedHealthIndex] = useState(0);
@@ -47,15 +53,19 @@ export default function ExportReportPage() {
       const targetId = currentUser ? currentUser.uid : "guest";
 
       try {
-        const [health, skin, profile] = await Promise.all([
+        const [health, skin, profile, conds, fam] = await Promise.all([
           loadHealthReportsPage(targetId, 20),
           loadSkinReportsPage(targetId, 20),
           getUserProfile(targetId),
+          getConditions(targetId),
+          getFamilyHistory(targetId),
         ]);
 
         setHealthReports(health);
         setSkinReports(skin);
         setUserProfile(profile);
+        setConditions(conds);
+        setFamilyHistory(fam);
 
         // Smart initial mode based on what reports exist
         const initialMode: SbarExportMode =
@@ -71,7 +81,9 @@ export default function ExportReportPage() {
             skin[0] || null,
             profile,
             currentUser?.displayName || undefined,
-            initialMode
+            initialMode,
+            conds,
+            fam
           )
         );
       } catch (err) {
@@ -92,7 +104,9 @@ export default function ExportReportPage() {
         skinReports[selectedSkinIndex] || null,
         userProfile,
         user?.displayName || undefined,
-        newMode
+        newMode,
+        conditions,
+        familyHistory
       )
     );
   };
@@ -105,7 +119,9 @@ export default function ExportReportPage() {
         skinReports[selectedSkinIndex] || null,
         userProfile,
         user?.displayName || undefined,
-        exportMode
+        exportMode,
+        conditions,
+        familyHistory
       )
     );
   };
@@ -118,7 +134,9 @@ export default function ExportReportPage() {
         skinReports[index] || null,
         userProfile,
         user?.displayName || undefined,
-        exportMode
+        exportMode,
+        conditions,
+        familyHistory
       )
     );
   };
@@ -532,6 +550,85 @@ export default function ExportReportPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Chronic Medical Conditions & Prescription History (Feature A) */}
+                {report.chronicConditions && report.chronicConditions.length > 0 && (
+                  <div className="space-y-2 border-t border-slate-800 print:border-slate-300 pt-3 text-xs">
+                    <span className="font-bold text-slate-300 print:text-slate-800 flex items-center gap-1.5">
+                      <span>🩺</span>
+                      <span>Chronic Medical Conditions & Prescription History:</span>
+                    </span>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {report.chronicConditions.map((cond, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className="bg-slate-950/70 print:bg-slate-50 p-3 rounded-lg border border-slate-800 print:border-slate-200 space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-200 print:text-slate-900">
+                              {cond.name}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-500/10 text-cyan-300 print:bg-blue-50 print:text-blue-800 border border-cyan-500/20">
+                              {cond.status}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 print:text-slate-600">
+                            Diagnosed: {cond.diagnosedDate} • {cond.changeCount} Rx Changes Recorded
+                          </div>
+                          {cond.currentMedicine && (
+                            <div className="text-[11px] font-semibold text-emerald-400 print:text-emerald-700">
+                              Active: {cond.currentMedicine}
+                            </div>
+                          )}
+                          <div className="text-[10px] text-slate-400 print:text-slate-600 italic">
+                            {cond.historySummary}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Family Health History & Multi-Relative Patterns (Feature C) */}
+                {report.familyHistory && report.familyHistory.length > 0 && (
+                  <div className="space-y-2 border-t border-slate-800 print:border-slate-300 pt-3 text-xs">
+                    <span className="font-bold text-slate-300 print:text-slate-800 flex items-center gap-1.5">
+                      <span>🌳</span>
+                      <span>Family Health History (Pedigree Lineage):</span>
+                    </span>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {report.familyHistory.map((fam, fIdx) => (
+                        <div
+                          key={fIdx}
+                          className="bg-slate-950/70 print:bg-slate-50 p-2.5 rounded-lg border border-slate-800 print:border-slate-200 flex items-center justify-between"
+                        >
+                          <div>
+                            <span className="text-[10px] font-mono text-cyan-400 print:text-blue-700 uppercase font-bold block">
+                              {fam.relation}
+                            </span>
+                            <span className="font-bold text-slate-200 print:text-slate-900">
+                              {fam.condition}
+                            </span>
+                          </div>
+                          {fam.ageOfOnset && (
+                            <span className="text-[10px] font-mono text-slate-400 print:text-slate-600">
+                              Onset: {fam.ageOfOnset}y
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {report.familyHistoryPatterns && report.familyHistoryPatterns.length > 0 && (
+                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 print:text-amber-800 text-[11px] space-y-0.5">
+                        <span className="font-bold block">⚠️ Generational Multi-Relative Pattern Noted:</span>
+                        {report.familyHistoryPatterns.map((pat, pIdx) => (
+                          <div key={pIdx}>• {pat} (Recommended for physician discussion)</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* SBAR Section 2: Objective */}

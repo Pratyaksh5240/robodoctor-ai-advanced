@@ -49,6 +49,41 @@ export type UserProfileRecord = {
   updatedAt?: number;
 };
 
+export type MedicationHistoryEntry = {
+  _id?: string;
+  medicineName: string;
+  dosage: string;
+  startDate: string;
+  endDate?: string | null;
+  reasonForChange: string;
+  prescribedBy?: string;
+  createdAt: number;
+};
+
+export type PatientConditionRecord = {
+  _id?: string;
+  userId?: string;
+  dependentId?: string;
+  name: string;
+  diagnosedDate: string;
+  status: "active" | "managed" | "resolved";
+  notes?: string;
+  medicationHistory: MedicationHistoryEntry[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type FamilyHistoryRecord = {
+  _id?: string;
+  userId?: string;
+  dependentId?: string;
+  relation: string;
+  condition: string;
+  ageOfOnset?: number | null;
+  notes?: string;
+  createdAt: number;
+};
+
 export function getSubcollectionPath(
   userId: string,
   subcollection: string,
@@ -421,3 +456,288 @@ export async function saveUserProfile(
     }
   }
 }
+
+// --- PATIENT CONDITIONS & MEDICATION HISTORY ---
+
+export function getConditionsStorageKey(userId?: string | null, dependentId?: string | null) {
+  const u = userId && userId !== "guest" ? userId : "guest";
+  const d = dependentId || "myself";
+  return `robodoctor_patient_conditions_${u}_${d}`;
+}
+
+export async function getConditions(
+  userId?: string | null,
+  dependentId?: string | null
+): Promise<PatientConditionRecord[]> {
+  const storageKey = getConditionsStorageKey(userId, dependentId);
+  const local = safeReadLocal<PatientConditionRecord>(storageKey);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      const q = new URLSearchParams({
+        userId,
+        dependentId: dependentId || "myself",
+      });
+      const res = await fetch(`/api/conditions?${q.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.conditions) && data.conditions.length > 0) {
+          safeWriteLocal(storageKey, data.conditions);
+          return data.conditions;
+        }
+      }
+    } catch (e) {
+      console.warn("getConditions API error:", e);
+    }
+  }
+
+  return local;
+}
+
+export async function saveCondition(
+  userId: string | null | undefined,
+  conditionData: {
+    name: string;
+    diagnosedDate: string;
+    status: "active" | "managed" | "resolved";
+    notes?: string;
+    medicationHistory?: MedicationHistoryEntry[];
+  },
+  dependentId?: string | null
+): Promise<PatientConditionRecord> {
+  const storageKey = getConditionsStorageKey(userId, dependentId);
+  const localList = safeReadLocal<PatientConditionRecord>(storageKey);
+
+  const newRecord: PatientConditionRecord = {
+    _id: `cond_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    userId: userId || "guest",
+    dependentId: dependentId || "myself",
+    name: conditionData.name,
+    diagnosedDate: conditionData.diagnosedDate,
+    status: conditionData.status,
+    notes: conditionData.notes || "",
+    medicationHistory: conditionData.medicationHistory || [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  const updatedLocal = [newRecord, ...localList];
+  safeWriteLocal(storageKey, updatedLocal);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      const res = await fetch("/api/conditions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create_condition",
+          userId,
+          dependentId: dependentId || "myself",
+          data: conditionData,
+        }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.condition && result.condition._id) {
+          newRecord._id = result.condition._id;
+          safeWriteLocal(storageKey, [newRecord, ...localList]);
+        }
+      }
+    } catch (e) {
+      console.warn("saveCondition API error:", e);
+    }
+  }
+
+  return newRecord;
+}
+
+export async function addMedicationChange(
+  userId: string | null | undefined,
+  conditionId: string,
+  medEntry: Omit<MedicationHistoryEntry, "createdAt" | "_id">,
+  dependentId?: string | null
+): Promise<void> {
+  const storageKey = getConditionsStorageKey(userId, dependentId);
+  const localList = safeReadLocal<PatientConditionRecord>(storageKey);
+
+  const newMed: MedicationHistoryEntry = {
+    _id: `med_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    ...medEntry,
+    createdAt: Date.now(),
+  };
+
+  const updated = localList.map((cond) => {
+    if (cond._id === conditionId) {
+      return {
+        ...cond,
+        medicationHistory: [...(cond.medicationHistory || []), newMed],
+        updatedAt: Date.now(),
+      };
+    }
+    return cond;
+  });
+
+  safeWriteLocal(storageKey, updated);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      await fetch("/api/conditions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add_medication_change",
+          userId,
+          dependentId: dependentId || "myself",
+          conditionId,
+          data: medEntry,
+        }),
+      });
+    } catch (e) {
+      console.warn("addMedicationChange API error:", e);
+    }
+  }
+}
+
+export async function deleteCondition(
+  userId: string | null | undefined,
+  conditionId: string,
+  dependentId?: string | null
+): Promise<void> {
+  const storageKey = getConditionsStorageKey(userId, dependentId);
+  const localList = safeReadLocal<PatientConditionRecord>(storageKey);
+  const updated = localList.filter((c) => c._id !== conditionId);
+  safeWriteLocal(storageKey, updated);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      await fetch("/api/conditions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete_condition",
+          userId,
+          conditionId,
+        }),
+      });
+    } catch (e) {
+      console.warn("deleteCondition API error:", e);
+    }
+  }
+}
+
+// --- FAMILY HISTORY TREE ---
+
+export function getFamilyHistoryStorageKey(userId?: string | null) {
+  const u = userId && userId !== "guest" ? userId : "guest";
+  return `robodoctor_family_history_${u}`;
+}
+
+export async function getFamilyHistory(
+  userId?: string | null,
+  dependentId?: string | null
+): Promise<FamilyHistoryRecord[]> {
+  const storageKey = getFamilyHistoryStorageKey(userId);
+  const local = safeReadLocal<FamilyHistoryRecord>(storageKey);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      const q = new URLSearchParams({
+        userId,
+        dependentId: dependentId || "myself",
+      });
+      const res = await fetch(`/api/family-history?${q.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.entries) && data.entries.length > 0) {
+          safeWriteLocal(storageKey, data.entries);
+          return data.entries;
+        }
+      }
+    } catch (e) {
+      console.warn("getFamilyHistory API error:", e);
+    }
+  }
+
+  return local;
+}
+
+export async function saveFamilyHistoryEntry(
+  userId: string | null | undefined,
+  entryData: {
+    relation: string;
+    condition: string;
+    ageOfOnset?: number | null;
+    notes?: string;
+  },
+  dependentId?: string | null
+): Promise<FamilyHistoryRecord> {
+  const storageKey = getFamilyHistoryStorageKey(userId);
+  const localList = safeReadLocal<FamilyHistoryRecord>(storageKey);
+
+  const newEntry: FamilyHistoryRecord = {
+    _id: `fam_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    userId: userId || "guest",
+    dependentId: dependentId || "myself",
+    relation: entryData.relation,
+    condition: entryData.condition,
+    ageOfOnset: entryData.ageOfOnset !== undefined ? entryData.ageOfOnset : null,
+    notes: entryData.notes || "",
+    createdAt: Date.now(),
+  };
+
+  const updatedLocal = [newEntry, ...localList];
+  safeWriteLocal(storageKey, updatedLocal);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      const res = await fetch("/api/family-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          userId,
+          dependentId: dependentId || "myself",
+          data: entryData,
+        }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.entry && result.entry._id) {
+          newEntry._id = result.entry._id;
+          safeWriteLocal(storageKey, [newEntry, ...localList]);
+        }
+      }
+    } catch (e) {
+      console.warn("saveFamilyHistoryEntry API error:", e);
+    }
+  }
+
+  return newEntry;
+}
+
+export async function deleteFamilyHistoryEntry(
+  userId: string | null | undefined,
+  entryId: string
+): Promise<void> {
+  const storageKey = getFamilyHistoryStorageKey(userId);
+  const localList = safeReadLocal<FamilyHistoryRecord>(storageKey);
+  const updated = localList.filter((e) => e._id !== entryId);
+  safeWriteLocal(storageKey, updated);
+
+  if (typeof window !== "undefined" && userId && userId !== "guest") {
+    try {
+      await fetch("/api/family-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          userId,
+          entryId,
+        }),
+      });
+    } catch (e) {
+      console.warn("deleteFamilyHistoryEntry API error:", e);
+    }
+  }
+}
+
