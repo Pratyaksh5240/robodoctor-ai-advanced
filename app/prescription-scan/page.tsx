@@ -21,16 +21,38 @@ function PrescriptionScanContent() {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [sampleType, setSampleType] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [items, setItems] = useState<SelectableItem[]>([]);
   const [rawNotes, setRawNotes] = useState<string>("");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [source, setSource] = useState<string>("");
 
+  const loadSamplePreset = async (type: "cardiology" | "diabetes" | "paracetamol", path: string) => {
+    try {
+      setSampleType(type);
+      setPreviewUrl(path);
+      setItems([]);
+      setStatusMsg("");
+      const res = await fetch(path);
+      const blob = await res.blob();
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setImageDataUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error("Failed to load sample:", err);
+    }
+  };
+
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setSampleType(null);
     const nextPreviewUrl = URL.createObjectURL(file);
     const reader = new FileReader();
 
@@ -57,7 +79,7 @@ function PrescriptionScanContent() {
       const res = await fetch("/api/prescription-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify({ imageDataUrl, sampleType }),
       });
 
       const data = await res.json();
@@ -197,6 +219,67 @@ function PrescriptionScanContent() {
             <h2 className="text-2xl font-bold mb-4">
               {localize("1. Upload Prescription Photo", "1. पर्चे की फोटो अपलोड करें")}
             </h2>
+
+            {/* Quick Sample Presets */}
+            <div className="mb-6 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 to-slate-900/60 p-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                    <span>⚡</span>
+                    <span>{localize("Try Sample Test Prescriptions", "परीक्षण के लिए नमूना पर्चा चुनें")}</span>
+                  </span>
+                  {sampleType && (
+                    <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                      ✓ {localize("Sample Loaded", "नमूना लोड हुआ")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--muted)]">
+                  {localize(
+                    "Click any pre-loaded test case below to load an image and test OCR extraction instantly:",
+                    "बिना फोटो खींचे तुरंत परीक्षण करने के लिए नीचे किसी भी नमूने पर क्लिक करें:"
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => loadSamplePreset("cardiology", "/samples/sample_rx_cardiology.png")}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 ${
+                      sampleType === "cardiology"
+                        ? "border-sky-400 bg-sky-500/25 text-white shadow-md shadow-sky-500/20"
+                        : "border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200"
+                    }`}
+                  >
+                    <span>🫀</span>
+                    <span>{localize("Cardiology Rx (Heart)", "हृदय रोग पर्चा")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadSamplePreset("diabetes", "/samples/sample_rx_diabetes.png")}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 ${
+                      sampleType === "diabetes"
+                        ? "border-emerald-400 bg-emerald-500/25 text-white shadow-md shadow-emerald-500/20"
+                        : "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200"
+                    }`}
+                  >
+                    <span>🩸</span>
+                    <span>{localize("Diabetes & BP Rx", "शुगर व बीपी पर्चा")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadSamplePreset("paracetamol", "/samples/sample_medicine_strip.png")}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition flex items-center gap-1.5 ${
+                      sampleType === "paracetamol"
+                        ? "border-purple-400 bg-purple-500/25 text-white shadow-md shadow-purple-500/20"
+                        : "border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200"
+                    }`}
+                  >
+                    <span>💊</span>
+                    <span>{localize("Paracetamol Blister Strip", "पैरासिटामोल स्ट्रिप")}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <div className="mb-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-[color:var(--surface)] p-6 text-center">
               {previewUrl ? (

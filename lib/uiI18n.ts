@@ -1780,6 +1780,14 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
     zh: "心脏科护理建议",
     ko: "심장내과 진료 권장사항",
   },
+  "Cardiology Rx (Heart)": {
+    hi: "हृदय रोग पर्चा",
+    es: "Cardiology Rx (Heart)",
+    fr: "Cardiology Rx (Heart)",
+    de: "Cardiology Rx (Heart)",
+    zh: "Cardiology Rx (Heart)",
+    ko: "Cardiology Rx (Heart)",
+  },
   "Cardiovascular protection, stroke prevention, pain, inflammation": {
     hi: "हृदय सुरक्षा, स्ट्रोक की रोकथाम, दर्द, सूजन",
     es: "Protección cardiovascular, prevención de accidentes cerebrovasculares, dolor, inflamación.",
@@ -2115,6 +2123,14 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
     de: "Click and practice along directly within the player at your own comfortable pace",
     zh: "Click and practice along directly within the player at your own comfortable pace",
     ko: "Click and practice along directly within the player at your own comfortable pace",
+  },
+  "Click any pre-loaded test case below to load an image and test OCR extraction instantly:": {
+    hi: "बिना फोटो खींचे तुरंत परीक्षण करने के लिए नीचे किसी भी नमूने पर क्लिक करें:",
+    es: "Click any pre-loaded test case below to load an image and test OCR extraction instantly:",
+    fr: "Click any pre-loaded test case below to load an image and test OCR extraction instantly:",
+    de: "Click any pre-loaded test case below to load an image and test OCR extraction instantly:",
+    zh: "Click any pre-loaded test case below to load an image and test OCR extraction instantly:",
+    ko: "Click any pre-loaded test case below to load an image and test OCR extraction instantly:",
   },
   "Click to select or drag & drop SBAR file (.pdf, .json, .txt, .sbar)": {
     hi: "SBAR फाइल चुनें या ड्रैग करें (.pdf, .json, .txt, .sbar)",
@@ -2731,6 +2747,14 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
     de: "Diabetes und Blutzuckerkontrolle",
     zh: "糖尿病与血糖控制",
     ko: "당뇨병 및 혈당 조절",
+  },
+  "Diabetes & BP Rx": {
+    hi: "शुगर व बीपी पर्चा",
+    es: "Diabetes & BP Rx",
+    fr: "Diabetes & BP Rx",
+    de: "Diabetes & BP Rx",
+    zh: "Diabetes & BP Rx",
+    ko: "Diabetes & BP Rx",
   },
   "Diabetic Pattern": {
     hi: "डायबिटीज",
@@ -6660,6 +6684,14 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
     zh: "扑热息痛和布洛芬通过不同的途径发挥作用（中枢镇痛与外周抗炎），并且可以安全地交替使用以治疗急性发烧或疼痛。",
     ko: "파라세타몰과 이부프로펜은 뚜렷한 경로(중추 진통제 대 말초 항염증제)를 통해 작용하며 급성 발열이나 통증이 있는 경우 안전하게 교대로 사용할 수 있습니다.",
   },
+  "Paracetamol Blister Strip": {
+    hi: "पैरासिटामोल स्ट्रिप",
+    es: "Paracetamol Blister Strip",
+    fr: "Paracetamol Blister Strip",
+    de: "Paracetamol Blister Strip",
+    zh: "Paracetamol Blister Strip",
+    ko: "Paracetamol Blister Strip",
+  },
   "Paracetamol or acetaminophen": {
     hi: "पेरासिटामोल या एसिटामिनोफेन",
     es: "Paracetamol o acetaminofén",
@@ -7804,6 +7836,14 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
   },
   "Saline nasal spray": {
     es: "Espray nasal salino",
+  },
+  "Sample Loaded": {
+    hi: "नमूना लोड हुआ",
+    es: "Sample Loaded",
+    fr: "Sample Loaded",
+    de: "Sample Loaded",
+    zh: "Sample Loaded",
+    ko: "Sample Loaded",
   },
   "Save": {
     hi: "सहेजें",
@@ -9466,6 +9506,14 @@ const uiTranslations: Record<string, Partial<Record<TargetLanguage, string>>> = 
     de: "Probieren Sie gängige Medikamentenkombinationen aus",
     zh: "尝试常见的药物组合",
     ko: "일반적인 약물 조합해 보기",
+  },
+  "Try Sample Test Prescriptions": {
+    hi: "परीक्षण के लिए नमूना पर्चा चुनें",
+    es: "Try Sample Test Prescriptions",
+    fr: "Try Sample Test Prescriptions",
+    de: "Try Sample Test Prescriptions",
+    zh: "Try Sample Test Prescriptions",
+    ko: "Try Sample Test Prescriptions",
   },
   "Try searching for keywords like pushup, back pain, abs, stretching, or weight loss.": {
     hi: "पुश-अप्स, पीठ दर्द, एब्स, स्ट्रेचिंग या वजन घटाने जैसे शब्दों से खोजें।",
