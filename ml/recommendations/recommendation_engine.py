@@ -46,16 +46,14 @@ SYMPTOM_NAME_MAP = {
     "symptom_sore_throat": "sore_throat"
 }
 
-# Priority Level Weights (lower number = higher priority order)
 PRIORITY_ORDER = {
-    "P0": 0,  # Emergency / Immediate Safety
-    "P1": 1,  # Significant Abnormal Vital
-    "P2": 2,  # High-Risk ML Pattern
-    "P3": 3,  # Moderate-Risk ML Pattern
-    "P4": 4   # Routine Monitoring / Wellness
+    "P0": 0,
+    "P1": 1,
+    "P2": 2,
+    "P3": 3,
+    "P4": 4
 }
 
-# Load recommendations database
 KB_PATH = os.path.join(os.path.dirname(__file__), "recommendations.json")
 
 def load_knowledge_base() -> List[Dict[str, Any]]:
@@ -77,7 +75,6 @@ def build_patient_vector(
 ) -> np.ndarray:
     vector_dict = {feat: 0.0 for feat in FEATURE_SCHEMA}
 
-    # BMI features
     if bmi < 18.5:
         vector_dict["low_bmi"] = 1.0
     elif bmi >= 30.0:
@@ -86,7 +83,6 @@ def build_patient_vector(
     elif bmi >= 25.0:
         vector_dict["high_bmi"] = 1.0
 
-    # BP features
     if systolic >= 140 or diastolic >= 90:
         vector_dict["high_bp"] = 1.0
         vector_dict["elevated_bp"] = 1.0
@@ -95,25 +91,21 @@ def build_patient_vector(
     elif systolic < 90 or diastolic < 60:
         vector_dict["low_bp"] = 1.0
 
-    # Sugar features
     if sugar >= 180:
         vector_dict["very_high_glucose"] = 1.0
         vector_dict["high_glucose"] = 1.0
     elif sugar >= 140:
         vector_dict["high_glucose"] = 1.0
 
-    # Heart Rate features
     if heart_rate > 100:
         vector_dict["high_heart_rate"] = 1.0
     elif heart_rate < 60:
         vector_dict["low_heart_rate"] = 1.0
 
-    # Symptom features
     for sym_col, sym_name in SYMPTOM_NAME_MAP.items():
         if symptom_flags.get(sym_col, 0) == 1:
             vector_dict[sym_name] = 1.0
 
-    # ML Risk features
     if ml_risk == "High":
         vector_dict["high_risk"] = 1.0
     elif ml_risk == "Moderate":
@@ -138,17 +130,12 @@ def evaluate_safety_and_priorities(
     symptoms_text: str,
     ml_risk: str
 ) -> Dict[str, Any]:
-    """
-    Isolated Safety Evaluator that checks critical vitals and acute symptoms.
-    Surfaces P0 (Emergency) or P1 (Significant Abnormal Vital) priority findings.
-    """
     norm_symptoms = (symptoms_text or "").lower()
     urgent_triggers = ["chest pain", "shortness of breath", "breathlessness", "difficulty breathing", "saans ki dikkat"]
     is_emergency_symptom = any(trigger in norm_symptoms for trigger in urgent_triggers)
 
     priority_finding = None
 
-    # P0: Emergency Symptoms
     if is_emergency_symptom:
         priority_finding = {
             "title": "Emergency Symptom Pattern Detected",
@@ -158,39 +145,32 @@ def evaluate_safety_and_priorities(
         }
         return {"priorityFinding": priority_finding, "urgent": True}
 
-    # P1: Critical Abnormal Vitals
-    # 1. Very Low Heart Rate (<= 45 bpm)
     if heart_rate <= 45:
-        detail_msg = f"Heart rate entered as {int(heart_rate)} bpm. Please confirm the reading and seek prompt medical evaluation, especially if dizziness, fainting, weakness, confusion, or chest discomfort is present."
-        explanation_msg = f"Very low heart rate ({int(heart_rate)} bpm) requires priority attention despite the model's {ml_risk.lower()} overall risk classification." if ml_risk != "High" else f"Very low heart rate ({int(heart_rate)} bpm) is a critical vital finding."
         priority_finding = {
             "title": "Very Low Heart Rate Detected",
-            "detail": detail_msg,
-            "explanation": explanation_msg,
+            "detail": f"Heart rate entered as {int(heart_rate)} bpm. Seek prompt medical evaluation if dizziness, fainting, or chest pain occurs.",
+            "explanation": f"Very low heart rate ({int(heart_rate)} bpm) requires priority attention.",
             "severity": "P1"
         }
-    # 2. Severely High Heart Rate (>= 130 bpm)
     elif heart_rate >= 130:
         priority_finding = {
             "title": "Severely High Heart Rate Detected",
-            "detail": f"Heart rate entered as {int(heart_rate)} bpm at rest. Seek prompt medical evaluation if high pulse persists.",
-            "explanation": f"Severely elevated heart rate ({int(heart_rate)} bpm) requires priority review despite the model's {ml_risk.lower()} overall classification.",
+            "detail": f"Heart rate entered as {int(heart_rate)} bpm at rest. Seek prompt medical evaluation.",
+            "explanation": f"Severely elevated heart rate ({int(heart_rate)} bpm) requires priority review.",
             "severity": "P1"
         }
-    # 3. Blood Pressure Crisis (Systolic >= 180 or Diastolic >= 120)
     elif systolic >= 180 or diastolic >= 120:
         priority_finding = {
             "title": "Blood Pressure Crisis Level Detected",
             "detail": f"Blood pressure entered as {int(systolic)}/{int(diastolic)} mmHg. Seek prompt medical evaluation.",
-            "explanation": f"Crisis-level blood pressure requires priority clinical review despite the model's {ml_risk.lower()} overall classification.",
+            "explanation": f"Crisis-level blood pressure requires priority clinical review.",
             "severity": "P1"
         }
-    # 4. Critically Low Blood Sugar (< 50 mg/dL)
     elif sugar < 50:
         priority_finding = {
             "title": "Critically Low Blood Sugar Detected",
-            "detail": f"Blood sugar entered as {int(sugar)} mg/dL. Take fast-acting glucose and seek medical assistance if symptoms occur.",
-            "explanation": f"Critically low sugar requires immediate attention despite the model's {ml_risk.lower()} overall classification.",
+            "detail": f"Blood sugar entered as {int(sugar)} mg/dL. Take fast-acting glucose immediately.",
+            "explanation": f"Critically low sugar requires immediate attention.",
             "severity": "P1"
         }
 
@@ -206,27 +186,90 @@ def assign_item_priority(
     ml_risk: str,
     is_urgent: bool
 ) -> str:
-    """
-    Assigns P0-P4 priority tier to each recommendation item based on patient profile.
-    """
     if item_id == "urgent_medical_evaluation" and is_urgent:
         return "P0"
-
     if item_id == "heart_rate_rhythm_tracking" and (heart_rate <= 45 or heart_rate >= 130):
         return "P1"
-
     if item_id in ["blood_pressure_evaluation", "repeat_bp_monitoring"] and (systolic >= 140 or diastolic >= 90 or systolic >= 180 or diastolic >= 120):
         return "P1"
-
     if item_id in ["blood_glucose_evaluation", "fasting_sugar_followup", "endocrinology_consultation"] and (sugar >= 180 or sugar < 50):
         return "P1"
-
     if ml_risk == "High":
         return "P2"
     elif ml_risk == "Moderate":
         return "P3"
-    
     return "P4"
+
+def generate_useful_health_information(
+    systolic: float,
+    diastolic: float,
+    glucose: float,
+    heart_rate: float,
+    bmi: float,
+    chd_prob: float,
+    risk_tier: str
+) -> List[Dict[str, str]]:
+    """
+    Generates personalized, plain-English summary cards explaining submitted vitals and Framingham risk tier.
+    """
+    items = []
+
+    # 1. BP Interpretation
+    if systolic >= 140 or diastolic >= 90:
+        bp_meaning = f"Your BP of {int(systolic)}/{int(diastolic)} mmHg falls into the Stage 1/2 Hypertension category. Regular resting measurements and physician follow-up are recommended."
+    elif systolic >= 130 or diastolic >= 80:
+        bp_meaning = f"Your BP of {int(systolic)}/{int(diastolic)} mmHg is in the Elevated Blood Pressure range. Lifestyle adjustments (salt reduction, exercise) help prevent progression."
+    else:
+        bp_meaning = f"Your BP of {int(systolic)}/{int(diastolic)} mmHg is within the normal reference range (under 120/80 mmHg)."
+
+    items.append({
+        "topic": "Blood Pressure Reading",
+        "value": f"{int(systolic)}/{int(diastolic)} mmHg",
+        "explanation": bp_meaning
+    })
+
+    # 2. BMI Interpretation
+    if bmi >= 30:
+        bmi_meaning = f"BMI of {bmi:.1f} is categorized as Obese. Gradual weight management can significantly reduce cardiovascular workload."
+    elif bmi >= 25:
+        bmi_meaning = f"BMI of {bmi:.1f} is in the Overweight range (25.0 – 29.9). Balanced diet and regular activity support healthy weight balance."
+    elif bmi < 18.5:
+        bmi_meaning = f"BMI of {bmi:.1f} is in the Underweight range (under 18.5)."
+    else:
+        bmi_meaning = f"BMI of {bmi:.1f} is in the Healthy Weight range (18.5 – 24.9)."
+
+    items.append({
+        "topic": "Body Mass Index (BMI)",
+        "value": f"{bmi:.1f}",
+        "explanation": bmi_meaning
+    })
+
+    # 3. Blood Glucose
+    if glucose >= 126:
+        gl_meaning = f"Glucose level of {int(glucose)} mg/dL is elevated. A fasting blood glucose test or HbA1c screening is recommended."
+    elif glucose >= 100:
+        gl_meaning = f"Glucose level of {int(glucose)} mg/dL is in the Impaired Fasting Glucose range (100–125 mg/dL)."
+    else:
+        gl_meaning = f"Glucose level of {int(glucose)} mg/dL is within the normal fasting range (70–99 mg/dL)."
+
+    items.append({
+        "topic": "Blood Glucose Level",
+        "value": f"{int(glucose)} mg/dL",
+        "explanation": gl_meaning
+    })
+
+    # 4. Framingham Risk Tier
+    tier_meaning = (
+        f"The Framingham cardiovascular probability model estimates a {chd_prob:.1f}% likelihood of a 10-year coronary heart disease event ({risk_tier} screening tier). "
+        "This is an application screening tier derived from statistical probability, not an official clinical diagnosis."
+    )
+    items.append({
+        "topic": "Framingham Risk Interpretation",
+        "value": f"{risk_tier} Tier ({chd_prob:.1f}%)",
+        "explanation": tier_meaning
+    })
+
+    return items
 
 def get_orchestrated_recommendations(
     patient_vector: np.ndarray,
@@ -239,8 +282,6 @@ def get_orchestrated_recommendations(
     min_threshold: float = 0.15,
     top_n: int = 4
 ) -> Dict[str, Any]:
-    
-    # 1. Run Safety Engine & Priority Evaluator
     safety_eval = evaluate_safety_and_priorities(
         systolic=systolic,
         diastolic=diastolic,
@@ -255,7 +296,6 @@ def get_orchestrated_recommendations(
 
     scored_items = []
 
-    # 2. Compute Cosine Similarity for Knowledge Base Items
     for item in KNOWLEDGE_BASE:
         if item["id"] == "urgent_medical_evaluation" and not is_urgent:
             continue
@@ -263,7 +303,6 @@ def get_orchestrated_recommendations(
         item_vec = np.array([item["feature_profile"].get(feat, 0.0) for feat in FEATURE_SCHEMA], dtype=float)
         sim = cosine_similarity(patient_vector, item_vec)
 
-        # Force similarity score = 1.0 (100%) for Urgent Medical Evaluation when emergency triggered
         if item["id"] == "urgent_medical_evaluation" and is_urgent:
             sim = 1.0
             score_pct = 100.0
@@ -294,10 +333,8 @@ def get_orchestrated_recommendations(
                 "raw_sim": sim
             })
 
-    # 3. Priority Orchestration Sorting: Priority Group First (P0 -> P1 -> P2 -> P3 -> P4), Cosine Similarity Second
     scored_items.sort(key=lambda x: (x["priority_weight"], -x["raw_sim"]))
 
-    # Fallback if no items met threshold
     if not scored_items:
         for item in KNOWLEDGE_BASE:
             if item["id"] == "routine_vital_monitoring":
@@ -315,7 +352,6 @@ def get_orchestrated_recommendations(
 
     top_items = scored_items[:top_n]
 
-    # Clean output dictionary list
     final_recommendations = []
     for item in top_items:
         clean_rec = {
