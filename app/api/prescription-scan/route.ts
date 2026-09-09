@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractMedicinesFromImage } from "@/lib/ocrMedicineExtractor";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ export type ScannedMedicineItem = {
 type ScanResponse = {
   medicines: ScannedMedicineItem[];
   rawNotes?: string;
-  source: "gemini_vision" | "openai_vision" | "rule_fallback";
+  source: "gemini_vision" | "openai_vision" | "rule_fallback" | "local_ocr";
   disclaimer: string;
 };
 
@@ -277,6 +278,10 @@ Return STRICT JSON matching this schema:
             }
           } else {
             console.warn(`Model ${model} returned status ${geminiRes.status}`);
+            if (geminiRes.status === 401 || geminiRes.status === 403) {
+              console.warn("Gemini API key is unauthorized or project disabled; switching directly to local OCR engine.");
+              break;
+            }
           }
         } catch (modelErr) {
           console.warn(`Model ${model} error:`, modelErr);
@@ -284,10 +289,44 @@ Return STRICT JSON matching this schema:
       }
     }
 
-    // Fallback if vision APIs fail
-    return NextResponse.json(fallbackExtraction(sampleType));
+    // 1. If explicit sample preset requested:
+    if (sampleType && samplePresets[sampleType]) {
+      return NextResponse.json({
+        medicines: samplePresets[sampleType].medicines,
+        rawNotes: samplePresets[sampleType].rawNotes,
+        source: "rule_fallback",
+        disclaimer: DISCLAIMER_TEXT,
+      });
+    }
+
+    // 2. High-Accuracy Local OCR Multimodal Extraction
+    const matches = imageDataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+    const base64Data = matches ? matches[2] : imageDataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    const ocrResult = await extractMedicinesFromImage(imageBuffer);
+
+    return NextResponse.json({
+      medicines: ocrResult.medicines,
+      rawNotes: ocrResult.rawNotes,
+      source: "local_ocr",
+      disclaimer: DISCLAIMER_TEXT,
+    });
   } catch (error: any) {
     console.error("Prescription Scan API Error:", error);
-    return NextResponse.json(fallbackExtraction(sampleType));
+    if (sampleType && samplePresets[sampleType]) {
+      return NextResponse.json({
+        medicines: samplePresets[sampleType].medicines,
+        rawNotes: samplePresets[sampleType].rawNotes,
+        source: "rule_fallback",
+        disclaimer: DISCLAIMER_TEXT,
+      });
+    }
+    return NextResponse.json({
+      medicines: [],
+      rawNotes: "Unable to process the uploaded image. Please ensure you upload a clear JPG, PNG, or WEBP photo.",
+      source: "local_ocr",
+      disclaimer: DISCLAIMER_TEXT,
+    });
   }
 }
