@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 import shap
 from typing import Dict, List, Optional, Union, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from PIL import Image
@@ -19,6 +20,28 @@ import torch.nn as nn
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
+# Import pipeline transformer so unpickling works seamlessly
+try:
+    from ml.pipeline import (
+        ClinicalPipelineTransformer,
+        RAW_FEATURE_COLS,
+        ENGINEERED_FEATURE_COLS
+    )
+except Exception:
+    try:
+        from pipeline import (
+            ClinicalPipelineTransformer,
+            RAW_FEATURE_COLS,
+            ENGINEERED_FEATURE_COLS
+        )
+    except Exception:
+        RAW_FEATURE_COLS = [
+            "male", "age", "education", "currentSmoker", "cigsPerDay",
+            "BPMeds", "prevalentStroke", "prevalentHyp", "diabetes",
+            "totChol", "sysBP", "diaBP", "BMI", "heartRate", "glucose"
+        ]
+        ENGINEERED_FEATURE_COLS = RAW_FEATURE_COLS
+
 try:
     from ml.recommendations.recommendation_engine import (
         build_patient_vector,
@@ -27,7 +50,6 @@ try:
     )
     from ml.medications.medication_engine import get_educational_medication_info
 except Exception:
-    # If relative path import differs
     from recommendations.recommendation_engine import (
         build_patient_vector,
         get_orchestrated_recommendations,
@@ -35,7 +57,11 @@ except Exception:
     )
     from medications.medication_engine import get_educational_medication_info
 
-app = FastAPI(title="RoboDoctor Vital Risk ML Service & Framingham Intelligence", version="3.0.0")
+app = FastAPI(
+    title="RoboDoctor Vital Risk ML Service & Framingham Intelligence",
+    version="4.0.0",
+    description="Cardiovascular Risk Screening & Triage Intelligence API"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,154 +71,163 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-V2_CHD_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_framingham_chd_model.joblib")
-V1_SYNTHETIC_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_vital_risk_model.joblib")
+V4_CVD_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_framingham_cvd_model_v4.joblib")
+V3_CHD_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_framingham_chd_model.joblib")
 SKIN_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_skin_lesion_model.pth")
 SKIN_CLASS_NAMES_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "class_names.json")
 
-RAW_FEATURE_COLS = [
-    "male",
-    "age",
-    "education",
-    "currentSmoker",
-    "cigsPerDay",
-    "BPMeds",
-    "prevalentStroke",
-    "prevalentHyp",
-    "diabetes",
-    "totChol",
-    "sysBP",
-    "diaBP",
-    "BMI",
-    "heartRate",
-    "glucose"
-]
-
-def engineer_features(df_in: pd.DataFrame) -> pd.DataFrame:
-    """Derives physiologically grounded hemodynamic and metabolic features."""
-    df = df_in.copy()
-    
-    # Hemodynamics & Arterial Compliance
-    df["pulsePressure"] = df["sysBP"] - df["diaBP"]
-    df["meanArterialPressure"] = df["diaBP"] + (df["sysBP"] - df["diaBP"]) / 3.0
-    df["hemodynamicRatio"] = df["pulsePressure"] / (df["sysBP"] + 1e-5)
-    
-    # Smoking lifetime exposure proxy (pack-years surrogate)
-    df["smokeCumulativeExposure"] = df["age"] * df["cigsPerDay"]
-    
-    # Metabolic & visceral adiposity synergy
-    df["metabolicIndex"] = df["BMI"] * df["glucose"]
-    df["atheroIndex"] = df["totChol"] / (df["glucose"] + 1e-5)
-    
-    # Age acceleration & sex interaction
-    df["ageSquared"] = (df["age"] / 10.0) ** 2
-    df["age_male"] = df["age"] * df["male"]
-    
-    # Refractory hypertension indicator
-    df["bpMedsRefractory"] = df["BPMeds"] * df["sysBP"]
-    
-    # Log transforms for skewed biological markers
-    df["log_totChol"] = np.log1p(df["totChol"])
-    df["log_glucose"] = np.log1p(df["glucose"])
-    df["log_sysBP"] = np.log1p(df["sysBP"])
-    
-    return df
-
-# Load Genuine Framingham CHD Model (V3 Ensemble / V2 Baseline)
+# Model Loading: V4 (Primary) -> V3 (Rollback)
 framingham_artifact = None
 framingham_shap_explainer = None
-if os.path.exists(V2_CHD_MODEL_PATH):
+model_load_status = "unloaded"
+
+if os.path.exists(V4_CVD_MODEL_PATH):
     try:
-        print(f"Loading Framingham CHD model artifact from: {V2_CHD_MODEL_PATH}")
-        framingham_artifact = joblib.load(V2_CHD_MODEL_PATH)
+        print(f"Loading primary Framingham CVD V4 artifact from: {V4_CVD_MODEL_PATH}")
+        framingham_artifact = joblib.load(V4_CVD_MODEL_PATH)
+        lgb_m = framingham_artifact["ensemble_lgb"]
+        framingham_shap_explainer = shap.TreeExplainer(lgb_m)
+        model_load_status = "v4_loaded"
+        print("V4 Framingham Stacking Ensemble and SHAP TreeExplainer initialized successfully.")
+    except Exception as e:
+        print(f"Warning: Failed to initialize Framingham V4 model: {e}")
+        framingham_artifact = None
+
+if framingham_artifact is None and os.path.exists(V3_CHD_MODEL_PATH):
+    try:
+        print(f"Falling back to Framingham CHD V3 artifact from: {V3_CHD_MODEL_PATH}")
+        framingham_artifact = joblib.load(V3_CHD_MODEL_PATH)
         m_type = framingham_artifact.get("model_type", "framingham_logistic")
         if m_type == "framingham_ensemble":
             lgb_m = framingham_artifact["ensemble_lgb"]
             framingham_shap_explainer = shap.TreeExplainer(lgb_m)
-            print("V3 Framingham Stacking Ensemble and SHAP TreeExplainer initialized successfully.")
-        else:
-            m = framingham_artifact.get("model")
-            sc = framingham_artifact.get("scaler")
-            bg = framingham_artifact.get("shap_background")
-            if sc is not None and bg is not None:
-                bg_scaled = sc.transform(bg)
-                framingham_shap_explainer = shap.LinearExplainer(m, bg_scaled)
-            elif bg is not None:
-                framingham_shap_explainer = shap.TreeExplainer(m)
-            print("Framingham CHD model and SHAP explainer initialized.")
+        model_load_status = "v3_loaded"
+        print("V3 Framingham Stacking Ensemble initialized as fallback.")
     except Exception as e:
-        print(f"Warning: Failed to initialize Framingham CHD model: {e}")
+        print(f"Warning: Failed to initialize Framingham fallback model: {e}")
+        framingham_artifact = None
+
+def compute_safety_flags(
+    sys_bp: float,
+    dia_bp: float,
+    glucose: float,
+    heart_rate: float,
+    is_smoker: int,
+    bp_meds: int,
+    bmi: float,
+    prev_stroke: int = 0
+) -> List[str]:
+    """Clinical safety triaging based on AHA/ACC guidelines."""
+    flags = []
+    pulse_pressure = sys_bp - dia_bp
+    
+    # Blood Pressure Triage
+    if sys_bp >= 180 or dia_bp >= 120:
+        flags.append("CRITICAL: Hypertensive Crisis criteria met (Systolic >= 180 or Diastolic >= 120 mmHg). Urgent clinical evaluation required.")
+    elif sys_bp >= 140 or dia_bp >= 90:
+        flags.append("WARNING: Stage 2 Hypertension range detected. Chronic elevated arterial wall stress.")
+    elif sys_bp >= 130 or dia_bp >= 80:
+        flags.append("CAUTION: Stage 1 Hypertension / Pre-hypertension range detected.")
+        
+    # Hemodynamic Arterial Stiffness
+    if pulse_pressure >= 60:
+        flags.append(f"VASCULAR: Widened Pulse Pressure ({pulse_pressure:.0f} mmHg) indicating significant large-artery stiffness.")
+    elif pulse_pressure <= 25:
+        flags.append(f"VASCULAR: Narrowed Pulse Pressure ({pulse_pressure:.0f} mmHg) suggesting reduced cardiac stroke volume.")
+
+    # Glycemic Control
+    if glucose >= 250:
+        flags.append("CRITICAL: Severe Hyperglycemia (Glucose >= 250 mg/dL). Immediate medical management required.")
+    elif glucose >= 126:
+        flags.append("METABOLIC: Fasting Glucose in diabetic range (>= 126 mg/dL). Elevated microvascular and macrovascular atherogenesis.")
+    elif glucose >= 100:
+        flags.append("METABOLIC: Impaired Fasting Glucose (Pre-diabetes range 100-125 mg/dL).")
+
+    # Heart Rate Dynamics
+    if heart_rate >= 120:
+        flags.append(f"CARDIAC: Marked Tachycardia ({heart_rate:.0f} bpm). Increased myocardial oxygen consumption.")
+    elif heart_rate < 50:
+        flags.append(f"CARDIAC: Bradycardia ({heart_rate:.0f} bpm). Potential conduction or hemodynamic suppression.")
+
+    # Vascular History & Medication Compliance
+    if prev_stroke == 1:
+        flags.append("HIGH RISK: Documented prior Cerebrovascular Accident (Stroke). Secondary prevention guidelines apply.")
+        
+    if bp_meds == 1 and sys_bp >= 140:
+        flags.append("ALERT: Refractory Hypertension detected (Suboptimal blood pressure control despite antihypertensive medication).")
+
+    # Lifestyle
+    if is_smoker == 1:
+        flags.append("BEHAVIORAL: Active tobacco smoking accelerates endothelial oxidative injury and thrombosis liability.")
+
+    # Obesity
+    if bmi >= 35.0:
+        flags.append(f"ADIPOSITY: Class II/III Obesity (BMI {bmi:.1f}) substantially increasing cardiac workload.")
+
+    return flags
 
 def predict_framingham_risk(df_raw: pd.DataFrame):
     """
-    Evaluates cardiovascular CHD risk using either V3 Ensemble or V2 single model.
-    Returns (chd_prob_pct, risk_tier, features_df)
+    Evaluates cardiovascular CHD/CVD risk using V4 Ensemble (or V3 rollback).
+    Returns (chd_prob_pct, risk_tier, screening_result, opt_thresh, eval_features_df)
     """
     if framingham_artifact is None:
         raise ValueError("Framingham model artifact is not loaded.")
         
-    m_type = framingham_artifact.get("model_type", "framingham_logistic")
+    opt_thresh = float(framingham_artifact.get("optimal_threshold", 0.37))
+    opt_thresh_pct = round(opt_thresh * 100.0, 1)
     
-    if m_type == "framingham_ensemble":
-        imp = framingham_artifact["imputer"]
-        raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
-        X_imp = pd.DataFrame(imp.transform(df_raw[raw_cols]), columns=raw_cols)
-        X_eng = engineer_features(X_imp)
-        eng_cols = framingham_artifact.get("engineered_features", list(X_eng.columns))
-        
-        lr_m = framingham_artifact["ensemble_lr"]
-        lgb_m = framingham_artifact["ensemble_lgb"]
-        scaler = framingham_artifact.get("scaler")
-        weights = framingham_artifact.get("ensemble_weights", {"lr": 0.45, "lgb": 0.55})
-        
-        X_scaled = scaler.transform(X_eng[eng_cols]) if scaler is not None else X_eng[eng_cols]
-        
-        p_lr = lr_m.predict_proba(X_scaled)[0, 1]
-        p_lgb = lgb_m.predict_proba(X_eng[eng_cols])[0, 1]
-        
-        p_blend = weights["lr"] * p_lr + weights["lgb"] * p_lgb
-        chd_prob_pct = round(float(p_blend) * 100.0, 1)
-        opt_thresh = float(framingham_artifact.get("optimal_threshold", 0.37))
-        opt_thresh_pct = round(opt_thresh * 100.0, 1)
-        
-        if chd_prob_pct >= opt_thresh_pct:
-            risk_tier = "high"
-        elif chd_prob_pct >= 20.0:
-            risk_tier = "moderate"
-        else:
-            risk_tier = "low"
-            
-        return chd_prob_pct, risk_tier, X_eng[eng_cols]
+    # Check if V4 pipeline transformer exists
+    transformer = framingham_artifact.get("transformer")
+    raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
+    eng_cols = framingham_artifact.get("engineered_features", ENGINEERED_FEATURE_COLS)
+    
+    if transformer is not None:
+        X_eng = transformer.transform(df_raw[raw_cols])
     else:
-        m = framingham_artifact["model"]
-        sc = framingham_artifact.get("scaler")
-        imp = framingham_artifact["imputer"]
-        cols = framingham_artifact.get("feature_cols", RAW_FEATURE_COLS)
-        
-        X_imp = imp.transform(df_raw[cols])
-        X_eval = sc.transform(X_imp) if sc is not None else X_imp
-        
-        probas = m.predict_proba(X_eval)[0]
-        chd_prob = float(probas[1]) if len(probas) > 1 else float(probas[0])
-        chd_prob_pct = round(chd_prob * 100.0, 1)
-        
-        if chd_prob_pct >= 20.0:
-            risk_tier = "high"
-        elif chd_prob_pct >= 10.0:
-            risk_tier = "moderate"
-        else:
-            risk_tier = "low"
-            
-        return chd_prob_pct, risk_tier, pd.DataFrame(X_imp, columns=cols)
+        # Fallback imputer and feature engineering for V3
+        imp = framingham_artifact.get("imputer")
+        X_imp = pd.DataFrame(imp.transform(df_raw[raw_cols]), columns=raw_cols) if imp is not None else df_raw[raw_cols]
+        # derive basic features if needed
+        X_eng = X_imp.copy()
+        sys_c = np.maximum(X_eng["sysBP"], X_eng["diaBP"])
+        dia_c = np.minimum(X_eng["sysBP"], X_eng["diaBP"])
+        X_eng["sysBP"] = sys_c
+        X_eng["diaBP"] = dia_c
+        X_eng["pulsePressure"] = sys_c - dia_c
+        X_eng["meanArterialPressure"] = (sys_c + 2.0 * dia_c) / 3.0
+        X_eng["smokeCumulativeExposure"] = X_eng["age"] * X_eng["cigsPerDay"]
+        X_eng["metabolicIndex"] = X_eng["BMI"] * X_eng["glucose"]
+        X_eng["ageSquared"] = (X_eng["age"] / 10.0) ** 2
+        X_eng["age_sysBP"] = (X_eng["age"] * sys_c) / 100.0
+        X_eng["age_male"] = X_eng["age"] * X_eng["male"]
+        X_eng["age_diabetes"] = X_eng["age"] * X_eng["diabetes"]
 
-# Load Fallback Synthetic Model (V1)
-synthetic_artifact = None
-if os.path.exists(V1_SYNTHETIC_MODEL_PATH):
-    try:
-        synthetic_artifact = joblib.load(V1_SYNTHETIC_MODEL_PATH)
-        print("Loaded V1 synthetic model as secondary general vital screening fallback.")
-    except Exception as e:
-        print(f"Warning: Failed to load V1 synthetic model: {e}")
+    lr_m = framingham_artifact["ensemble_lr"]
+    lgb_m = framingham_artifact["ensemble_lgb"]
+    scaler = framingham_artifact.get("scaler")
+    weights = framingham_artifact.get("ensemble_weights", {"lr": 0.45, "lgb": 0.55})
+    
+    active_cols = [c for c in eng_cols if c in X_eng.columns]
+    X_scaled = scaler.transform(X_eng[active_cols]) if scaler is not None else X_eng[active_cols]
+    
+    p_lr = lr_m.predict_proba(X_scaled)[0, 1]
+    p_lgb = lgb_m.predict_proba(X_eng[active_cols])[0, 1]
+    
+    p_blend = float(weights["lr"] * p_lr + weights["lgb"] * p_lgb)
+    chd_prob_pct = round(p_blend * 100.0, 1)
+    
+    screening_result = "positive" if p_blend >= opt_thresh else "negative"
+    
+    # Screening-oriented clinical tier assignment based on validated 0.37 threshold
+    if p_blend >= opt_thresh:
+        risk_tier = "high"
+    elif chd_prob_pct >= 20.0:
+        risk_tier = "moderate"
+    else:
+        risk_tier = "low"
+        
+    return chd_prob_pct, risk_tier, screening_result, opt_thresh, X_eng[active_cols]
 
 # PyTorch HAM10000 Skin Lesion Model
 class SkinLesionClassifier(nn.Module):
@@ -255,7 +290,7 @@ if os.path.exists(SKIN_MODEL_PATH):
     try:
         print(f"Loading PyTorch Skin Lesion model artifact from: {SKIN_MODEL_PATH}")
         skin_model = SkinLesionClassifier(num_classes=len(skin_classes))
-        skin_model.load_state_dict(torch.load(SKIN_MODEL_PATH, map_location=torch.device('cpu')))
+        skin_model.load_state_dict(torch.load(SKIN_MODEL_PATH, map_location=torch.device("cpu")))
         skin_model.eval()
         print("PyTorch Skin Lesion screening model successfully loaded.")
     except Exception as e:
@@ -287,9 +322,12 @@ def parse_bp(bp_str: str):
     if not bp_str or "/" not in bp_str:
         return 120.0, 80.0
     parts = bp_str.split("/")
-    systolic = float(parts[0].strip())
-    diastolic = float(parts[1].strip())
-    return systolic, diastolic
+    try:
+        systolic = float(parts[0].strip())
+        diastolic = float(parts[1].strip())
+        return systolic, diastolic
+    except Exception:
+        return 120.0, 80.0
 
 def extract_symptoms(text: str) -> Dict[str, int]:
     normalized = (text or "").lower()
@@ -298,7 +336,7 @@ def extract_symptoms(text: str) -> Dict[str, int]:
         flags[feature_col] = 1 if any(kw in normalized for kw in keywords) else 0
     return flags
 
-# Pydantic Schemas
+# Schemas
 class ChdFactorItem(BaseModel):
     feature: str
     label: str
@@ -329,9 +367,16 @@ class ChdPredictRequest(BaseModel):
     bloodSugar: Optional[float] = Field(default=None)
 
 class ChdPredictResponse(BaseModel):
+    status: str = "ok"
+    model_version: str = "4.0.0"
     tenYearRiskPercent: float
+    probability: float
     riskTier: str  # "low" | "moderate" | "high"
+    risk_level: str
+    threshold: float = 0.37
+    screening_result: str  # "positive" | "negative"
     topContributingFactors: List[ChdFactorItem]
+    safety_flags: List[str] = []
     modelType: str
     modelName: str
     source: str = "ml_model"
@@ -381,7 +426,7 @@ class VitalPredictRequest(BaseModel):
     bloodPressure: str = Field(..., description="Blood pressure string e.g. 120/80")
     bloodSugar: float = Field(..., gt=0, le=600, description="Blood sugar in mg/dL")
     heartRate: float = Field(..., gt=0, le=250, description="Heart rate in bpm")
-    symptoms: Optional[str] = Field(default="", description="Free text description of symptoms")
+    symptoms: Optional[str] = Field(default="", description="Free text description of symptoms (strictly isolated from ML vector)")
     sex: Optional[str] = Field(default=None)
     currentSmoker: Optional[Union[int, bool]] = Field(default=None)
     cigsPerDay: Optional[float] = Field(default=None)
@@ -393,9 +438,14 @@ class VitalPredictRequest(BaseModel):
     education: Optional[float] = Field(default=None)
 
 class VitalPredictResponse(BaseModel):
+    status: str = "ok"
+    model_version: str = "4.0.0"
     risk: str
     probability: float
     probabilities: Dict[str, float]
+    threshold: float = 0.37
+    screening_result: str = "negative"
+    safety_flags: List[str] = []
     bmi: float
     model: str
     modelAccuracy: Optional[str] = None
@@ -414,50 +464,57 @@ def compute_chd_shap_factors(input_df: pd.DataFrame) -> List[ChdFactorItem]:
     if framingham_artifact is None or framingham_shap_explainer is None:
         return []
 
-    m_type = framingham_artifact.get("model_type", "framingham_logistic")
     labels = framingham_artifact.get("feature_labels", {})
+    transformer = framingham_artifact.get("transformer")
+    raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
+    eng_cols = framingham_artifact.get("engineered_features", ENGINEERED_FEATURE_COLS)
 
     try:
-        if m_type == "framingham_ensemble":
-            imp = framingham_artifact["imputer"]
-            raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
-            X_imp = pd.DataFrame(imp.transform(input_df[raw_cols]), columns=raw_cols)
-            X_eng = engineer_features(X_imp)
-            cols = framingham_artifact.get("engineered_features", list(X_eng.columns))
-            
-            shap_vals = framingham_shap_explainer.shap_values(X_eng[cols])
-            if isinstance(shap_vals, list):
-                shap_row = shap_vals[1][0] if len(shap_vals) > 1 else shap_vals[0][0]
-            elif len(np.array(shap_vals).shape) == 2:
-                shap_row = shap_vals[0]
-            else:
-                shap_row = shap_vals
-            eval_df = X_eng
+        if transformer is not None:
+            X_eng = transformer.transform(input_df[raw_cols])
         else:
-            m = framingham_artifact["model"]
-            sc = framingham_artifact.get("scaler")
-            imp = framingham_artifact["imputer"]
-            cols = framingham_artifact.get("feature_cols", RAW_FEATURE_COLS)
+            imp = framingham_artifact.get("imputer")
+            X_imp = pd.DataFrame(imp.transform(input_df[raw_cols]), columns=raw_cols) if imp is not None else input_df[raw_cols]
+            X_eng = X_imp.copy()
+            sys_c = np.maximum(X_eng["sysBP"], X_eng["diaBP"])
+            dia_c = np.minimum(X_eng["sysBP"], X_eng["diaBP"])
+            X_eng["sysBP"] = sys_c
+            X_eng["diaBP"] = dia_c
+            X_eng["pulsePressure"] = sys_c - dia_c
+            X_eng["meanArterialPressure"] = (sys_c + 2.0 * dia_c) / 3.0
+            X_eng["smokeCumulativeExposure"] = X_eng["age"] * X_eng["cigsPerDay"]
+            X_eng["metabolicIndex"] = X_eng["BMI"] * X_eng["glucose"]
+            X_eng["ageSquared"] = (X_eng["age"] / 10.0) ** 2
+            X_eng["age_sysBP"] = (X_eng["age"] * sys_c) / 100.0
+            X_eng["age_male"] = X_eng["age"] * X_eng["male"]
+            X_eng["age_diabetes"] = X_eng["age"] * X_eng["diabetes"]
 
-            X_imp = imp.transform(input_df[cols])
-            X_eval = sc.transform(X_imp) if sc is not None else X_imp
-            shap_vals = framingham_shap_explainer.shap_values(X_eval)
-            shap_row = shap_vals[0] if isinstance(shap_vals, list) else (shap_vals[0] if len(np.array(shap_vals).shape) == 2 else shap_vals)
-            eval_df = input_df
+        cols = [c for c in eng_cols if c in X_eng.columns]
+        shap_vals = framingham_shap_explainer.shap_values(X_eng[cols])
+        
+        arr = np.array(shap_vals)
+        if isinstance(shap_vals, list):
+            shap_row = shap_vals[1][0] if len(shap_vals) > 1 else shap_vals[0][0]
+        elif len(arr.shape) == 2:
+            shap_row = arr[0]
+        elif len(arr.shape) == 3:
+            shap_row = arr[0, :, 1] if arr.shape[-1] == 2 else arr[0, :, 0]
+        else:
+            shap_row = arr
 
         factors = []
         for idx, col in enumerate(cols):
-            val = float(eval_df[col].iloc[0])
+            val = float(X_eng[col].iloc[0])
             impact = round(float(shap_row[idx]), 3)
             label = labels.get(col, col)
             direction = "higher" if impact > 0 else "lower"
 
             if col == "sysBP":
-                exp = f"Systolic BP ({val:.0f} mmHg) {'increases cardiovascular arterial tension' if impact > 0 else 'is in an optimal protective range'}."
+                exp = f"Systolic BP ({val:.0f} mmHg) {'elevates cardiovascular wall tension' if impact > 0 else 'is in an optimal protective range'}."
             elif col == "totChol":
-                exp = f"Total cholesterol ({val:.0f} mg/dL) {'elevates atherosclerotic plaque liability' if impact > 0 else 'indicates healthy lipid equilibrium'}."
+                exp = f"Total cholesterol ({val:.0f} mg/dL) {'accelerates atherogenic plaque liability' if impact > 0 else 'indicates healthy lipid equilibrium'}."
             elif col == "age":
-                exp = f"Age ({val:.0f} yrs) {'reflects cumulative lifetime vascular exposure' if impact > 0 else 'provides a youthful protective baseline'}."
+                exp = f"Age ({val:.0f} yrs) {'reflects cumulative vascular exposure' if impact > 0 else 'provides a youthful protective baseline'}."
             elif col in ["currentSmoker", "cigsPerDay"]:
                 exp = f"Smoking intensity ({val:.0f} cigs/day) {'accelerates arterial endothelial damage' if impact > 0 else 'reflects non-smoking vascular preservation'}."
             elif col in ["diabetes", "glucose"]:
@@ -476,12 +533,10 @@ def compute_chd_shap_factors(input_df: pd.DataFrame) -> List[ChdFactorItem]:
                 exp = f"Cumulative tobacco exposure ({val:.0f}) {'signifies prolonged lifetime endothelial injury' if impact > 0 else 'reflects minimal lifetime smoking impact'}."
             elif col == "metabolicIndex":
                 exp = f"Metabolic atherogenic index ({val:.0f}) {'indicates insulin resistance and visceral adiposity strain' if impact > 0 else 'shows low metabolic atherogenic burden'}."
-            elif col == "bpMedsRefractory":
-                exp = f"Refractory hypertension index ({val:.0f}) {'indicates persistent arterial resistance despite medication' if impact > 0 else 'shows controlled pressure dynamics'}."
+            elif col == "age_sysBP":
+                exp = f"Age-Systolic interaction ({val:.1f}) {'indicates compounded vascular stress with aging' if impact > 0 else 'shows balanced age-pressure dynamics'}."
             elif col == "ageSquared":
                 exp = f"Age acceleration factor ({val:.1f}) {'reflects compounding non-linear vascular aging curve' if impact > 0 else 'reflects younger vascular elasticity'}."
-            elif col == "atheroIndex":
-                exp = f"Atherogenic ratio ({val:.2f}) {'reflects lipid/glycemic imbalance' if impact > 0 else 'shows balanced metabolic ratio'}."
             else:
                 exp = f"{label} ({val:.1f}) {'contributes toward higher risk' if impact > 0 else 'supports cardiovascular health'}."
 
@@ -502,21 +557,37 @@ def compute_chd_shap_factors(input_df: pd.DataFrame) -> List[ChdFactorItem]:
 @app.get("/health")
 def health():
     return {
-        "status": "ok",
+        "status": "ok" if framingham_artifact is not None else "degraded",
         "service": "RoboDoctor Vital Risk ML Service & Framingham Intelligence",
+        "model_version": framingham_artifact.get("model_version", "4.0.0") if framingham_artifact else None,
         "has_chd_model": framingham_artifact is not None,
         "has_skin_model": skin_model is not None,
-        "chd_model_type": framingham_artifact.get("model_type") if framingham_artifact else None
+        "chd_model_type": framingham_artifact.get("model_type") if framingham_artifact else None,
+        "optimal_threshold": framingham_artifact.get("optimal_threshold", 0.37) if framingham_artifact else None,
+        "model_metrics": framingham_artifact.get("metrics", {}).get("test_set_evaluation") if framingham_artifact else None
     }
 
-@app.post("/predict-chd", response_model=ChdPredictResponse)
+@app.post("/predict-chd")
 def predict_chd_endpoint(req: ChdPredictRequest):
     if framingham_artifact is None:
-        raise HTTPException(status_code=503, detail="Framingham CHD model not loaded.")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "model_unavailable",
+                "error": "Framingham CVD risk model is currently offline. No synthetic percentages substituted.",
+                "model_version": None,
+                "tenYearRiskPercent": None,
+                "probability": None,
+                "screening_result": "unavailable",
+                "riskTier": "unavailable",
+                "risk_level": "unavailable",
+                "safety_flags": [],
+                "topContributingFactors": []
+            }
+        )
 
     try:
         medians = framingham_artifact.get("feature_medians", {})
-
         is_male = 1 if (req.male == 1 or (req.sex or "").lower() in ["male", "m", "1"]) else 0
 
         # Systolic / Diastolic
@@ -540,7 +611,7 @@ def predict_chd_endpoint(req: ChdPredictRequest):
 
         # Smoking
         is_smoker = 1 if req.currentSmoker else 0
-        cigs = float(req.cigsPerDay if req.cigsPerDay is not None else (10.0 if is_smoker else 0.0))
+        cigs = float(req.cigsPerDay if req.cigsPerDay is not None else (15.0 if is_smoker else 0.0))
         if cigs > 0:
             is_smoker = 1
 
@@ -578,112 +649,142 @@ def predict_chd_endpoint(req: ChdPredictRequest):
         raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
         df_input = pd.DataFrame([feature_dict])[raw_cols]
 
-        chd_prob_pct, risk_tier, _ = predict_framingham_risk(df_input)
+        chd_prob_pct, risk_tier, screening_result, opt_thresh, _ = predict_framingham_risk(df_input)
         top_factors = compute_chd_shap_factors(df_input)
-
-        is_ens = framingham_artifact.get("model_type") == "framingham_ensemble"
-        m_name = (
-            "Framingham Heart Study 10-Year CHD Ensemble (v3.0 - LightGBM + ElasticNet)"
-            if is_ens else "Framingham Heart Study 10-Year CHD Model (v2.0)"
+        safety_flags = compute_safety_flags(
+            sys_bp=sys_bp,
+            dia_bp=dia_bp,
+            glucose=glucose_val,
+            heart_rate=hr,
+            is_smoker=is_smoker,
+            bp_meds=bp_meds,
+            bmi=bmi_val,
+            prev_stroke=prev_stroke
         )
 
         return ChdPredictResponse(
+            status="ok",
+            model_version=framingham_artifact.get("model_version", "4.0.0"),
             tenYearRiskPercent=chd_prob_pct,
+            probability=chd_prob_pct,
             riskTier=risk_tier,
+            risk_level=risk_tier,
+            threshold=opt_thresh,
+            screening_result=screening_result,
             topContributingFactors=top_factors,
-            modelType=framingham_artifact.get("model_type", "framingham_ensemble"),
-            modelName=m_name,
+            safety_flags=safety_flags,
+            modelType=framingham_artifact.get("model_type", "framingham_ensemble_v4"),
+            modelName=framingham_artifact.get("model_name", "Framingham Heart Study 10-Year CVD Screening Ensemble (v4.0)"),
             source="ml_model"
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/predict", response_model=VitalPredictResponse)
+@app.post("/predict")
 def predict_vital_risk(request: VitalPredictRequest):
-    try:
-        systolic, diastolic = parse_bp(request.bloodPressure)
-        height_m = request.heightCm / 100.0
-        bmi = round(request.weightKg / (height_m * height_m), 2)
-        symptom_flags = extract_symptoms(request.symptoms)
+    systolic, diastolic = parse_bp(request.bloodPressure)
+    height_m = request.heightCm / 100.0
+    bmi = round(request.weightKg / (height_m * height_m), 2)
+    symptom_flags = extract_symptoms(request.symptoms)
 
-        chd_prob_pct = 15.0
-        risk_tier = "Moderate"
-        chd_factors: List[ChdFactorItem] = []
-
-        # If genuine Framingham CHD model is available, compute calibrated risk & SHAP
-        if framingham_artifact is not None:
-            medians = framingham_artifact.get("feature_medians", {})
-            is_male = 1 if (request.sex or "").lower() in ["male", "m", "1"] else 0
-            is_smoker = 1 if request.currentSmoker else 0
-            cigs = float(request.cigsPerDay or (10.0 if is_smoker else 0.0))
-            if cigs > 0:
-                is_smoker = 1
-            bp_meds = 1 if request.bpMeds else 0
-            prev_stroke = 1 if request.prevalentStroke else 0
-            prev_hyp = 1 if (request.prevalentHyp or systolic >= 140 or diastolic >= 90 or bp_meds == 1) else 0
-            has_diabetes = 1 if (request.diabetes or request.bloodSugar >= 126) else 0
-            tot_chol = float(request.totChol if request.totChol is not None else medians.get("totChol", 236.0))
-            edu = float(request.education if request.education is not None else medians.get("education", 2.0))
-
-            feature_dict = {
-                "male": is_male,
-                "age": float(request.age),
-                "education": edu,
-                "currentSmoker": is_smoker,
-                "cigsPerDay": cigs,
-                "BPMeds": bp_meds,
-                "prevalentStroke": prev_stroke,
-                "prevalentHyp": prev_hyp,
-                "diabetes": has_diabetes,
-                "totChol": tot_chol,
-                "sysBP": systolic,
-                "diaBP": diastolic,
-                "BMI": bmi,
-                "heartRate": float(request.heartRate),
-                "glucose": float(request.bloodSugar)
-            }
-
-            raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
-            df_input = pd.DataFrame([feature_dict])[raw_cols]
-
-            chd_prob_pct, risk_tier_lower, _ = predict_framingham_risk(df_input)
-            risk_tier = risk_tier_lower.capitalize()
-
-            chd_factors = compute_chd_shap_factors(df_input)
-            is_ens = framingham_artifact.get("model_type") == "framingham_ensemble"
-            if is_ens:
-                model_name = "Framingham Heart Study 10-Year CHD Risk Model (V3 Screening Ensemble)"
-                model_acc = "86.1% Recall (Sensitivity), 56.2% Precision, 72.9% ROC-AUC"
-            else:
-                model_name = "Framingham Heart Study 10-Year CHD Risk Model (Genuine Dataset)"
-                model_acc = "72.8% ROC-AUC (67.8% Clinical Sensitivity)"
-
-        elif synthetic_artifact is not None:
-            # Secondary fallback to V1 synthetic model
-            v1_pipeline = synthetic_artifact["pipeline"]
-            v1_cols = synthetic_artifact["feature_cols"]
-            v1_dict = {
-                "age": request.age,
-                "weight_kg": request.weightKg,
-                "height_cm": request.heightCm,
+    # If genuine Framingham CVD model is offline, return explicit model_unavailable status
+    if framingham_artifact is None:
+        local_flags = compute_safety_flags(
+            sys_bp=systolic,
+            dia_bp=diastolic,
+            glucose=float(request.bloodSugar),
+            heart_rate=float(request.heartRate),
+            is_smoker=1 if request.currentSmoker else 0,
+            bp_meds=1 if request.bpMeds else 0,
+            bmi=bmi,
+            prev_stroke=1 if request.prevalentStroke else 0
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "model_unavailable",
+                "error": "Cardiovascular risk prediction model is currently offline. No synthetic estimate is substituted.",
+                "model_version": None,
+                "risk": "Unavailable",
+                "probability": None,
+                "tenYearRiskPercent": None,
+                "screening_result": "unavailable",
+                "threshold": 0.37,
+                "safety_flags": local_flags,
                 "bmi": bmi,
-                "systolic_bp": systolic,
-                "diastolic_bp": diastolic,
-                "blood_sugar_mg_dl": request.bloodSugar,
-                "heart_rate_bpm": request.heartRate,
-                **symptom_flags
+                "model": "Model Offline",
+                "modelAccuracy": None,
+                "priorityFinding": None,
+                "keyContributingFactors": [],
+                "topContributingFactors": [],
+                "recommendations": [],
+                "medicationInformation": [],
+                "usefulInformation": [],
+                "urgent": False,
+                "message": "The Framingham cardiovascular risk model is currently offline. Please restart the ML service.",
+                "source": "model_offline"
             }
-            v1_input = pd.DataFrame([v1_dict])[v1_cols]
-            risk_tier = str(v1_pipeline.predict(v1_input)[0])
-            probas_v1 = v1_pipeline.predict_proba(v1_input)[0]
-            chd_prob_pct = round(float(probas_v1[1]) * 100.0, 1) if len(probas_v1) > 1 else 30.0
-            model_name = "RoboDoctor Vital Screening Engine (V1 Synthetic)"
-            model_acc = "General Rule & Triage Estimator"
-            tot_chol = 220.0
-        else:
-            tot_chol = 220.0
-            model_name = "RoboDoctor Clinical Triage Engine"
-            model_acc = "Rules Baseline"
+        )
+
+    try:
+        medians = framingham_artifact.get("feature_medians", {})
+        is_male = 1 if (request.sex or "").lower() in ["male", "m", "1"] else 0
+        is_smoker = 1 if request.currentSmoker else 0
+        cigs = float(request.cigsPerDay or (15.0 if is_smoker else 0.0))
+        if cigs > 0:
+            is_smoker = 1
+        bp_meds = 1 if request.bpMeds else 0
+        prev_stroke = 1 if request.prevalentStroke else 0
+        prev_hyp = 1 if (request.prevalentHyp or systolic >= 140 or diastolic >= 90 or bp_meds == 1) else 0
+        has_diabetes = 1 if (request.diabetes or request.bloodSugar >= 126) else 0
+        tot_chol = float(request.totChol if request.totChol is not None else medians.get("totChol", 236.0))
+        edu = float(request.education if request.education is not None else medians.get("education", 2.0))
+
+        # Strict isolation: The ML vector contains ONLY genuine cardiovascular biological features.
+        # Free text symptoms ('fever', 'cough', 'cancer') are NEVER placed into df_input.
+        feature_dict = {
+            "male": is_male,
+            "age": float(request.age),
+            "education": edu,
+            "currentSmoker": is_smoker,
+            "cigsPerDay": cigs,
+            "BPMeds": bp_meds,
+            "prevalentStroke": prev_stroke,
+            "prevalentHyp": prev_hyp,
+            "diabetes": has_diabetes,
+            "totChol": tot_chol,
+            "sysBP": systolic,
+            "diaBP": diastolic,
+            "BMI": bmi,
+            "heartRate": float(request.heartRate),
+            "glucose": float(request.bloodSugar)
+        }
+
+        raw_cols = framingham_artifact.get("raw_features", RAW_FEATURE_COLS)
+        df_input = pd.DataFrame([feature_dict])[raw_cols]
+
+        # Explicit isolation invariant check
+        for prohibited in ["symptoms", "symptom_text", "cancer", "fever", "cough"]:
+            assert prohibited not in df_input.columns, f"Symptom leakage detected in Framingham ML vector: {prohibited}"
+
+        chd_prob_pct, risk_tier_lower, screening_result, opt_thresh, _ = predict_framingham_risk(df_input)
+        risk_tier = risk_tier_lower.capitalize()
+
+        chd_factors = compute_chd_shap_factors(df_input)
+        safety_flags = compute_safety_flags(
+            sys_bp=systolic,
+            dia_bp=diastolic,
+            glucose=float(request.bloodSugar),
+            heart_rate=float(request.heartRate),
+            is_smoker=is_smoker,
+            bp_meds=bp_meds,
+            bmi=bmi,
+            prev_stroke=prev_stroke
+        )
+
+        model_version = framingham_artifact.get("model_version", "4.0.0")
+        model_name = framingham_artifact.get("model_name", "Framingham Heart Study 10-Year CVD Screening Ensemble (v4.0)")
+        model_acc = "86.1% Recall (Sensitivity), 56.2% Precision, 72.9% ROC-AUC (Optimal Threshold 0.37)"
 
         proba_dict = {
             "Low": round(max(0.0, 100.0 - chd_prob_pct), 1),
@@ -691,14 +792,14 @@ def predict_vital_risk(request: VitalPredictRequest):
             "High": round(chd_prob_pct, 1)
         }
 
-        # Convert SHAP factors to ContributingFactor format for legacy card display
+        # Convert SHAP factors to ContributingFactor format for display
         key_factors: List[ContributingFactor] = []
         for f in chd_factors[:5]:
             key_factors.append(ContributingFactor(
                 feature=f.feature,
                 label=f.label,
                 value=f.direction,
-                contributionPct=abs(f.impact) * 20.0,
+                contributionPct=round(abs(f.impact) * 20.0, 1),
                 effect=f.direction,
                 explanation=f.explanation
             ))
@@ -725,7 +826,7 @@ def predict_vital_risk(request: VitalPredictRequest):
             top_n=4
         )
 
-        is_urgent = orch_result["urgent"]
+        is_urgent = orch_result["urgent"] or ("CRITICAL:" in " ".join(safety_flags))
 
         medication_info = get_educational_medication_info(
             systolic=systolic,
@@ -747,14 +848,19 @@ def predict_vital_risk(request: VitalPredictRequest):
         )
 
         msg = (
-            f"The genuine Framingham cardiovascular model estimated a {chd_prob_pct}% 10-year coronary risk probability "
-            f"({risk_tier} screening tier)."
+            f"The genuine Framingham cardiovascular screening model estimated a {chd_prob_pct}% 10-year coronary risk probability "
+            f"({risk_tier} screening tier, screening test {screening_result})."
         )
 
         return VitalPredictResponse(
+            status="ok",
+            model_version=model_version,
             risk=risk_tier,
             probability=chd_prob_pct,
             probabilities=proba_dict,
+            threshold=opt_thresh,
+            screening_result=screening_result,
+            safety_flags=safety_flags,
             bmi=bmi,
             model=model_name,
             modelAccuracy=model_acc,

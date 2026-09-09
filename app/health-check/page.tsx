@@ -63,6 +63,8 @@ type UsefulHealthInfoItem = {
 };
 
 type RiskResult = {
+  status?: "ok" | "model_unavailable" | string;
+  model_version?: string;
   risk: "Low" | "Moderate" | "High";
   probability: number;
   probabilities: {
@@ -70,6 +72,9 @@ type RiskResult = {
     Moderate: number;
     High: number;
   };
+  threshold?: number;
+  screening_result?: "positive" | "negative" | "unavailable" | string;
+  safety_flags?: string[];
   bmi: number;
   model: string;
   modelAccuracy?: string;
@@ -91,7 +96,7 @@ type RiskResult = {
   usefulInformation?: UsefulHealthInfoItem[];
   urgent: boolean;
   message: string;
-  source?: "ml_model" | "rules_fallback" | "framingham_engine";
+  source?: "ml_model" | "rules_fallback" | "framingham_engine" | "model_offline";
   symptomTags?: string[];
 };
 
@@ -838,6 +843,18 @@ export default function HealthCheck() {
                     📊 {result.modelAccuracy}
                   </span>
                 )}
+                {result.screening_result && (
+                  <span className={`rounded-full border px-3 py-0.5 text-xs font-bold uppercase tracking-wider ${
+                    result.screening_result === "positive"
+                      ? "border-red-500/40 bg-red-500/20 text-red-300"
+                      : "border-emerald-500/40 bg-emerald-500/20 text-emerald-300"
+                  }`}>
+                    {localize(
+                      `Screening: ${result.screening_result.toUpperCase()}`,
+                      `स्क्रीनिंग: ${result.screening_result.toUpperCase()}`
+                    )}
+                  </span>
+                )}
               </div>
 
               <h2 className="mt-2 text-4xl font-black uppercase">
@@ -851,6 +868,20 @@ export default function HealthCheck() {
               <p className="mt-3 text-sm font-medium text-[var(--muted)]">
                 BMI: {result.bmi.toFixed(1)}
               </p>
+
+              {result.safety_flags && result.safety_flags.length > 0 && (
+                <div className="mt-4 space-y-1.5 rounded-xl border border-amber-400/20 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+                  <div className="font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                    <span>🛡️</span>
+                    <span>{localize("Clinical Safety Flags", "क्लिनिकल सुरक्षा संकेत")}</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-1 mt-1 text-amber-100">
+                    {result.safety_flags.map((flag, idx) => (
+                      <li key={idx}>{flag}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div
