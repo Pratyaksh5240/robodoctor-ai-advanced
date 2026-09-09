@@ -29,31 +29,7 @@ function PrescriptionScanContent() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [source, setSource] = useState<string>("");
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setHasScanned(false);
-    setRawNotes("");
-    const nextPreviewUrl = URL.createObjectURL(file);
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const res = typeof reader.result === "string" ? reader.result : null;
-      if (res) {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(nextPreviewUrl);
-        setImageDataUrl(res);
-        setItems([]);
-        setStatusMsg("");
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleScan = async () => {
-    if (!imageDataUrl) return;
-
+  const runScan = async (dataUrl: string) => {
     setIsScanning(true);
     setHasScanned(true);
     setStatusMsg("");
@@ -62,7 +38,7 @@ function PrescriptionScanContent() {
       const res = await fetch("/api/prescription-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify({ imageDataUrl: dataUrl }),
       });
 
       const data = await res.json();
@@ -91,6 +67,36 @@ function PrescriptionScanContent() {
       );
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setHasScanned(false);
+    setRawNotes("");
+    const nextPreviewUrl = URL.createObjectURL(file);
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const res = typeof reader.result === "string" ? reader.result : null;
+      if (res) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(nextPreviewUrl);
+        setImageDataUrl(res);
+        setItems([]);
+        setStatusMsg("");
+        // Automatically start scanning the chosen photo immediately
+        runScan(res);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleScan = () => {
+    if (imageDataUrl) {
+      runScan(imageDataUrl);
     }
   };
 
@@ -361,7 +367,20 @@ function PrescriptionScanContent() {
               </button>
             </form>
 
-            {items.length === 0 ? (
+            {isScanning ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-12 text-center">
+                <div className="relative mb-4 flex h-16 w-16 items-center justify-center">
+                  <div className="absolute h-16 w-16 animate-ping rounded-full bg-cyan-500/30"></div>
+                  <span className="text-3xl">🔍</span>
+                </div>
+                <p className="font-bold text-cyan-300 text-base">
+                  {localize("Analyzing photo with AI Vision OCR...", "एआई विज़न ओसीआर से फोटो का विश्लेषण हो रहा है...")}
+                </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  {localize("Extracting medicine salts, dosage, timing, and safety limits...", "दवा के नाम, खुराक, समय और सुरक्षा निर्देश निकाले जा रहे हैं...")}
+                </p>
+              </div>
+            ) : items.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-8 text-center text-[var(--muted)]">
                 <span className="text-5xl mb-3">{hasScanned ? "🔍" : "💊"}</span>
                 <p className="font-semibold text-slate-200 text-sm">
