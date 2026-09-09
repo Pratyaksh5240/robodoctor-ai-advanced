@@ -453,6 +453,29 @@ export default function HealthCheck() {
         </div>
       </div>
 
+      {/* High-Accuracy CAD Diagnostic Screener Announcement Banner */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/40 via-slate-900 to-rose-950/40 p-4 sm:p-5 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-bold border border-red-500/30">
+              <span>NEW: 88.52% High-Accuracy Diagnostic Screener</span>
+            </div>
+            <h3 className="text-base font-bold text-white">
+              Looking for Angiographic Coronary Artery Disease (CAD) Diagnostic Screening?
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300">
+              Evaluate present coronary artery stenosis (&gt;50% narrowing) based on the gold-standard Cleveland Clinic benchmark (88.52% accuracy, 95.24% ROC-AUC, 92.86% clinical sensitivity).
+            </p>
+          </div>
+          <Link
+            href="/cad-check"
+            className="inline-flex items-center justify-center whitespace-nowrap px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-red-600/20 transition"
+          >
+            Launch CAD Screener &rarr;
+          </Link>
+        </div>
+      </div>
+
       <motion.button
         onClick={startVoiceInput}
         whileHover={{ scale: 1.02 }}

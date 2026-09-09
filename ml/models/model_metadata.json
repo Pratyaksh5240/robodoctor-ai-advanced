@@ -1,0 +1,29 @@
+{
+  "model_name": "RoboDoctor PyTorch Skin Lesion Classifier",
+  "architecture": "SkinLesionClassifier (Custom 4-Block ConvNet)",
+  "dataset": "HAM10000 / ISIC 2018 Task 3 Dermoscopic Dataset",
+  "num_classes": 7,
+  "input_shape": [
+    3,
+    128,
+    128
+  ],
+  "test_accuracy": 99.17,
+  "macro_f1": 0.8509,
+  "uncertainty_threshold": 0.45,
+  "classes": [
+    "akiec",
+    "bcc",
+    "bkl",
+    "df",
+    "mel",
+    "nv",
+    "vasc"
+  ],
+  "high_risk_classes": [
+    "mel",
+    "bcc",
+    "akiec"
+  ],
+  "trained_at": "2026-09-09 18:39:58"
+}

@@ -1,0 +1,29 @@
+{
+  "classes": [
+    "akiec",
+    "bcc",
+    "bkl",
+    "df",
+    "mel",
+    "nv",
+    "vasc"
+  ],
+  "labels_map": {
+    "akiec": "Actinic Keratosis / Bowen's Disease",
+    "bcc": "Basal Cell Carcinoma",
+    "bkl": "Benign Keratosis (Solar Lentigo / Seborrheic Keratosis)",
+    "df": "Dermatofibroma",
+    "mel": "Melanoma",
+    "nv": "Melanocytic Nevus (Mole)",
+    "vasc": "Vascular Lesion"
+  },
+  "class_to_idx": {
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
+    "vasc": 6
+  }
+}

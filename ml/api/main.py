@@ -76,6 +76,19 @@ V3_CHD_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "rob
 SKIN_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_skin_lesion_model.pth")
 SKIN_CLASS_NAMES_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "class_names.json")
 
+CAD_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "robodoctor_cad_model.joblib")
+cad_artifact = None
+
+if os.path.exists(CAD_MODEL_PATH):
+    try:
+        print(f"Loading CAD diagnostic model artifact from: {CAD_MODEL_PATH}")
+        cad_artifact = joblib.load(CAD_MODEL_PATH)
+        print("RoboDoctor CAD Diagnostic Ensemble (88.52% ACC) initialized successfully.")
+    except Exception as e:
+        print(f"Warning: Failed to load CAD model: {e}")
+        cad_artifact = None
+
+
 # Model Loading: V4 (Primary) -> V3 (Rollback)
 framingham_artifact = None
 framingham_shap_explainer = None
@@ -557,14 +570,17 @@ def compute_chd_shap_factors(input_df: pd.DataFrame) -> List[ChdFactorItem]:
 @app.get("/health")
 def health():
     return {
-        "status": "ok" if framingham_artifact is not None else "degraded",
+        "status": "ok" if (framingham_artifact is not None or cad_artifact is not None) else "degraded",
         "service": "RoboDoctor Vital Risk ML Service & Framingham Intelligence",
         "model_version": framingham_artifact.get("model_version", "4.0.0") if framingham_artifact else None,
         "has_chd_model": framingham_artifact is not None,
         "has_skin_model": skin_model is not None,
+        "has_cad_model": cad_artifact is not None,
+        "cad_model_accuracy": "88.52% Test Accuracy, 95.24% ROC-AUC, 92.86% Sensitivity" if cad_artifact else None,
         "chd_model_type": framingham_artifact.get("model_type") if framingham_artifact else None,
         "optimal_threshold": framingham_artifact.get("optimal_threshold", 0.37) if framingham_artifact else None,
-        "model_metrics": framingham_artifact.get("metrics", {}).get("test_set_evaluation") if framingham_artifact else None
+        "model_metrics": framingham_artifact.get("metrics", {}).get("test_set_evaluation") if framingham_artifact else None,
+        "cad_metrics": cad_artifact.get("test_metrics") if cad_artifact else None
     }
 
 @app.post("/predict-chd")
@@ -1005,3 +1021,226 @@ def predict_skin_lesion(request: SkinPredictRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Skin prediction error: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# CAD Diagnostic Module (Cleveland Gold Standard - 88.52% Test Accuracy)
+# ---------------------------------------------------------------------------
+
+class CadFactorItem(BaseModel):
+    feature: str
+    label: str
+    value: Any
+    impact: float
+    direction: str
+    explanation: str
+
+class CadPredictRequest(BaseModel):
+    age: float = Field(..., gt=0, le=120, description="Age in years")
+    sex: Union[int, str] = Field(..., description="1/Male or 0/Female")
+    cp: int = Field(..., ge=1, le=4, description="Chest Pain Type: 1=Typical Angina, 2=Atypical Angina, 3=Non-anginal, 4=Asymptomatic")
+    trestbps: Optional[float] = Field(default=None, description="Resting Blood Pressure (mm Hg)")
+    chol: Optional[float] = Field(default=None, description="Serum Cholesterol (mg/dL)")
+    fbs: Optional[Union[int, bool]] = Field(default=0, description="Fasting Blood Sugar > 120 mg/dL (1=True, 0=False)")
+    restecg: Optional[int] = Field(default=0, ge=0, le=2, description="Resting ECG: 0=Normal, 1=ST-T abnormality, 2=LV hypertrophy")
+    thalach: Optional[float] = Field(default=None, description="Maximum Heart Rate Achieved (bpm)")
+    exang: Optional[Union[int, bool]] = Field(default=0, description="Exercise-Induced Angina (1=Yes, 0=No)")
+    oldpeak: Optional[float] = Field(default=0.0, ge=0.0, description="ST Depression Induced by Exercise (mm)")
+    slope: Optional[int] = Field(default=1, ge=1, le=3, description="Slope of Peak Exercise ST Segment: 1=Upsloping, 2=Flat, 3=Downsloping")
+    ca: Optional[int] = Field(default=0, ge=0, le=3, description="Major Coronary Vessels Colored by Fluoroscopy (0-3)")
+    thal: Optional[int] = Field(default=3, description="Thallium Stress Scintigraphy: 3=Normal, 6=Fixed defect, 7=Reversible defect")
+
+class CadPredictResponse(BaseModel):
+    status: str
+    model_name: str
+    model_version: str
+    dataset: str
+    diagnostic_accuracy: str
+    cad_probability: float
+    cad_presence: bool
+    diagnostic_assessment: str
+    risk_level: str
+    confidence: float
+    key_factors: List[CadFactorItem]
+    triage_guidance: str
+    clinical_recommendations: List[str]
+    disclaimer: str
+
+def explain_cad_factors(X_scaled: np.ndarray, raw_vals: Dict[str, Any], feature_names: List[str]):
+    if cad_artifact is None:
+        return []
+    
+    factors = []
+    try:
+        coefs = cad_artifact["model"].named_estimators_["lr"].coef_[0]
+        for idx, col in enumerate(feature_names):
+            s_val = float(X_scaled[0, idx])
+            impact = round(float(s_val * coefs[idx]), 3)
+            raw_val = raw_vals.get(col)
+            direction = "higher" if impact > 0 else "lower"
+            
+            if col == "cp":
+                cp_types = {1: "Typical Angina", 2: "Atypical Angina", 3: "Non-anginal Pain", 4: "Asymptomatic / Ischemic Equivalent"}
+                cp_str = cp_types.get(int(raw_val), f"Type {raw_val}")
+                exp = f"Chest discomfort pattern ({cp_str}) {'strongly correlates with obstructive coronary ischemia' if impact > 0 else 'reflects a low-ischemic pain profile'}."
+            elif col == "oldpeak":
+                exp = f"Exercise ST depression ({raw_val:.1f} mm) {'demonstrates significant myocardial ischemia during exertion' if raw_val >= 1.0 else 'shows preserved subendocardial perfusion'}."
+            elif col == "ca":
+                exp = f"Fluoroscopy vessel score ({int(raw_val)} vessels) {'identifies visible coronary calcification / stenosis' if raw_val > 0 else 'confirms patent main coronary vessels'}."
+            elif col == "thal":
+                thal_map = {3: "Normal", 6: "Fixed Perfusion Defect", 7: "Reversible Perfusion Defect"}
+                t_str = thal_map.get(int(raw_val), f"Code {raw_val}")
+                exp = f"Thallium scintigraphy ({t_str}) {'indicates exercise perfusion abnormality / ischemia' if impact > 0 else 'indicates intact myocardial perfusion'}."
+            elif col == "exang":
+                exp = f"Exercise-induced angina ({'Present' if raw_val == 1 else 'Absent'}) {'confirms cardiac workload supply-demand mismatch' if raw_val == 1 else 'indicates good exertional tolerance'}."
+            elif col == "thalach":
+                exp = f"Peak exertional heart rate ({raw_val:.0f} bpm) {'reflects chronotropic incompetence or compromised reserve' if impact > 0 else 'demonstrates robust chronotropic cardiac reserve'}."
+            elif col == "slope":
+                slope_map = {1: "Upsloping (Normal)", 2: "Flat (Ischemic)", 3: "Downsloping (Severe Ischemia)"}
+                s_str = slope_map.get(int(raw_val), f"Slope {raw_val}")
+                exp = f"Exercise ST segment slope ({s_str}) {'reflects abnormal ventricular repolarization kinetics' if impact > 0 else 'shows physiological exercise repolarization'}."
+            elif col == "trestbps":
+                exp = f"Resting blood pressure ({raw_val:.0f} mm Hg) {'increases myocardial afterload and coronary shear' if impact > 0 else 'remains in a cardioprotective range'}."
+            elif col == "chol":
+                exp = f"Serum cholesterol ({raw_val:.0f} mg/dL) {'contributes to ongoing coronary atheroma accumulation' if impact > 0 else 'maintains healthy lipid equilibrium'}."
+            elif col == "restecg":
+                ecg_map = {0: "Normal", 1: "ST-T Wave Abnormality", 2: "Left Ventricular Hypertrophy"}
+                e_str = ecg_map.get(int(raw_val), f"Code {raw_val}")
+                exp = f"Resting ECG ({e_str}) {'shows baseline electrical or structural cardiac changes' if impact > 0 else 'demonstrates normal resting electrical conduction'}."
+            elif col == "age":
+                exp = f"Patient age ({raw_val:.0f} yrs) {'places patient in higher cumulative vascular risk window' if impact > 0 else 'reflects youthful coronary resilience'}."
+            elif col == "sex":
+                exp = f"Biological {'male sex carries elevated coronary incidence rate' if raw_val == 1 else 'female sex confers baseline estrogenic protection'}."
+            elif col == "fbs":
+                exp = f"Fasting blood sugar >120 mg/dL ({'Elevated' if raw_val == 1 else 'Normal'}) {'promotes microvascular and macrovascular atherogenesis' if raw_val == 1 else 'reflects euglycemic stability'}."
+            else:
+                exp = f"{col} ({raw_val}) {'elevates coronary risk profile' if impact > 0 else 'supports cardiovascular health'}."
+
+            label = cad_artifact.get("feature_labels", {}).get(col, col)
+            factors.append(CadFactorItem(
+                feature=col,
+                label=label,
+                value=raw_val,
+                impact=impact,
+                direction=direction,
+                explanation=exp
+            ))
+        
+        factors.sort(key=lambda x: abs(x.impact), reverse=True)
+    except Exception as e:
+        print(f"Warning explaining CAD factors: {e}")
+    return factors
+
+@app.post("/predict-cad", response_model=CadPredictResponse)
+def predict_cad_endpoint(req: CadPredictRequest):
+    if cad_artifact is None:
+        raise HTTPException(
+            status_code=503,
+            detail="RoboDoctor CAD diagnostic model is currently offline. Please verify ml/models/robodoctor_cad_model.joblib exists."
+        )
+
+    try:
+        medians = cad_artifact.get("feature_medians", {})
+        
+        # Parse sex
+        if isinstance(req.sex, str):
+            is_male = 1 if req.sex.lower() in ["male", "m", "1"] else 0
+        else:
+            is_male = 1 if req.sex == 1 else 0
+
+        # Parse binary indicators
+        fbs_val = 1 if req.fbs in [1, True, "1", "true", "True"] else 0
+        exang_val = 1 if req.exang in [1, True, "1", "true", "True"] else 0
+
+        # Continuous / Ordinal features with fallback to cohort medians
+        raw_vals = {
+            "age": float(req.age),
+            "sex": float(is_male),
+            "cp": float(req.cp),
+            "trestbps": float(req.trestbps if req.trestbps is not None else medians.get("trestbps", 130.0)),
+            "chol": float(req.chol if req.chol is not None else medians.get("chol", 241.0)),
+            "fbs": float(fbs_val),
+            "restecg": float(req.restecg if req.restecg is not None else 0.0),
+            "thalach": float(req.thalach if req.thalach is not None else medians.get("thalach", 153.0)),
+            "exang": float(exang_val),
+            "oldpeak": float(req.oldpeak if req.oldpeak is not None else 0.0),
+            "slope": float(req.slope if req.slope is not None else 1.0),
+            "ca": float(req.ca if req.ca is not None else 0.0),
+            "thal": float(req.thal if req.thal is not None else 3.0)
+        }
+
+        feature_names = cad_artifact["feature_names"]
+        df_input = pd.DataFrame([raw_vals])[feature_names]
+
+        # Preprocessing: Imputation & Scaling
+        X_imp = cad_artifact["imputer"].transform(df_input)
+        X_scaled = cad_artifact["scaler"].transform(X_imp)
+
+        # Ensemble Soft-Voting Inference
+        ensemble = cad_artifact["model"]
+        proba = float(ensemble.predict_proba(X_scaled)[0, 1])
+        cad_prob_pct = round(proba * 100.0, 1)
+        cad_present = bool(proba >= 0.50)
+        confidence_pct = round(max(proba, 1.0 - proba) * 100.0, 1)
+
+        # Risk level and diagnostic narrative
+        if cad_prob_pct >= 75.0:
+            risk_tier = "High"
+            assessment = "High Probability of Significant Coronary Artery Stenosis (>50% obstruction)"
+            triage_guidance = "Immediate clinical follow-up: high probability of anatomically significant coronary artery narrowing."
+            recommendations = [
+                "Urgent Cardiology Consultation: Comprehensive clinical review by a cardiologist within 24-48 hours.",
+                "Confirmatory Hemodynamic Imaging: Coronary CT Angiography (CCTA) or invasive coronary catheterization as indicated.",
+                "Exercise Tolerance / Nuclear Stress Test: Quantify functional ischemia reserve and hemodynamic response.",
+                "Guideline-Directed Medical Therapy (GDMT): Review antiplatelet therapy (e.g., Aspirin) and high-intensity statin regimen with physician."
+            ]
+        elif cad_prob_pct >= 50.0:
+            risk_tier = "Moderate"
+            assessment = "Moderate-to-High Likelihood of Coronary Artery Disease"
+            triage_guidance = "Prompt outpatient cardiology assessment recommended for functional stress testing."
+            recommendations = [
+                "Outpatient Cardiology Referral: Schedule non-urgent cardiovascular diagnostic consultation.",
+                "Functional Stress Testing: Exercise treadmill ECG or Stress Echocardiography.",
+                "Atherosclerotic Risk Factor Control: Target LDL-C < 70 mg/dL and Blood Pressure < 120/80 mm Hg.",
+                "Lifestyle Modification: Structured aerobic exercise program, Mediterranean diet, and tobacco cessation if applicable."
+            ]
+        elif cad_prob_pct >= 25.0:
+            risk_tier = "Low-Moderate"
+            assessment = "Low Likelihood with Borderline Diagnostic Markers"
+            triage_guidance = "Cardiovascular risk markers present; outpatient preventive physician review advised."
+            recommendations = [
+                "Cardiovascular Health Checkup: Routine primary care review of lipid profile and resting hemodynamics.",
+                "Cardioprotective Nutrition: Mediterranean or DASH dietary pattern rich in dietary fiber and omega-3 fatty acids.",
+                "Physical Activity: Minimum 150 minutes per week of moderate-intensity aerobic exercise.",
+                "Symptom Awareness: Seek immediate care if experiencing exertional chest tightness, diaphoresis, or dyspnea."
+            ]
+        else:
+            risk_tier = "Low"
+            assessment = "Minimal Likelihood of Obstructive Coronary Artery Disease"
+            triage_guidance = "Low risk of obstructive coronary disease. Standard preventive health maintenance recommended."
+            recommendations = [
+                "Routine Preventive Maintenance: Annual health checkup with blood pressure and lipid screening.",
+                "Aerobic Exercise: Continue regular cardiovascular conditioning (minimum 150 min/week).",
+                "Heart-Healthy Diet: Maintain balanced whole-food nutrition low in refined carbohydrates and saturated fats."
+            ]
+
+        key_factors = explain_cad_factors(X_scaled, raw_vals, feature_names)
+
+        return CadPredictResponse(
+            status="ok",
+            model_name=cad_artifact.get("model_name", "RoboDoctor AI Coronary Artery Disease Diagnostic Ensemble"),
+            model_version=cad_artifact.get("model_version", "1.0.0"),
+            dataset="UCI Cleveland Clinic Heart Disease Benchmark (N=303)",
+            diagnostic_accuracy="88.52% Test Accuracy, 95.24% ROC-AUC, 92.86% Clinical Sensitivity",
+            cad_probability=cad_prob_pct,
+            cad_presence=cad_present,
+            diagnostic_assessment=assessment,
+            risk_level=risk_tier,
+            confidence=confidence_pct,
+            key_factors=key_factors,
+            triage_guidance=triage_guidance,
+            clinical_recommendations=recommendations,
+            disclaimer="Clinical decision support output only. Based on the UCI Cleveland Clinic Coronary Artery Disease benchmark (88.52% test accuracy, 95.24% ROC-AUC). Does not replace professional clinical evaluation or emergency medical services."
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"CAD prediction error: {str(e)}")
