@@ -67,9 +67,32 @@ export default function ExportReportPage() {
         setConditions(conds);
         setFamilyHistory(fam);
 
-        // Smart initial mode based on what reports exist
-        const initialMode: SbarExportMode =
-          health.length > 0 ? "vitals_only" : skin.length > 0 ? "skin_only" : "vitals_only";
+        // Read URL query parameter for requested export mode
+        const urlParams =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search)
+            : null;
+        const requested = (urlParams?.get("mode") || "").toLowerCase();
+
+        let initialMode: SbarExportMode = "vitals_only";
+        if (requested === "history" || requested === "history_only") {
+          initialMode = "history_only";
+        } else if (requested === "family" || requested === "family_only") {
+          initialMode = "family_only";
+        } else if (requested === "comprehensive" || requested === "combined") {
+          initialMode = "comprehensive";
+        } else if (requested === "skin" || requested === "skin_only") {
+          initialMode = "skin_only";
+        } else if (requested === "vitals" || requested === "vitals_only") {
+          initialMode = "vitals_only";
+        } else {
+          // Smart fallback based on available clinical records
+          if (health.length > 0) initialMode = "vitals_only";
+          else if (conds.length > 0) initialMode = "history_only";
+          else if (fam.length > 0) initialMode = "family_only";
+          else if (skin.length > 0) initialMode = "skin_only";
+          else initialMode = "vitals_only";
+        }
 
         setExportMode(initialMode);
         setSelectedHealthIndex(0);
@@ -176,7 +199,11 @@ export default function ExportReportPage() {
     }
   };
 
-  const hasReports = healthReports.length > 0 || skinReports.length > 0;
+  const hasReports =
+    healthReports.length > 0 ||
+    skinReports.length > 0 ||
+    conditions.length > 0 ||
+    familyHistory.length > 0;
 
   return (
     <div className="min-h-screen bg-[#06101c] text-slate-100 flex flex-col font-sans print:bg-white print:text-black">
@@ -221,7 +248,9 @@ export default function ExportReportPage() {
                   skinReports[selectedSkinIndex] || null,
                   userProfile,
                   user?.displayName || undefined,
-                  exportMode
+                  exportMode,
+                  conditions,
+                  familyHistory
                 )
               )
             }
@@ -259,14 +288,14 @@ export default function ExportReportPage() {
             <div className="text-4xl">📋</div>
             <h2 className="text-xl font-bold text-slate-100">
               {localize(
-                "No saved reports yet — complete a Health Check or Skin Check first",
-                "अभी तक कोई सेव रिपोर्ट नहीं है"
+                "No saved records yet — log clinical data first",
+                "अभी तक कोई डेटा नहीं है"
               )}
             </h2>
             <p className="text-sm text-slate-400">
               {localize(
-                "Complete a Health Check or Skin Check first to populate real clinical SBAR summary data.",
-                "डॉक्टर-रेडी SBAR रिपोर्ट जनरेट करने के लिए पहले अपनी स्वास्थ्य जांच या त्वचा जांच पूरी करें।"
+                "Complete a vital screening, skin check, chronic condition history, or family tree to generate an SBAR handover.",
+                "SBAR रिपोर्ट जनरेट करने के लिए पहले अपनी स्वास्थ्य जांच, त्वचा जांच, रोगी इतिहास या पारिवारिक ट्री भरें।"
               )}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -274,13 +303,25 @@ export default function ExportReportPage() {
                 href="/health-check"
                 className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition"
               >
-                🩺 {localize("Start Health Check", "स्वास्थ्य जांच शुरू करें")}
+                🩺 {localize("Vital Check", "वाइटल जांच")}
               </Link>
               <Link
                 href="/skin-check"
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition"
               >
-                🔬 {localize("Start Skin Check", "त्वचा जांच शुरू करें")}
+                🔬 {localize("Skin Check", "त्वचा जांच")}
+              </Link>
+              <Link
+                href="/patient-history"
+                className="px-4 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-cyan-300 font-bold text-xs transition"
+              >
+                💊 {localize("Patient History", "रोगी इतिहास")}
+              </Link>
+              <Link
+                href="/family-history"
+                className="px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 font-bold text-xs transition"
+              >
+                🌳 {localize("Family Tree", "पारिवारिक ट्री")}
               </Link>
             </div>
           </div>
@@ -292,7 +333,7 @@ export default function ExportReportPage() {
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider pl-1">
                   {localize("Export Scope:", "रिपोर्ट प्रकार:")}
                 </span>
-                <div className="inline-flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+                <div className="inline-flex flex-wrap rounded-xl bg-slate-950 p-1 border border-slate-800 gap-1">
                   <button
                     onClick={() => handleModeChange("vitals_only")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
@@ -302,7 +343,7 @@ export default function ExportReportPage() {
                     }`}
                   >
                     <span>🩺</span>
-                    <span>{localize("Vital Check Only", "केवल वाइटल चेक")}</span>
+                    <span>{localize("Vitals", "वाइटल्स")}</span>
                     {healthReports.length > 0 && (
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/25 text-slate-100 font-mono">
                         {healthReports.length}
@@ -319,7 +360,7 @@ export default function ExportReportPage() {
                     }`}
                   >
                     <span>🔬</span>
-                    <span>{localize("Skin Check Only", "केवल स्किन चेक")}</span>
+                    <span>{localize("Skin", "त्वचा")}</span>
                     {skinReports.length > 0 && (
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/25 text-slate-100 font-mono">
                         {skinReports.length}
@@ -328,15 +369,49 @@ export default function ExportReportPage() {
                   </button>
 
                   <button
-                    onClick={() => handleModeChange("combined")}
+                    onClick={() => handleModeChange("history_only")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                      exportMode === "combined"
+                      exportMode === "history_only"
+                        ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20"
+                        : "text-slate-300 hover:text-white hover:bg-slate-900"
+                    }`}
+                  >
+                    <span>💊</span>
+                    <span>{localize("History & Meds", "इतिहास व दवाइयां")}</span>
+                    {conditions.length > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/25 text-slate-100 font-mono">
+                        {conditions.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleModeChange("family_only")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      exportMode === "family_only"
+                        ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20"
+                        : "text-slate-300 hover:text-white hover:bg-slate-900"
+                    }`}
+                  >
+                    <span>🌳</span>
+                    <span>{localize("Family Tree", "पारिवारिक ट्री")}</span>
+                    {familyHistory.length > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/25 text-slate-100 font-mono">
+                        {familyHistory.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleModeChange("comprehensive")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      exportMode === "comprehensive" || exportMode === "combined"
                         ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20"
                         : "text-slate-300 hover:text-white hover:bg-slate-900"
                     }`}
                   >
                     <span>📑</span>
-                    <span>{localize("Combined (Both)", "संयुक्त (दोनों)")}</span>
+                    <span>{localize("Comprehensive", "विस्तृत सारांश")}</span>
                   </button>
                 </div>
               </div>
@@ -426,7 +501,11 @@ export default function ExportReportPage() {
                         ? "Clinical SBAR • Vital Signs Screening"
                         : exportMode === "skin_only"
                         ? "Clinical SBAR • Dermatological Screening"
-                        : "Clinical SBAR • Comprehensive Health Triage"}
+                        : exportMode === "history_only"
+                        ? "Clinical SBAR • Chronic History & Pharmacotherapy Audit"
+                        : exportMode === "family_only"
+                        ? "Clinical SBAR • Family Pedigree & Hereditary Risk"
+                        : "Clinical SBAR • Comprehensive Clinical Dossier"}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 print:text-slate-600 font-medium">
@@ -638,12 +717,90 @@ export default function ExportReportPage() {
                     O
                   </span>
                   <h3 className="text-sm sm:text-base font-bold text-slate-100 print:text-slate-900 uppercase tracking-wider">
-                    2. Objective — {exportMode === "skin_only" ? "Dermatological Lesion & Vision Screening" : "Vitals, Vision Screening & Lab Metrics"}
+                    2. Objective — {
+                      exportMode === "skin_only"
+                        ? "Dermatological Lesion & Vision Screening"
+                        : exportMode === "history_only"
+                        ? "Longitudinal Condition Stability & Pharmacotherapy Tracking"
+                        : exportMode === "family_only"
+                        ? "Pedigree Lineage & Generational Clustering Analysis"
+                        : "Vitals, History, Vision & Clinical Metrics"
+                    }
                   </h3>
                 </div>
 
+                {/* Specific Scorecard for History Only */}
+                {exportMode === "history_only" && (
+                  <div className="bg-slate-950/70 print:bg-slate-50 p-4 rounded-xl border border-slate-800 print:border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-cyan-300 print:text-blue-800 flex items-center gap-1.5">
+                        <span>💊</span>
+                        <span>Longitudinal Pharmacotherapy & Condition Tracking Audit:</span>
+                      </span>
+                      <span className="font-mono text-slate-400 print:text-slate-600">
+                        {report.chronicConditions?.length || 0} Condition(s) Tracked
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Tracked Conditions</span>
+                        <span className="text-sm font-bold text-slate-100 print:text-slate-900 mt-0.5 block">{report.chronicConditions?.length || 0}</span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Active Prescriptions</span>
+                        <span className="text-sm font-bold text-emerald-400 print:text-emerald-700 mt-0.5 block">{report.currentMedicines.length}</span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Total Rx Changes</span>
+                        <span className="text-sm font-bold text-cyan-400 print:text-blue-700 mt-0.5 block">
+                          {(report.chronicConditions || []).reduce((acc, c) => acc + (c.changeCount || 0), 0)}
+                        </span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Titration Triage</span>
+                        <span className={`text-sm font-bold mt-0.5 block ${report.overallRiskLevel === "high" ? "text-amber-400 print:text-amber-800" : "text-emerald-400 print:text-emerald-700"}`}>
+                          {report.overallRiskLevel === "high" ? "Review Indicated" : "Stable Regimen"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Specific Scorecard for Family Only */}
+                {exportMode === "family_only" && (
+                  <div className="bg-slate-950/70 print:bg-slate-50 p-4 rounded-xl border border-slate-800 print:border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-cyan-300 print:text-blue-800 flex items-center gap-1.5">
+                        <span>🌳</span>
+                        <span>Family Health Pedigree & Hereditary Clustering Audit:</span>
+                      </span>
+                      <span className="font-mono text-slate-400 print:text-slate-600">
+                        {report.familyHistory?.length || 0} Relative(s) Documented
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Documented Relatives</span>
+                        <span className="text-sm font-bold text-slate-100 print:text-slate-900 mt-0.5 block">{report.familyHistory?.length || 0}</span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Clustering Patterns</span>
+                        <span className="text-sm font-bold text-amber-400 print:text-amber-700 mt-0.5 block">
+                          {report.familyHistoryPatterns?.length || 0} Identified
+                        </span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Hereditary Triage</span>
+                        <span className="text-sm font-bold text-cyan-400 print:text-blue-700 mt-0.5 block">
+                          {(report.familyHistoryPatterns?.length || 0) > 0 ? "Advisory Indicated" : "Standard Baseline"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Vitals Grid: Rendered only when vitals are part of the scope */}
-                {exportMode !== "skin_only" && (
+                {exportMode !== "skin_only" && exportMode !== "history_only" && exportMode !== "family_only" && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-slate-950/70 print:bg-slate-50 p-3 rounded-xl border border-slate-800 print:border-slate-200 text-center">
                       <span className="text-[11px] text-slate-400 print:text-slate-500 font-semibold block">

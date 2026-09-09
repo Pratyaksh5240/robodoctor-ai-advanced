@@ -17,6 +17,7 @@ import {
   PatientConditionRecord,
   MedicationHistoryEntry,
 } from "@/lib/reportHistory";
+import { mapRecordsToSbar, SbarReportData } from "@/lib/reportGenerator";
 import { useLocalize } from "@/lib/useLocalize";
 
 export default function PatientHistoryPage() {
@@ -30,6 +31,27 @@ export default function PatientHistoryPage() {
   // Modals state
   const [showAddConditionModal, setShowAddConditionModal] = useState(false);
   const [selectedConditionForMed, setSelectedConditionForMed] = useState<PatientConditionRecord | null>(null);
+  const [showSbarModal, setShowSbarModal] = useState(false);
+
+  // Synthesize SBAR clinical data for direct export
+  const sbarReport: SbarReportData = useMemo(() => {
+    return mapRecordsToSbar(
+      null,
+      null,
+      activeProfile
+        ? {
+            patientName: activeProfile.name,
+            age: activeProfile.age,
+            gender: activeProfile.gender,
+            updatedAt: Date.now(),
+          }
+        : null,
+      activeProfile?.name || user?.displayName || "Patient Record",
+      "history_only",
+      conditions,
+      null
+    );
+  }, [conditions, activeProfile, user]);
 
   // New condition form
   const [condName, setCondName] = useState("");
@@ -264,12 +286,20 @@ export default function PatientHistoryPage() {
               <span>➕</span>
               <span>{localize("Log New Condition", "नई स्थिति जोड़ें")}</span>
             </button>
-            <Link
-              href="/export-report"
-              className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-5 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-400/20 transition flex items-center gap-2"
+            <button
+              type="button"
+              onClick={() => setShowSbarModal(true)}
+              className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-5 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-400/20 transition flex items-center gap-2 cursor-pointer shadow-sm"
             >
               <span>📑</span>
               <span>{localize("Export SBAR PDF", "SBAR रिपोर्ट निर्यात")}</span>
+            </button>
+            <Link
+              href="/export-report?mode=history_only"
+              className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-3.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5"
+            >
+              <span>⚙️</span>
+              <span>{localize("SBAR Studio ↗", "SBAR स्टूडियो ↗")}</span>
             </Link>
           </div>
         </div>
@@ -810,6 +840,190 @@ export default function PatientHistoryPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Direct In-Module SBAR Handover Preview & Print Modal */}
+      {showSbarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-4xl rounded-3xl border border-cyan-500/30 bg-slate-900 p-6 md:p-8 shadow-2xl text-slate-100 max-h-[92vh] overflow-y-auto space-y-6"
+          >
+            {/* Modal Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📑</span>
+                <div>
+                  <h3 className="text-lg font-bold text-cyan-300">
+                    {localize("SBAR Clinical Handover • Patient History & Meds", "SBAR क्लिनिकल सारांश • रोगी इतिहास व दवाइयां")}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {localize("Standardized doctor-ready longitudinal handover", "चिकित्सक के लिए मानकीकृत सारांश")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-full bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 shadow transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🖨️</span>
+                  <span>{localize("Print / Save PDF", "PDF सेव / प्रिंट")}</span>
+                </button>
+                <Link
+                  href="/export-report?mode=history_only"
+                  className="rounded-full border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition"
+                >
+                  {localize("Full Studio ↗", "फुल स्टूडियो ↗")}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowSbarModal(false)}
+                  className="rounded-full border border-slate-700 bg-slate-800 p-2 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* SBAR Document Preview Sheet */}
+            <div id="sbar-printable" className="rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-8 space-y-6 text-xs text-slate-300">
+              {/* Report Meta Banner */}
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                  <div className="text-base font-extrabold text-cyan-400">🩺 RoboDoctor AI Clinical Handover</div>
+                  <div className="text-[11px] text-slate-400">ID: {sbarReport.reportId} • Generated: {sbarReport.generatedAt}</div>
+                  <div className="text-[11px] text-slate-300 font-semibold mt-1">Patient: {sbarReport.patientName} ({sbarReport.age}y / {sbarReport.gender})</div>
+                </div>
+                <span className="rounded-full bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 text-[11px] font-bold text-cyan-300">
+                  {sbarReport.overallRiskLevel.toUpperCase()} REVIEW PRIORITY
+                </span>
+              </div>
+
+              {/* S: Situation */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-300 text-sm">
+                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-xs font-black">S</span>
+                  <span>SITUATION (Longitudinal Chronic Audit)</span>
+                </div>
+                <p className="bg-slate-900/80 p-3 rounded-xl border border-slate-800/80 text-slate-200">
+                  {sbarReport.primaryChiefComplaint}
+                </p>
+              </div>
+
+              {/* B: Background */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-300 text-sm">
+                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-xs font-black">B</span>
+                  <span>BACKGROUND (Tracked Conditions & Medication Changes)</span>
+                </div>
+                {sbarReport.chronicConditions && sbarReport.chronicConditions.length > 0 ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {sbarReport.chronicConditions.map((cond, cIdx) => (
+                      <div key={cIdx} className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-100">{cond.name}</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            {cond.status}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          Diagnosed: {cond.diagnosedDate} • {cond.changeCount} changes logged
+                        </div>
+                        {cond.currentMedicine && (
+                          <div className="text-[11px] font-semibold text-emerald-400">
+                            Active Rx: {cond.currentMedicine}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-slate-400 italic">
+                          {cond.historySummary}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic">No chronic conditions currently logged.</p>
+                )}
+              </div>
+
+              {/* O: Objective */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-300 text-sm">
+                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-xs font-black">O</span>
+                  <span>OBJECTIVE (Stability & Titration Metrics)</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Conditions Tracked</span>
+                    <span className="text-sm font-bold text-cyan-300 mt-0.5 block">{sbarReport.chronicConditions?.length || 0}</span>
+                  </div>
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Active Prescriptions</span>
+                    <span className="text-sm font-bold text-emerald-400 mt-0.5 block">{sbarReport.currentMedicines.length}</span>
+                  </div>
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Total Rx Changes</span>
+                    <span className="text-sm font-bold text-slate-100 mt-0.5 block">
+                      {(sbarReport.chronicConditions || []).reduce((acc, c) => acc + (c.changeCount || 0), 0)}
+                    </span>
+                  </div>
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Clinical Status</span>
+                    <span className={`text-sm font-bold mt-0.5 block ${sbarReport.overallRiskLevel === "high" ? "text-amber-400" : "text-emerald-400"}`}>
+                      {sbarReport.overallRiskLevel === "high" ? "Titration Review" : "Stable"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* A: Assessment */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-300 text-sm">
+                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-xs font-black">A</span>
+                  <span>ASSESSMENT (Clinical Pharmacotherapy Findings)</span>
+                </div>
+                {sbarReport.redFlags && sbarReport.redFlags.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {sbarReport.redFlags.map((rf, rIdx) => (
+                      <div key={rIdx} className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-amber-200">
+                        <div className="font-bold flex items-center gap-1.5">
+                          <span>⚠️</span>
+                          <span>{rf.title}</span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-300">{rf.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-slate-300">
+                    Chronic pharmacotherapy regimen demonstrates longitudinal stability with no high-frequency adjustments flagged.
+                  </p>
+                )}
+              </div>
+
+              {/* R: Recommendation */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-300 text-sm">
+                  <span className="rounded bg-cyan-500/20 px-1.5 py-0.5 text-xs font-black">R</span>
+                  <span>RECOMMENDATION & PRECAUTIONS</span>
+                </div>
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2 text-slate-300">
+                  <div className="font-semibold text-cyan-300">Follow-Up Guidance:</div>
+                  <p>{sbarReport.recommendedFollowUp}</p>
+                  <div className="border-t border-slate-800 pt-2 font-semibold text-slate-400">Clinical Precautions:</div>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
+                    {sbarReport.precautions.map((prec, pIdx) => (
+                      <li key={pIdx}>{prec}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

@@ -187,7 +187,13 @@ export function generateSampleSbarData(): SbarReportData {
   };
 }
 
-export type SbarExportMode = "vitals_only" | "skin_only" | "combined";
+export type SbarExportMode =
+  | "vitals_only"
+  | "skin_only"
+  | "combined"
+  | "history_only"
+  | "family_only"
+  | "comprehensive";
 
 export function mapRecordsToSbar(
   healthReport?: HealthReportRecord | null,
@@ -198,61 +204,33 @@ export function mapRecordsToSbar(
   conditions?: PatientConditionRecord[] | null,
   familyHistory?: FamilyHistoryRecord[] | null
 ): SbarReportData {
-  // If neither report is available, return default template populated with real conditions/family history if available
-  if (!healthReport && !skinReport) {
+  // If literally no records exist across all 4 modules, return sample template
+  const hasAnyRecord =
+    Boolean(healthReport) ||
+    Boolean(skinReport) ||
+    (Boolean(conditions) && (conditions?.length ?? 0) > 0) ||
+    (Boolean(familyHistory) && (familyHistory?.length ?? 0) > 0);
+
+  if (!hasAnyRecord) {
     const sample = generateSampleSbarData();
     if (profile?.patientName || fallbackName) {
       sample.patientName = profile?.patientName || fallbackName || sample.patientName;
     }
     if (profile?.age) sample.age = profile.age;
     if (profile?.gender) sample.gender = profile.gender;
-
-    if (conditions && conditions.length > 0) {
-      sample.chronicConditions = conditions.map((c) => {
-        const activeMed = (c.medicationHistory || []).find(
-          (m) => !m.endDate || m.endDate.toLowerCase() === "present"
-        );
-        return {
-          name: c.name,
-          diagnosedDate: c.diagnosedDate,
-          status: c.status,
-          changeCount: (c.medicationHistory || []).length,
-          currentMedicine: activeMed ? `${activeMed.medicineName} ${activeMed.dosage}` : undefined,
-          historySummary: (c.medicationHistory || [])
-            .map((m) => `${m.medicineName} (${m.dosage}) [${m.startDate} - ${m.endDate || "Present"}]: ${m.reasonForChange}`)
-            .join("; "),
-        };
-      });
-
-      const activeMeds: string[] = [];
-      conditions.forEach((c) => {
-        (c.medicationHistory || []).forEach((m) => {
-          if (!m.endDate || m.endDate.toLowerCase() === "present") {
-            activeMeds.push(`${m.medicineName} (${m.dosage})`);
-          }
-        });
-      });
-      if (activeMeds.length > 0) sample.currentMedicines = activeMeds;
-    }
-
-    if (familyHistory && familyHistory.length > 0) {
-      sample.familyHistory = familyHistory.map((f) => ({
-        relation: f.relation,
-        condition: f.condition,
-        ageOfOnset: f.ageOfOnset,
-        notes: f.notes,
-      }));
-    }
-
     return sample;
   }
 
   // Determine active mode if requested mode cannot be satisfied
   let activeMode: SbarExportMode = mode;
-  if (activeMode === "vitals_only" && !healthReport && skinReport) {
-    activeMode = "skin_only";
-  } else if (activeMode === "skin_only" && !skinReport && healthReport) {
-    activeMode = "vitals_only";
+  if (activeMode === "vitals_only" && !healthReport) {
+    if (conditions && conditions.length > 0) activeMode = "history_only";
+    else if (familyHistory && familyHistory.length > 0) activeMode = "family_only";
+    else if (skinReport) activeMode = "skin_only";
+  } else if (activeMode === "skin_only" && !skinReport) {
+    if (healthReport) activeMode = "vitals_only";
+    else if (conditions && conditions.length > 0) activeMode = "history_only";
+    else if (familyHistory && familyHistory.length > 0) activeMode = "family_only";
   }
 
   const primaryRecordDate =
@@ -514,7 +492,162 @@ export function mapRecordsToSbar(
     };
   }
 
-  // --- 3. COMBINED MODE (Vitals + Skin) ---
+  // --- 4. HISTORY ONLY MODE (Patient Chronic Conditions & Medications) ---
+  if (activeMode === "history_only") {
+    const totalConditions = chronicConditionsList.length;
+    let totalChanges = 0;
+    const frequentChangeConditions: string[] = [];
+
+    (conditions || []).forEach((c) => {
+      const hist = c.medicationHistory || [];
+      totalChanges += hist.length;
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const changesLast12M = hist.filter((m) => {
+        const d = new Date(m.startDate);
+        return !isNaN(d.getTime()) && d >= oneYearAgo;
+      });
+      if (changesLast12M.length >= 3 || hist.length >= 3) {
+        frequentChangeConditions.push(c.name);
+      }
+    });
+
+    const isFrequentTitration = frequentChangeConditions.length > 0;
+    const overallRiskLevel: "low" | "moderate" | "high" | "urgent" = isFrequentTitration ? "high" : "low";
+
+    const symptomsList = (conditions || []).map(
+      (c) => `${c.name} (${c.status.toUpperCase()}) — Diagnosed ${c.diagnosedDate}`
+    );
+    if (symptomsList.length === 0) {
+      symptomsList.push("No chronic medical conditions currently documented");
+    }
+
+    const redFlags: Array<{ title: string; detail: string; severity: string }> = [];
+    if (isFrequentTitration) {
+      redFlags.push({
+        title: "Frequent Medication Titration Alert",
+        detail: `Frequent prescription adjustments (≥3 changes) noted for: ${frequentChangeConditions.join(
+          ", "
+        )}. Clinical review is recommended to evaluate medication tolerance, titration stability, and potential adverse effects.`,
+        severity: "high",
+      });
+    }
+
+    const precautions = [
+      "Ensure all daily medications are taken consistently as directed by the prescribing physician.",
+      "Never adjust dosages or discontinue chronic therapy without physician authorization.",
+      "Bring this medication change timeline and all active prescription containers to your next clinical review.",
+    ];
+
+    const recommendedFollowUp = isFrequentTitration
+      ? "Arrange a structured pharmacotherapy review with your attending specialist within 1 to 2 weeks."
+      : "Routine chronic disease management consultation every 3 to 6 months.";
+
+    return {
+      reportId: `RBD-HIST-${primaryRecordDate.getFullYear()}${(primaryRecordDate.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}${primaryRecordDate.getDate().toString().padStart(2, "0")}-${randomDigits}`,
+      generatedAt: `${dateStr} at ${timeStr}`,
+      patientName,
+      age: resolvedAge,
+      gender: resolvedGender,
+      primaryChiefComplaint: `Longitudinal Chronic Condition & Medication History Audit: ${totalConditions} tracked condition(s), ${activeMedicationsList.length} active prescription(s), ${totalChanges} total medication change(s).`,
+      symptomsList,
+      symptomDuration: "Longitudinal chronic care timeline",
+      affectedBodyPart: "Systemic Chronic Disease & Pharmacotherapy Management",
+      vitals: {
+        bloodPressure: healthReport?.bp || "Recorded in Clinical Chart",
+        bloodSugar: parseFloat(healthReport?.sugar || "0") || 0,
+        heartRate: parseFloat(healthReport?.heartRate || "0") || 0,
+        weightKg: healthReport?.weightKg || 0,
+        heightCm: healthReport?.heightCm || 0,
+        bmi: healthReport?.bmi || 0,
+      },
+      skinScreening: undefined,
+      labValues: healthReport ? { fastingSugar: parseFloat(healthReport.sugar) || 0 } : undefined,
+      currentMedicines: activeMedicationsList,
+      chronicConditions: chronicConditionsList,
+      familyHistory: familyHistoryList,
+      familyHistoryPatterns: famPatterns,
+      overallRiskLevel,
+      riskScore: isFrequentTitration ? 70 : 25,
+      redFlags,
+      detectedDrugInteractions: [],
+      precautions,
+      recommendedFollowUp,
+    };
+  }
+
+  // --- 5. FAMILY ONLY MODE (Pedigree Tree & Generational Genetic Risk) ---
+  if (activeMode === "family_only") {
+    const totalEntries = familyHistoryList.length;
+    const hasPatterns = famPatterns.length > 0;
+    const overallRiskLevel: "low" | "moderate" | "high" | "urgent" = hasPatterns ? "moderate" : "low";
+
+    const symptomsList = (familyHistory || []).map(
+      (f) => `${f.relation.toUpperCase()}: ${f.condition}${f.ageOfOnset ? ` (Onset: age ${f.ageOfOnset})` : ""}`
+    );
+    if (symptomsList.length === 0) {
+      symptomsList.push("No family pedigree entries currently documented");
+    }
+
+    const redFlags: Array<{ title: string; detail: string; severity: string }> = [];
+    if (hasPatterns) {
+      famPatterns.forEach((pat) => {
+        redFlags.push({
+          title: "Generational Recurrence Pattern Detected",
+          detail: `${pat}. Multi-relative familial occurrence suggests potential hereditary predisposition or shared environmental risk. Non-diagnostic advisory for physician discussion.`,
+          severity: "moderate",
+        });
+      });
+    }
+
+    const precautions = [
+      "This family health tree screening is an informational pedigree audit, not a diagnostic genetic test.",
+      "Discuss family disease history with your primary physician to evaluate individualized preventive screening schedules.",
+      "Inquire whether earlier diagnostic screenings (e.g., lipid profile, cardiac evaluation, fasting glucose, colonoscopy) are indicated based on family history.",
+    ];
+
+    const recommendedFollowUp = hasPatterns
+      ? "Discuss generational disease clustering with your doctor or clinical geneticist during your next scheduled appointment."
+      : "Maintain standard age-appropriate preventive health screenings according to clinical guidelines.";
+
+    return {
+      reportId: `RBD-FAM-${primaryRecordDate.getFullYear()}${(primaryRecordDate.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}${primaryRecordDate.getDate().toString().padStart(2, "0")}-${randomDigits}`,
+      generatedAt: `${dateStr} at ${timeStr}`,
+      patientName,
+      age: resolvedAge,
+      gender: resolvedGender,
+      primaryChiefComplaint: `Family Pedigree Lineage & Hereditary Screening: ${totalEntries} documented relative health record(s) across generations.`,
+      symptomsList,
+      symptomDuration: "Multi-generational family health timeline",
+      affectedBodyPart: "Familial Genetics & Hereditary Pedigree Lineage",
+      vitals: {
+        bloodPressure: healthReport?.bp || "Recorded in Clinical Chart",
+        bloodSugar: parseFloat(healthReport?.sugar || "0") || 0,
+        heartRate: parseFloat(healthReport?.heartRate || "0") || 0,
+        weightKg: healthReport?.weightKg || 0,
+        heightCm: healthReport?.heightCm || 0,
+        bmi: healthReport?.bmi || 0,
+      },
+      skinScreening: undefined,
+      labValues: undefined,
+      currentMedicines: activeMedicationsList,
+      chronicConditions: chronicConditionsList,
+      familyHistory: familyHistoryList,
+      familyHistoryPatterns: famPatterns,
+      overallRiskLevel,
+      riskScore: hasPatterns ? 50 : 20,
+      redFlags,
+      detectedDrugInteractions: [],
+      precautions,
+      recommendedFollowUp,
+    };
+  }
+
+  // --- 3. COMBINED / COMPREHENSIVE MODE ---
   const bpVal = healthReport?.bp
     ? healthReport.bp.includes("mmHg")
       ? healthReport.bp
@@ -588,7 +721,11 @@ export function mapRecordsToSbar(
     gender: resolvedGender,
     primaryChiefComplaint:
       healthReport?.summary ||
-      (skinReport ? `Dermatological screening for ${skinReport.bodyPart}` : "Comprehensive Health Screening"),
+      (skinReport
+        ? `Dermatological screening for ${skinReport.bodyPart}`
+        : chronicConditionsList.length > 0 || familyHistoryList.length > 0
+        ? "Comprehensive Clinical Summary: Chronic History, Medication Management & Family Pedigree Screening"
+        : "Comprehensive Health Screening"),
     symptomsList,
     symptomDuration: "Recent combined screening",
     affectedBodyPart: skinReport ? `Cardiovascular System & ${skinReport.bodyPart.toUpperCase()} Skin` : "General Vitals",

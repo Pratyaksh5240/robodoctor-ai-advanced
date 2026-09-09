@@ -13,6 +13,7 @@ import {
   deleteFamilyHistoryEntry,
   FamilyHistoryRecord,
 } from "@/lib/reportHistory";
+import { mapRecordsToSbar, SbarReportData } from "@/lib/reportGenerator";
 import { useLocalize } from "@/lib/useLocalize";
 
 const COMMON_RELATIONS = [
@@ -47,6 +48,20 @@ export default function FamilyHistoryPage() {
 
   // Form state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSbarModal, setShowSbarModal] = useState(false);
+
+  // Synthesize SBAR pedigree report data for direct export
+  const sbarReport: SbarReportData = useMemo(() => {
+    return mapRecordsToSbar(
+      null,
+      null,
+      null,
+      user?.displayName || "Patient Record",
+      "family_only",
+      null,
+      entries
+    );
+  }, [entries, user]);
   const [relation, setRelation] = useState(COMMON_RELATIONS[0].key);
   const [condition, setCondition] = useState("");
   const [ageOfOnset, setAgeOfOnset] = useState("");
@@ -254,12 +269,20 @@ export default function FamilyHistoryPage() {
               <span>➕</span>
               <span>{localize("Add Relative's Condition", "रिश्तेदार की स्थिति जोड़ें")}</span>
             </button>
-            <Link
-              href="/export-report"
-              className="rounded-full border border-indigo-400/40 bg-indigo-400/10 px-5 py-3.5 text-sm font-semibold text-indigo-300 hover:bg-indigo-400/20 transition flex items-center gap-2"
+            <button
+              type="button"
+              onClick={() => setShowSbarModal(true)}
+              className="rounded-full border border-indigo-400/40 bg-indigo-400/10 px-5 py-3.5 text-sm font-semibold text-indigo-300 hover:bg-indigo-400/20 transition flex items-center gap-2 cursor-pointer shadow-sm"
             >
               <span>📑</span>
               <span>{localize("Export SBAR PDF", "SBAR रिपोर्ट निर्यात")}</span>
+            </button>
+            <Link
+              href="/export-report?mode=family_only"
+              className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-3.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5"
+            >
+              <span>⚙️</span>
+              <span>{localize("SBAR Studio ↗", "SBAR स्टूडियो ↗")}</span>
             </Link>
           </div>
         </div>
@@ -741,6 +764,185 @@ export default function FamilyHistoryPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Direct In-Module SBAR Pedigree Preview & Print Modal */}
+      {showSbarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-4xl rounded-3xl border border-indigo-500/30 bg-slate-900 p-6 md:p-8 shadow-2xl text-slate-100 max-h-[92vh] overflow-y-auto space-y-6"
+          >
+            {/* Modal Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🌳</span>
+                <div>
+                  <h3 className="text-lg font-bold text-indigo-300">
+                    {localize("SBAR Clinical Handover • Family Pedigree Tree", "SBAR क्लिनिकल सारांश • पारिवारिक वंशावली")}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {localize("Standardized doctor-ready hereditary risk handover", "चिकित्सक के लिए मानकीकृत वंशावली सारांश")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-full bg-indigo-500 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-400 shadow transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🖨️</span>
+                  <span>{localize("Print / Save PDF", "PDF सेव / प्रिंट")}</span>
+                </button>
+                <Link
+                  href="/export-report?mode=family_only"
+                  className="rounded-full border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition"
+                >
+                  {localize("Full Studio ↗", "फुल स्टूडियो ↗")}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowSbarModal(false)}
+                  className="rounded-full border border-slate-700 bg-slate-800 p-2 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* SBAR Document Preview Sheet */}
+            <div id="sbar-printable" className="rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-8 space-y-6 text-xs text-slate-300">
+              {/* Report Meta Banner */}
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                  <div className="text-base font-extrabold text-indigo-400">🩺 RoboDoctor AI Clinical Handover</div>
+                  <div className="text-[11px] text-slate-400">ID: {sbarReport.reportId} • Generated: {sbarReport.generatedAt}</div>
+                  <div className="text-[11px] text-slate-300 font-semibold mt-1">Patient: {sbarReport.patientName} ({sbarReport.age}y / {sbarReport.gender})</div>
+                </div>
+                <span className="rounded-full bg-indigo-500/10 border border-indigo-500/30 px-3 py-1 text-[11px] font-bold text-indigo-300">
+                  {sbarReport.overallRiskLevel.toUpperCase()} REVIEW PRIORITY
+                </span>
+              </div>
+
+              {/* S: Situation */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300 text-sm">
+                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-xs font-black">S</span>
+                  <span>SITUATION (Family Pedigree & Lineage Risk Audit)</span>
+                </div>
+                <p className="bg-slate-900/80 p-3 rounded-xl border border-slate-800/80 text-slate-200">
+                  {sbarReport.primaryChiefComplaint}
+                </p>
+              </div>
+
+              {/* B: Background */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300 text-sm">
+                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-xs font-black">B</span>
+                  <span>BACKGROUND (Documented Relatives & Medical Conditions)</span>
+                </div>
+                {sbarReport.familyHistory && sbarReport.familyHistory.length > 0 ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {sbarReport.familyHistory.map((fam, fIdx) => (
+                      <div key={fIdx} className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-100">{fam.condition}</span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                            {fam.relation}
+                          </span>
+                        </div>
+                        {fam.ageOfOnset && (
+                          <div className="text-[11px] text-slate-400">
+                            Age of Onset: {fam.ageOfOnset} years
+                          </div>
+                        )}
+                        {fam.notes && (
+                          <div className="text-[10px] text-slate-400 italic">
+                            {fam.notes}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic">No family history records currently documented.</p>
+                )}
+              </div>
+
+              {/* O: Objective */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300 text-sm">
+                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-xs font-black">O</span>
+                  <span>OBJECTIVE (Pedigree Analysis & Generational Reach)</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Documented Relatives</span>
+                    <span className="text-sm font-bold text-indigo-300 mt-0.5 block">{sbarReport.familyHistory?.length || 0}</span>
+                  </div>
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Clustering Patterns</span>
+                    <span className="text-sm font-bold text-amber-400 mt-0.5 block">{sbarReport.familyHistoryPatterns?.length || 0} Identified</span>
+                  </div>
+                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Hereditary Status</span>
+                    <span className={`text-sm font-bold mt-0.5 block ${(sbarReport.familyHistoryPatterns?.length || 0) > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                      {(sbarReport.familyHistoryPatterns?.length || 0) > 0 ? "Advisory Indicated" : "Standard"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* A: Assessment */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300 text-sm">
+                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-xs font-black">A</span>
+                  <span>ASSESSMENT (Familial Multi-Relative Disease Clustering)</span>
+                </div>
+                {sbarReport.familyHistoryPatterns && sbarReport.familyHistoryPatterns.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {sbarReport.familyHistoryPatterns.map((pat, pIdx) => (
+                      <div key={pIdx} className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-amber-200">
+                        <div className="font-bold flex items-center gap-1.5">
+                          <span>⚠️</span>
+                          <span>Multi-Relative Pattern: {pat}</span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-300">
+                          Identified in ≥2 biological relatives. Suggests shared genetic, familial, or environmental predisposition. Non-diagnostic screening indicator for doctor discussion.
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-slate-300">
+                    No multi-relative familial clustering patterns detected in currently documented lineage.
+                  </p>
+                )}
+              </div>
+
+              {/* R: Recommendation */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300 text-sm">
+                  <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-xs font-black">R</span>
+                  <span>RECOMMENDATION & PHYSICIAN DISCUSSION PROMPTS</span>
+                </div>
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2 text-slate-300">
+                  <div className="font-semibold text-indigo-300">Physician Discussion Guidance:</div>
+                  <p>{sbarReport.recommendedFollowUp}</p>
+                  <div className="border-t border-slate-800 pt-2 font-semibold text-slate-400">Clinical Precautions:</div>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
+                    {sbarReport.precautions.map((prec, pIdx) => (
+                      <li key={pIdx}>{prec}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}
