@@ -18,6 +18,7 @@ import {
   MedicationHistoryEntry,
 } from "@/lib/reportHistory";
 import { mapRecordsToSbar, SbarReportData } from "@/lib/reportGenerator";
+import { parseSbarFileContent, ParsedSbarResult } from "@/lib/sbarImport";
 import { useLocalize } from "@/lib/useLocalize";
 
 export default function PatientHistoryPage() {
@@ -32,6 +33,11 @@ export default function PatientHistoryPage() {
   const [showAddConditionModal, setShowAddConditionModal] = useState(false);
   const [selectedConditionForMed, setSelectedConditionForMed] = useState<PatientConditionRecord | null>(null);
   const [showSbarModal, setShowSbarModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [parsedImport, setParsedImport] = useState<ParsedSbarResult | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Synthesize SBAR clinical data for direct export
   const sbarReport: SbarReportData = useMemo(() => {
@@ -86,6 +92,106 @@ export default function PatientHistoryPage() {
   useEffect(() => {
     loadData();
   }, [user, activeProfileId]);
+
+  // Handle SBAR File Upload & Parsing
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const raw = event.target?.result as string;
+        setImportText(raw);
+        const parsed = parseSbarFileContent(raw);
+        if (parsed.conditions.length === 0) {
+          setImportError(localize("No chronic conditions found in file. Please ensure it is a valid SBAR report or text note.", "फाइल में कोई पुरानी स्थिति नहीं मिली।"));
+        } else {
+          setParsedImport(parsed);
+        }
+      } catch (err: any) {
+        setImportError(err.message || "Failed to parse SBAR file.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleParsePastedText = () => {
+    if (!importText.trim()) return;
+    setImportError(null);
+    try {
+      const parsed = parseSbarFileContent(importText);
+      if (parsed.conditions.length === 0) {
+        setImportError(localize("No chronic conditions detected in pasted text. Format as SBAR or JSON.", "पेस्ट किए गए टेक्स्ट में कोई स्थिति नहीं मिली।"));
+      } else {
+        setParsedImport(parsed);
+      }
+    } catch (err: any) {
+      setImportError(err.message || "Failed to parse SBAR text.");
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!parsedImport || parsedImport.conditions.length === 0) return;
+    setIsImporting(true);
+    setImportError(null);
+
+    try {
+      let importedCount = 0;
+      let medCount = 0;
+
+      for (const cond of parsedImport.conditions) {
+        const saved = await saveCondition(
+          user?.uid || "guest",
+          {
+            name: cond.name,
+            diagnosedDate: cond.diagnosedDate || new Date().toISOString().slice(0, 10),
+            status: cond.status,
+            notes: cond.notes || "Imported from SBAR report",
+            medicationHistory: [],
+          },
+          activeProfileId
+        );
+        importedCount += 1;
+
+        if (cond.medications && cond.medications.length > 0 && saved._id) {
+          for (const med of cond.medications) {
+            await addMedicationChange(
+              user?.uid || "guest",
+              saved._id,
+              {
+                medicineName: med.medicineName,
+                dosage: med.dosage || "Standard",
+                startDate: med.startDate || new Date().toISOString().slice(0, 10),
+                endDate: null,
+                reasonForChange: med.reasonForChange || "Imported from SBAR",
+                prescribedBy: med.prescribedBy || "",
+              },
+              activeProfileId
+            );
+            medCount += 1;
+          }
+        }
+      }
+
+      setNotice(
+        localize(
+          `Successfully imported ${importedCount} condition(s) and ${medCount} medication changes from SBAR!`,
+          `SBAR से ${importedCount} स्थितियां और ${medCount} दवाएं सफलतापूर्वक आयात की गईं!`
+        )
+      );
+      setTimeout(() => setNotice(null), 5000);
+      setShowImportModal(false);
+      setParsedImport(null);
+      setImportText("");
+      await loadData();
+    } catch (err: any) {
+      setImportError(err.message || "Error saving imported conditions.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // Handle adding new condition
   const handleCreateCondition = async (e: React.FormEvent) => {
@@ -288,6 +394,14 @@ export default function PatientHistoryPage() {
             </button>
             <button
               type="button"
+              onClick={() => setShowImportModal(true)}
+              className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-3.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition flex items-center gap-2 cursor-pointer shadow-sm"
+            >
+              <span>📥</span>
+              <span>{localize("Upload SBAR File", "SBAR फाइल अपलोड करें")}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setShowSbarModal(true)}
               className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-5 py-3.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-400/20 transition flex items-center gap-2 cursor-pointer shadow-sm"
             >
@@ -424,13 +538,23 @@ export default function PatientHistoryPage() {
                   "डायबिटीज, हाई ब्लड प्रेशर या अस्थमा जैसी स्थितियों को दर्ज करें ताकि आप उनकी दवाओं और समय के साथ हुए बदलावों को ट्रैक कर सकें।"
                 )}
               </p>
-              <button
-                type="button"
-                onClick={() => setShowAddConditionModal(true)}
-                className="rounded-full bg-cyan-400 px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition"
-              >
-                {localize("Add First Condition", "पहली स्थिति जोड़ें")}
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddConditionModal(true)}
+                  className="rounded-full bg-cyan-400 px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition cursor-pointer"
+                >
+                  {localize("Add First Condition", "पहली स्थिति जोड़ें")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(true)}
+                  className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-2.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-400/20 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>📥</span>
+                  <span>{localize("Upload SBAR File", "SBAR फाइल अपलोड करें")}</span>
+                </button>
+              </div>
             </div>
           ) : (
             conditions.map((cond) => {
@@ -1027,6 +1151,146 @@ export default function PatientHistoryPage() {
           </motion.div>
         </div>
       )}
+      {/* SBAR File Upload & Ingestion Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-2xl rounded-3xl border border-emerald-500/30 bg-slate-900 p-6 md:p-8 shadow-2xl text-slate-100 max-h-[92vh] overflow-y-auto space-y-5"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📥</span>
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-300">
+                    {localize("Upload SBAR Clinical File", "SBAR क्लिनिकल फाइल अपलोड करें")}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {localize("Import chronic conditions and prescriptions from an SBAR JSON or text note", "SBAR JSON या टेक्स्ट नोट से स्थितियों और दवाओं को आयात करें")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setParsedImport(null);
+                  setImportError(null);
+                }}
+                className="rounded-full border border-slate-700 bg-slate-800 p-2 text-xs text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* File Dropzone */}
+            <div className="border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/60 rounded-2xl p-6 text-center bg-emerald-950/10 transition space-y-3">
+              <div className="text-3xl">📄</div>
+              <div>
+                <label className="cursor-pointer font-bold text-emerald-400 hover:text-emerald-300 text-sm">
+                  <span>{localize("Click to select SBAR file (.json, .txt, .sbar)", "SBAR फाइल चुनें (.json, .txt, .sbar)")}</span>
+                  <input
+                    type="file"
+                    accept=".json,.txt,.sbar,.md"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {localize("Or paste SBAR report text below", "या नीचे SBAR टेक्स्ट पेस्ट करें")}
+                </p>
+              </div>
+            </div>
+
+            {/* Paste Text Fallback */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">
+                {localize("Paste SBAR Text or JSON", "SBAR टेक्स्ट या JSON पेस्ट करें")}
+              </label>
+              <textarea
+                rows={4}
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder='e.g. {"chronicConditions": [{"name": "Hypertension", "status": "managed", "currentMedicine": "Amlodipine 5mg"}]}'
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-emerald-400 focus:outline-none"
+              />
+              <div className="flex justify-end mt-1.5">
+                <button
+                  type="button"
+                  onClick={handleParsePastedText}
+                  className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-300 border border-emerald-500/30 transition"
+                >
+                  {localize("Parse Content", "कंटेंट पार्स करें")}
+                </button>
+              </div>
+            </div>
+
+            {/* Parsed Preview */}
+            {parsedImport && (
+              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-300 uppercase tracking-wide">
+                    ✓ {localize("Detected Conditions to Import:", "आयात के लिए पहचानी गई स्थितियां:")}
+                  </span>
+                  <span className="text-xs font-mono text-emerald-400 font-bold">
+                    {parsedImport.conditions.length} found
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {parsedImport.conditions.map((cond, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-white">{cond.name}</div>
+                        <div className="text-[10px] text-slate-400">
+                          Status: <span className="text-cyan-300 font-semibold uppercase">{cond.status}</span>
+                          {cond.medications && cond.medications.length > 0 && (
+                            <span className="ml-2 text-emerald-400">
+                              • Rx: {cond.medications[0].medicineName} ({cond.medications[0].dosage})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-emerald-400 font-bold text-xs">Ready</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2 border-t border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={() => setParsedImport(null)}
+                    className="px-4 py-2 rounded-full text-xs font-semibold text-slate-400 hover:text-white"
+                  >
+                    {localize("Clear", "साफ करें")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmImport}
+                    disabled={isImporting}
+                    className="px-6 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition disabled:opacity-50"
+                  >
+                    {isImporting
+                      ? localize("Importing...", "आयात हो रहा है...")
+                      : localize(`Import ${parsedImport.conditions.length} Condition(s)`, `${parsedImport.conditions.length} स्थितियां आयात करें`)}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {importError && (
+              <div className="p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs">
+                <strong>Error:</strong> {importError}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   FamilyHistoryRecord,
 } from "@/lib/reportHistory";
 import { mapRecordsToSbar, SbarReportData } from "@/lib/reportGenerator";
+import { parseSbarFileContent, ParsedSbarResult } from "@/lib/sbarImport";
 import { useLocalize } from "@/lib/useLocalize";
 
 const COMMON_RELATIONS = [
@@ -49,6 +50,12 @@ export default function FamilyHistoryPage() {
   // Form state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSbarModal, setShowSbarModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [parsedImport, setParsedImport] = useState<ParsedSbarResult | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Synthesize SBAR pedigree report data for direct export
   const sbarReport: SbarReportData = useMemo(() => {
@@ -84,6 +91,80 @@ export default function FamilyHistoryPage() {
   useEffect(() => {
     loadData();
   }, [user]);
+
+  // Handle SBAR File Upload & Ingestion for Family Tree
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const raw = event.target?.result as string;
+        setImportText(raw);
+        const parsed = parseSbarFileContent(raw);
+        if (parsed.familyHistory.length === 0) {
+          setImportError(localize("No family hereditary conditions found in file. Please ensure it is a valid SBAR report or pedigree record.", "फाइल में कोई पारिवारिक स्वास्थ्य इतिहास नहीं मिला।"));
+        } else {
+          setParsedImport(parsed);
+        }
+      } catch (err: any) {
+        setImportError(err.message || "Failed to parse SBAR file.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleParsePastedText = () => {
+    if (!importText.trim()) return;
+    setImportError(null);
+    try {
+      const parsed = parseSbarFileContent(importText);
+      if (parsed.familyHistory.length === 0) {
+        setImportError(localize("No family conditions detected in text. Format as SBAR or JSON with familyHistory.", "टेक्स्ट में कोई पारिवारिक स्वास्थ्य स्थिति नहीं मिली।"));
+      } else {
+        setParsedImport(parsed);
+      }
+    } catch (err: any) {
+      setImportError(err.message || "Failed to parse SBAR text.");
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!parsedImport || parsedImport.familyHistory.length === 0) return;
+    setIsImporting(true);
+    setImportError(null);
+
+    try {
+      let importedCount = 0;
+      for (const entry of parsedImport.familyHistory) {
+        await saveFamilyHistoryEntry(user?.uid || "guest", {
+          relation: entry.relation,
+          condition: entry.condition,
+          ageOfOnset: entry.ageOfOnset !== undefined ? entry.ageOfOnset : null,
+          notes: entry.notes || "Imported from SBAR report",
+        });
+        importedCount += 1;
+      }
+
+      setToast(
+        localize(
+          `Successfully imported ${importedCount} family pedigree record(s) from SBAR!`,
+          `SBAR से ${importedCount} पारिवारिक इतिहास रिकॉर्ड सफलतापूर्वक आयात किए गए!`
+        )
+      );
+      setTimeout(() => setNotice(null), 5000);
+      setShowImportModal(false);
+      setParsedImport(null);
+      setImportText("");
+      await loadData();
+    } catch (err: any) {
+      setImportError(err.message || "Error saving imported family records.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleAddEntry = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,6 +349,14 @@ export default function FamilyHistoryPage() {
             >
               <span>➕</span>
               <span>{localize("Add Relative's Condition", "रिश्तेदार की स्थिति जोड़ें")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowImportModal(true)}
+              className="rounded-full border border-indigo-400/40 bg-indigo-400/10 px-5 py-3.5 text-sm font-semibold text-indigo-300 hover:bg-indigo-400/20 transition flex items-center gap-2 cursor-pointer shadow-sm"
+            >
+              <span>📥</span>
+              <span>{localize("Upload SBAR File", "SBAR फाइल अपलोड करें")}</span>
             </button>
             <button
               type="button"
@@ -946,6 +1035,144 @@ export default function FamilyHistoryPage() {
           </motion.div>
         </div>
       )}
+      {/* SBAR File Upload & Family Ingestion Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-2xl rounded-3xl border border-indigo-500/30 bg-slate-900 p-6 md:p-8 shadow-2xl text-slate-100 max-h-[92vh] overflow-y-auto space-y-5"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📥</span>
+                <div>
+                  <h3 className="text-lg font-bold text-indigo-300">
+                    {localize("Upload SBAR Family History File", "SBAR पारिवारिक इतिहास फाइल अपलोड करें")}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {localize("Import multi-generational family conditions from an SBAR JSON or clinical text note", "SBAR JSON या क्लिनिकल नोट से पारिवारिक वंशावली स्थितियां आयात करें")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setParsedImport(null);
+                  setImportError(null);
+                }}
+                className="rounded-full border border-slate-700 bg-slate-800 p-2 text-xs text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* File Dropzone */}
+            <div className="border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/60 rounded-2xl p-6 text-center bg-indigo-950/10 transition space-y-3">
+              <div className="text-3xl">🌳</div>
+              <div>
+                <label className="cursor-pointer font-bold text-indigo-400 hover:text-indigo-300 text-sm">
+                  <span>{localize("Click to select SBAR file (.json, .txt, .sbar)", "SBAR फाइल चुनें (.json, .txt, .sbar)")}</span>
+                  <input
+                    type="file"
+                    accept=".json,.txt,.sbar,.md"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {localize("Or paste SBAR family history text below", "या नीचे SBAR टेक्स्ट पेस्ट करें")}
+                </p>
+              </div>
+            </div>
+
+            {/* Paste Text Fallback */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">
+                {localize("Paste SBAR Text or JSON", "SBAR टेक्स्ट या JSON पेस्ट करें")}
+              </label>
+              <textarea
+                rows={4}
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder='e.g. {"familyHistory": [{"relation": "Father", "condition": "Type 2 Diabetes", "ageOfOnset": 52}]}'
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-indigo-400 focus:outline-none"
+              />
+              <div className="flex justify-end mt-1.5">
+                <button
+                  type="button"
+                  onClick={handleParsePastedText}
+                  className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 border border-indigo-500/30 transition"
+                >
+                  {localize("Parse Content", "कंटेंट पार्स करें")}
+                </button>
+              </div>
+            </div>
+
+            {/* Parsed Preview */}
+            {parsedImport && (
+              <div className="rounded-2xl border border-indigo-500/40 bg-indigo-950/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-300 uppercase tracking-wide">
+                    ✓ {localize("Detected Relatives & Conditions:", "पहचाने गए रिश्तेदार और स्थितियां:")}
+                  </span>
+                  <span className="text-xs font-mono text-indigo-400 font-bold">
+                    {parsedImport.familyHistory.length} found
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {parsedImport.familyHistory.map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-white">
+                          {entry.relation}: <span className="text-indigo-300 font-bold">{entry.condition}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {entry.ageOfOnset ? `Age of onset: ${entry.ageOfOnset} years • ` : ""}
+                          {entry.notes}
+                        </div>
+                      </div>
+                      <span className="text-indigo-400 font-bold text-xs">Ready</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2 border-t border-indigo-500/20">
+                  <button
+                    type="button"
+                    onClick={() => setParsedImport(null)}
+                    className="px-4 py-2 rounded-full text-xs font-semibold text-slate-400 hover:text-white"
+                  >
+                    {localize("Clear", "साफ करें")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmImport}
+                    disabled={isImporting}
+                    className="px-6 py-2 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 transition disabled:opacity-50"
+                  >
+                    {isImporting
+                      ? localize("Importing...", "आयात हो रहा है...")
+                      : localize(`Import ${parsedImport.familyHistory.length} Relative(s)`, `${parsedImport.familyHistory.length} रिश्तेदार आयात करें`)}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {importError && (
+              <div className="p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs">
+                <strong>Error:</strong> {importError}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }
