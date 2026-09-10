@@ -5,8 +5,33 @@ import { parseSbarFileContent, ParsedSbarResult } from "@/lib/sbarImport";
 // @ts-ignore
 import { PDFParse } from "pdf-parse";
 import zlib from "zlib";
+import path from "path";
+import fs from "fs";
+import { pathToFileURL } from "url";
 
 export const runtime = "nodejs";
+
+let workerConfigured = false;
+function initPdfWorker() {
+  if (workerConfigured) return;
+  try {
+    const localWorker = path.resolve(process.cwd(), "node_modules/pdf-parse/dist/worker/pdf.worker.mjs");
+    if (fs.existsSync(localWorker)) {
+      PDFParse.setWorker(pathToFileURL(localWorker).href);
+      workerConfigured = true;
+      return;
+    }
+  } catch (err) {
+    console.warn("Local worker path resolution:", err);
+  }
+
+  try {
+    PDFParse.setWorker("https://cdn.jsdelivr.net/npm/pdf-parse@2.4.5/dist/pdf-parse/web/pdf.worker.mjs");
+    workerConfigured = true;
+  } catch (err) {
+    console.warn("CDN worker resolution:", err);
+  }
+}
 
 /**
  * Secondary 100% offline fallback text extractor for PDFs.
@@ -89,6 +114,7 @@ export async function POST(request: NextRequest) {
     // 1. Primary High-Reliability Local PDF Parser (100% offline, zero external API dependencies)
     let extractedText = "";
     try {
+      initPdfWorker();
       const parser = new PDFParse({ data: new Uint8Array(pdfBuffer) });
       const textResult = await parser.getText();
       await parser.destroy().catch(() => {});
@@ -128,34 +154,60 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Optional Gemini AI Cloud Parser (if configured and key is active)
+    // 3. Optional Gemini AI Cloud Parser (fast text prompt if text was extracted, or multimodal if scanned)
     if (process.env.GEMINI_API_KEY) {
       try {
-        const prompt = `Extract all chronic conditions and family medical history from this SBAR PDF into JSON:
+        const hasText = extractedText && extractedText.trim().length > 20;
+        const prompt = hasText
+          ? `Extract all chronic conditions and family medical history from this SBAR text into JSON:
+${extractedText.slice(0, 6000)}
+
+JSON Schema:
+{
+  "conditions": [{"name": string, "diagnosedDate": string, "status": "active" | "managed", "notes": string, "medications": [{"medicineName": string, "dosage": string, "reasonForChange": string}]}],
+  "familyHistory": [{"relation": string, "condition": string, "ageOfOnset": number | null, "notes": string}]
+}`
+          : `Extract all chronic conditions and family medical history from this SBAR PDF into JSON:
 {
   "conditions": [{"name": string, "diagnosedDate": string, "status": "active" | "managed", "notes": string, "medications": [{"medicineName": string, "dosage": string, "reasonForChange": string}]}],
   "familyHistory": [{"relation": string, "condition": string, "ageOfOnset": number | null, "notes": string}]
 }`;
 
-        const { data } = await generateStructuredJson<ParsedSbarResult>({
-          systemInstruction: "You extract structured clinical SBAR data from PDFs. Return strict JSON only.",
-          messages: [
-            {
-              role: "user",
-              parts: [
-                {
-                  kind: "inlineData",
-                  mimeType: "application/pdf",
-                  data: inlineData.data,
-                },
-                {
-                  kind: "text",
-                  text: prompt,
-                },
-              ],
-            },
-          ],
+        const messages = hasText
+          ? [
+              {
+                role: "user" as const,
+                parts: [{ kind: "text" as const, text: prompt }],
+              },
+            ]
+          : [
+              {
+                role: "user" as const,
+                parts: [
+                  {
+                    kind: "inlineData" as const,
+                    mimeType: "application/pdf",
+                    data: inlineData.data,
+                  },
+                  {
+                    kind: "text" as const,
+                    text: prompt,
+                  },
+                ],
+              },
+            ];
+
+        // 8-second fast timeout promise
+        const aiPromise = generateStructuredJson<ParsedSbarResult>({
+          systemInstruction: "You extract structured clinical SBAR data. Return strict JSON only.",
+          messages,
         });
+
+        const timeoutPromise = new Promise<{ data: null }>((resolve) =>
+          setTimeout(() => resolve({ data: null }), 8000)
+        );
+
+        const { data } = await Promise.race([aiPromise, timeoutPromise]);
 
         if (
           data &&
@@ -164,7 +216,7 @@ export async function POST(request: NextRequest) {
         ) {
           return NextResponse.json({
             status: "ok",
-            provider: "gemini_pdf",
+            provider: hasText ? "gemini_text_fast" : "gemini_pdf",
             result: data,
             rawText: extractedText,
           });

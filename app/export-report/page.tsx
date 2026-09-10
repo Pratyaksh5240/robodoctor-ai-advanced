@@ -197,6 +197,20 @@ export default function ExportReportPage() {
     window.print();
   };
 
+  const handleDownloadJson = () => {
+    const jsonStr = JSON.stringify(report, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const cleanName = (report.patientName || "Patient").replace(/\s+/g, "_");
+    a.download = `RoboDoctor-SBAR-${cleanName}-${report.reportId || "export"}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const updateField = (field: keyof SbarReportData, value: unknown) => {
     const updated = { ...report, [field]: value };
     setReport(updated);
@@ -286,6 +300,15 @@ export default function ExportReportPage() {
             className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition"
           >
             🔄 {localize("Reset", "रीसेट")}
+          </button>
+
+          <button
+            onClick={handleDownloadJson}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5"
+            title="Export standard SBAR JSON for instant import into Patient History"
+          >
+            <span>📥</span>
+            <span>{localize("Export SBAR JSON", "SBAR JSON निर्यात")}</span>
           </button>
 
           <button

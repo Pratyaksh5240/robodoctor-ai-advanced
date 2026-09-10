@@ -275,8 +275,14 @@ function parseTextSbar(text: string): ParsedSbarResult {
       continue;
     }
 
-    if (/^Patient(?:\s*Name)?:\s*(.+)$/i.test(line)) {
-      const pMatch = line.match(/^Patient(?:\s*Name)?:\s*([^(|•]+)(?:\(([^)]+)\)|\|(.+))?/i);
+    if (/^Date:\s*(.+)$/i.test(line)) {
+      const dMatch = line.match(/^Date:\s*(.+)$/i);
+      if (dMatch && !generatedAt) generatedAt = dMatch[1].trim();
+      continue;
+    }
+
+    if (/^Patient(?:\s*Record|\s*Name)?:\s*(.+)$/i.test(line)) {
+      const pMatch = line.match(/^Patient(?:\s*Record|\s*Name)?:\s*([^(|•]+)(?:\(([^)]+)\)|\|(.+))?/i);
       if (pMatch) {
         patientName = pMatch[1].trim();
         const details = (pMatch[2] || pMatch[3] || "");
@@ -288,55 +294,72 @@ function parseTextSbar(text: string): ParsedSbarResult {
       continue;
     }
 
+    if (/^Age\s*\/\s*Gender:\s*(\d+)\s*(?:yrs|y)?\s*\/\s*([a-zA-Z]+)/i.test(line)) {
+      const agMatch = line.match(/^Age\s*\/\s*Gender:\s*(\d+)\s*(?:yrs|y)?\s*\/\s*([a-zA-Z]+)/i);
+      if (agMatch) {
+        age = parseInt(agMatch[1], 10);
+        gender = agMatch[2].trim();
+      }
+      continue;
+    }
+
     // Section header detection
     let workingLine = line;
     const upper = line.toUpperCase();
 
     // Family History Section Header
-    if (/^(?:FAMILY HISTORY|FAMILY PEDIGREE|HEREDITARY RISK|FAMILY HEALTH)/i.test(upper)) {
+    if (
+      /^(?:FAMILY HEALTH HISTORY|FAMILY HISTORY|FAMILY PEDIGREE|HEREDITARY RISK|FAMILY HEALTH)/i.test(upper) ||
+      upper.includes("PEDIGREE LINEAGE")
+    ) {
       currentSection = "FAM";
-      const stripped = line.replace(/^(?:FAMILY HISTORY|FAMILY PEDIGREE|HEREDITARY RISK|FAMILY HEALTH)\s*[:\-–]?\s*(?:\([^)]*\))?\s*/i, "").trim();
+      pendingCondition = null;
+      pendingFamilyMember = null;
+      const stripped = line.replace(/^(?:FAMILY HEALTH HISTORY|FAMILY HISTORY|FAMILY PEDIGREE|HEREDITARY RISK|FAMILY HEALTH)\s*[:\-–]?\s*(?:\([^)]*\))?\s*/i, "").trim();
       if (!stripped) continue;
       workingLine = stripped;
     }
-    // S: Situation / Chief Complaint
-    else if (/^(?:S[:\s]+)?(?:SITUATION|CHIEF COMPLAINT|SUBJECTIVE)\b|^S:\s*/i.test(upper)) {
+    // Chronic Medical Conditions Section Header
+    else if (
+      /CHRONIC (?:MEDICAL )?CONDITIONS/i.test(upper) ||
+      /PAST MEDICAL HISTORY|\bPMH\b|PROBLEM LIST/i.test(upper) ||
+      /PRESCRIPTION HISTORY/i.test(upper) ||
+      /^(?:B[:\s]+)?BACKGROUND\b|^B:\s*/i.test(upper)
+    ) {
+      currentSection = "B";
+      pendingCondition = null;
+      pendingFamilyMember = null;
+      continue;
+    }
+    // S: Situation / Chief Complaint / Subjective
+    else if (/^(?:S[:\s]+)?(?:SITUATION|CHIEF COMPLAINT|SUBJECTIVE)\b|^S:\s*/i.test(upper) || /^\d+\.\s*SUBJECTIVE/i.test(upper)) {
       currentSection = "S";
-      const stripped = line.replace(/^(?:S[:\s]+)?(?:SITUATION|CHIEF COMPLAINT|SUBJECTIVE)\s*[:\-–]?\s*(?:\([^)]*\))?|^S:\s*/i, "").trim();
-      if (!stripped) continue;
-      workingLine = stripped;
-    }
-    // B: Background / Past Medical History
-    else if (/^(?:B[:\s]+)?(?:BACKGROUND|PAST MEDICAL HISTORY|PMH|CHRONIC CONDITIONS|PROBLEM LIST)\b|^B:\s*/i.test(upper)) {
-      if (upper.includes("DOCUMENTED RELATIVES") || upper.includes("FAMILY PEDIGREE") || upper.includes("HEREDITARY")) {
-        currentSection = "FAM";
-      } else {
-        currentSection = "B";
-      }
-      const stripped = line.replace(/^(?:B[:\s]+)?(?:BACKGROUND|PAST MEDICAL HISTORY|PMH|CHRONIC CONDITIONS|PROBLEM LIST)\s*[:\-–]?\s*(?:\([^)]*\))?|^B:\s*/i, "").trim();
+      pendingCondition = null;
+      pendingFamilyMember = null;
+      const stripped = line.replace(/^(?:S[:\s]+)?(?:SITUATION|CHIEF COMPLAINT|SUBJECTIVE)\s*[:\-–]?\s*(?:\([^)]*\))?|^\d+\.\s*SUBJECTIVE\s*[:\-–]?|^S:\s*/i, "").trim();
       if (!stripped) continue;
       workingLine = stripped;
     }
     // O: Objective
-    else if (/^(?:O[:\s]+)?(?:OBJECTIVE|VITALS|LAB VALUES|PHYSICAL EXAM)\b|^O:\s*/i.test(upper)) {
+    else if (/^(?:O[:\s]+)?(?:OBJECTIVE|VITALS|LAB VALUES|PHYSICAL EXAM)\b|^O:\s*/i.test(upper) || /^\d+\.\s*OBJECTIVE/i.test(upper)) {
       currentSection = "O";
-      const stripped = line.replace(/^(?:O[:\s]+)?(?:OBJECTIVE|VITALS|LAB VALUES|PHYSICAL EXAM)\s*[:\-–]?\s*(?:\([^)]*\))?|^O:\s*/i, "").trim();
-      if (!stripped) continue;
-      workingLine = stripped;
+      pendingCondition = null;
+      pendingFamilyMember = null;
+      continue;
     }
     // A: Assessment
-    else if (/^(?:A[:\s]+)?(?:ASSESSMENT|IMPRESSION|DIAGNOSES)\b|^A:\s*/i.test(upper)) {
+    else if (/^(?:A[:\s]+)?(?:ASSESSMENT|IMPRESSION|DIAGNOSES)\b|^A:\s*/i.test(upper) || /^\d+\.\s*ASSESSMENT/i.test(upper)) {
       currentSection = "A";
-      const stripped = line.replace(/^(?:A[:\s]+)?(?:ASSESSMENT|IMPRESSION|DIAGNOSES)\s*[:\-–]?\s*(?:\([^)]*\))?|^A:\s*/i, "").trim();
-      if (!stripped) continue;
-      workingLine = stripped;
+      pendingCondition = null;
+      pendingFamilyMember = null;
+      continue;
     }
     // R: Recommendation / Plan
-    else if (/^(?:R[:\s]+)?(?:RECOMMENDATION|PLAN|FOLLOW UP|DISCHARGE PLAN)\b|^R:\s*/i.test(upper)) {
+    else if (/^(?:R[:\s]+)?(?:RECOMMENDATION|PLAN|FOLLOW UP|DISCHARGE PLAN)\b|^R:\s*/i.test(upper) || /^\d+\.\s*RECOMMENDATION/i.test(upper)) {
       currentSection = "R";
-      const stripped = line.replace(/^(?:R[:\s]+)?(?:RECOMMENDATION|PLAN|FOLLOW UP|DISCHARGE PLAN)\s*[:\-–]?\s*(?:\([^)]*\))?|^R:\s*/i, "").trim();
-      if (!stripped) continue;
-      workingLine = stripped;
+      pendingCondition = null;
+      pendingFamilyMember = null;
+      continue;
     }
     // Medications section
     else if (/^(?:CURRENT MEDICATIONS|MEDICATIONS|ACTIVE MEDICATIONS|MEDICATION LIST|RX)\s*[:\-–]?$/i.test(upper)) {
@@ -357,7 +380,7 @@ function parseTextSbar(text: string): ParsedSbarResult {
       }
     }
 
-    // 2. Check for Diagnosed Date line: "Diagnosed: 2023-05-12 * 2 changes logged"
+    // 2. Check for Diagnosed Date line: "Diagnosed: 2023-05-12 • 2 changes logged"
     if (/^diagnosed\s*:\s*(\d{4}[-\/]\d{2}[-\/]\d{2}|\d{4})/i.test(cleanLine)) {
       const dMatch = cleanLine.match(/^diagnosed\s*:\s*(\d{4}[-\/]\d{2}[-\/]\d{2}|\d{4})/i);
       if (dMatch && pendingCondition) {
@@ -366,9 +389,9 @@ function parseTextSbar(text: string): ParsedSbarResult {
       }
     }
 
-    // 3. Check for Active Rx line: "Active Rx: Amlodipine 5mg once daily"
-    if (/^(?:active rx|current rx|rx|current medicine|medication)\s*:\s*(.+)$/i.test(cleanLine)) {
-      const rxMatch = cleanLine.match(/^(?:active rx|current rx|rx|current medicine|medication)\s*:\s*(.+)$/i);
+    // 3. Check for Active Rx line: "Active: Amlodipine 5mg" or "Active Rx: Amlodipine 5mg"
+    if (/^(?:active(?:\s*rx)?|current(?:\s*rx)?|rx|current medicine|medication)\s*:\s*(.+)$/i.test(cleanLine)) {
+      const rxMatch = cleanLine.match(/^(?:active(?:\s*rx)?|current(?:\s*rx)?|rx|current medicine|medication)\s*:\s*(.+)$/i);
       if (rxMatch && pendingCondition) {
         const medName = rxMatch[1].trim();
         const doseMatch = medName.match(/\b\d+\s*(?:mg|mcg|ml|g|units|tablet|daily|bid|tid|qid|prn)\b.*/i);
@@ -388,48 +411,42 @@ function parseTextSbar(text: string): ParsedSbarResult {
       continue;
     }
 
-    // 5. Check for RoboDoctor Family History Card Layout:
-    const isExactRelation = COMMON_RELATIONS.includes(cleanLower);
-    if (isExactRelation) {
-      const relStr = titleCase(cleanLower);
-      const condName = (pendingCondition ? pendingCondition.name : lastConditionCandidate) || "Hereditary Risk Condition";
-
-      if (pendingCondition) {
-        const idx = conditions.indexOf(pendingCondition);
-        if (idx !== -1) conditions.splice(idx, 1);
-        pendingCondition = null;
+    // 5. Check for Family History section handling
+    if (currentSection === "FAM") {
+      const isExactRelation = COMMON_RELATIONS.includes(cleanLower);
+      if (isExactRelation) {
+        const relStr = titleCase(cleanLower);
+        const famEntry: ParsedSbarFamilyMember = {
+          relation: relStr,
+          condition: "",
+          ageOfOnset: null,
+          notes: "",
+        };
+        familyHistory.push(famEntry);
+        pendingFamilyMember = famEntry;
+        continue;
       }
 
-      const famEntry: ParsedSbarFamilyMember = {
-        relation: relStr,
-        condition: condName,
-        ageOfOnset: null,
-        notes: "",
-      };
-      familyHistory.push(famEntry);
-      pendingFamilyMember = famEntry;
-      lastConditionCandidate = "";
-      continue;
-    }
+      if (/^(?:onset|age of onset)\s*:\s*(\d{1,2})y?/i.test(cleanLine)) {
+        const aMatch = cleanLine.match(/^(?:onset|age of onset)\s*:\s*(\d{1,2})y?/i);
+        if (aMatch && pendingFamilyMember) {
+          pendingFamilyMember.ageOfOnset = parseInt(aMatch[1], 10);
+          continue;
+        }
+      }
 
-    // Check for Age of Onset line: "Age of Onset: 52 years"
-    if (/^age of onset\s*:\s*(\d{1,2})/i.test(cleanLine)) {
-      const aMatch = cleanLine.match(/^age of onset\s*:\s*(\d{1,2})/i);
-      if (aMatch && pendingFamilyMember) {
-        pendingFamilyMember.ageOfOnset = parseInt(aMatch[1], 10);
+      if (pendingFamilyMember && !pendingFamilyMember.condition) {
+        pendingFamilyMember.condition = cleanLine;
+        continue;
+      }
+
+      if (pendingFamilyMember) {
+        pendingFamilyMember.notes = (pendingFamilyMember.notes ? pendingFamilyMember.notes + " " : "") + cleanLine;
         continue;
       }
     }
 
-    // Check for Family Member Notes line right after Age of Onset
-    if (pendingFamilyMember && currentSection === "FAM") {
-      if (!pendingFamilyMember.notes) {
-        pendingFamilyMember.notes = cleanLine;
-        continue;
-      }
-    }
-
-    // 6. Inline Family Member statements:
+    // 6. Inline Family Member statements: "Father: CAD", "Mother had Hypertension"
     const inlineRelMatch = COMMON_RELATIONS.find(rel => {
       return cleanLower.startsWith(rel + ":") ||
              cleanLower.startsWith(rel + " -") ||
@@ -465,75 +482,92 @@ function parseTextSbar(text: string): ParsedSbarResult {
       }
     }
 
-    // 7. Situation / Chief Complaint text (capture text, do not add as chronic condition)
+    // 7. Situation / Chief Complaint text
     if (currentSection === "S") {
-      if (!primaryChiefComplaint) {
+      if (/^Chief Complaint(?:\s*&\s*History)?:\s*(.+)$/i.test(cleanLine)) {
+        const ccMatch = cleanLine.match(/^Chief Complaint(?:\s*&\s*History)?:\s*(.+)$/i);
+        if (ccMatch) primaryChiefComplaint = ccMatch[1].trim();
+        continue;
+      }
+      if (!primaryChiefComplaint && cleanLine.length > 5 && !cleanLine.startsWith("•")) {
         primaryChiefComplaint = cleanLine;
+        continue;
       }
-      continue;
     }
 
-    // In Family section, track condition candidates or notes
-    if (currentSection === "FAM") {
-      lastConditionCandidate = cleanLine;
-      continue;
-    }
+    // 8. Chronic Conditions (Section B or general note)
+    if (currentSection === "B" || (currentSection !== "O" && currentSection !== "R" && isLikelyCondition(cleanLine))) {
+      const isCardStatus = /^(ACTIVE|MANAGED|RESOLVED|CONTROLLED|STABLE)$/i.test(cleanLine);
+      const isCardDate = /^diagnosed\s*:/i.test(cleanLine);
+      const isCardRx = /^(?:active|current|rx)/i.test(cleanLine);
 
-    // 8. General Condition Line Parsing (in Background, PMH, or general clinical note)
-    const isConditionCandidate = isLikelyCondition(cleanLine) ||
-      (currentSection === "B" && cleanLine.length < 80 && !cleanLine.toLowerCase().startsWith("vitals") && !cleanLine.toLowerCase().startsWith("total"));
+      if (!isCardStatus && !isCardDate && !isCardRx) {
+        const nextLine = (lines[i + 1] || "").trim();
+        const nextIsCardMeta = /^(ACTIVE|MANAGED|RESOLVED|CONTROLLED|STABLE)$/i.test(nextLine) ||
+                               /^diagnosed\s*:/i.test(nextLine);
 
-    if (isConditionCandidate) {
-      let condName = cleanLine;
-      let status: "active" | "managed" | "resolved" = "active";
-      let diagnosedDate = new Date().toISOString().slice(0, 10);
-      let extractedMed: { medicineName: string; dosage: string } | null = null;
+        if (nextIsCardMeta || (isLikelyCondition(cleanLine) && cleanLine.length < 50 && !cleanLine.includes(" on ") && !cleanLine.includes(" with "))) {
+          let condName = cleanLine.replace(/^(?:Patient has|History of|Diagnosed with|Known case of)\s*/i, "").trim().replace(/[-–:,]$/, "").trim();
+          const newCond: ParsedSbarCondition = {
+            name: condName,
+            diagnosedDate: new Date().toISOString().slice(0, 10),
+            status: "active",
+            notes: "",
+            medications: [],
+          };
+          conditions.push(newCond);
+          pendingCondition = newCond;
+          continue;
+        } else if (isLikelyCondition(cleanLine)) {
+          let condName = cleanLine;
+          let status: "active" | "managed" | "resolved" = "active";
+          let diagnosedDate = new Date().toISOString().slice(0, 10);
+          let extractedMed: { medicineName: string; dosage: string } | null = null;
 
-      // Check status tags: [Managed], (Active), etc.
-      const tagMatch = condName.match(/\[(Active|Managed|Resolved|Controlled|Stable)\]|\((Active|Managed|Resolved|Controlled|Stable)\)/i);
-      if (tagMatch) {
-        const s = (tagMatch[1] || tagMatch[2]).toLowerCase();
-        status = s === "resolved" ? "resolved" : s === "managed" || s === "controlled" || s === "stable" ? "managed" : "active";
-        condName = condName.replace(/\[.*?\]|\(.*?\)/, "").trim();
-      }
+          const tagMatch = condName.match(/\[(Active|Managed|Resolved|Controlled|Stable)\]|\((Active|Managed|Resolved|Controlled|Stable)\)/i);
+          if (tagMatch) {
+            const s = (tagMatch[1] || tagMatch[2]).toLowerCase();
+            status = s === "resolved" ? "resolved" : s === "managed" || s === "controlled" || s === "stable" ? "managed" : "active";
+            condName = condName.replace(/\[.*?\]|\(.*?\)/, "").trim();
+          }
 
-      // Check medication: word boundary \b(on|taking|prescribed|with|rx:?)\b
-      const medMatch = condName.match(/\b(?:on|taking|prescribed|with|rx:?)\b\s*([a-zA-Z0-9\s,\.\-]+)/i);
-      if (medMatch) {
-        const rawMed = medMatch[1].trim().replace(/[;\.]$/, "");
-        const doseMatch = rawMed.match(/\b\d+\s*(?:mg|mcg|ml|g|units|tablet|daily|bid|tid|qid|prn)\b.*/i);
-        extractedMed = {
-          medicineName: rawMed,
-          dosage: doseMatch ? doseMatch[0] : "Prescribed dose",
-        };
-        condName = condName.slice(0, medMatch.index).trim().replace(/[-–:,]$/, "").trim();
-      }
+          const medMatch = condName.match(/\b(?:on|taking|prescribed|with|rx:?)\b\s*([a-zA-Z0-9\s,\.\-]+)/i);
+          if (medMatch) {
+            const rawMed = medMatch[1].trim().replace(/[;\.]$/, "");
+            const doseMatch = rawMed.match(/\b\d+\s*(?:mg|mcg|ml|g|units|tablet|daily|bid|tid|qid|prn)\b.*/i);
+            extractedMed = {
+              medicineName: rawMed,
+              dosage: doseMatch ? doseMatch[0] : "Prescribed dose",
+            };
+            condName = condName.slice(0, medMatch.index).trim().replace(/[-–:,]$/, "").trim();
+          }
 
-      // Check diagnosed year/date
-      const dateMatch = cleanLine.match(/\b(20\d{2}[-\/]\d{2}[-\/]\d{2}|20\d{2}|19\d{2})\b/);
-      if (dateMatch) {
-        diagnosedDate = dateMatch[1];
-      }
+          const dateMatch = cleanLine.match(/\b(20\d{2}[-\/]\d{2}[-\/]\d{2}|20\d{2}|19\d{2})\b/);
+          if (dateMatch) diagnosedDate = dateMatch[1];
 
-      // Clean condition name
-      condName = condName.replace(/^(?:Patient has|History of|Diagnosed with|Known case of)\s*/i, "").trim();
-      condName = condName.replace(/[-–:,]$/, "").trim();
+          condName = condName.replace(/^(?:Patient has|History of|Diagnosed with|Known case of)\s*/i, "").trim().replace(/[-–:,]$/, "").trim();
 
-      if (condName.length > 2) {
-        const newCond: ParsedSbarCondition = {
-          name: condName,
-          diagnosedDate,
-          status: extractedMed && status === "active" ? "managed" : status,
-          notes: "Imported from SBAR document",
-          medications: extractedMed ? [{
-            medicineName: extractedMed.medicineName,
-            dosage: extractedMed.dosage,
-            startDate: diagnosedDate,
-            reasonForChange: "Active prescription in clinical note",
-          }] : [],
-        };
-        conditions.push(newCond);
-        pendingCondition = newCond;
+          if (condName.length > 2) {
+            const newCond: ParsedSbarCondition = {
+              name: condName,
+              diagnosedDate,
+              status: extractedMed && status === "active" ? "managed" : status,
+              notes: "Imported from SBAR document",
+              medications: extractedMed ? [{
+                medicineName: extractedMed.medicineName,
+                dosage: extractedMed.dosage,
+                startDate: diagnosedDate,
+                reasonForChange: "Active prescription in clinical note",
+              }] : [],
+            };
+            conditions.push(newCond);
+            pendingCondition = newCond;
+            continue;
+          }
+        } else if (pendingCondition) {
+          pendingCondition.notes = (pendingCondition.notes ? pendingCondition.notes + " " : "") + cleanLine;
+          continue;
+        }
       }
     }
   }

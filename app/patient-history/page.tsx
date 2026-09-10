@@ -144,13 +144,17 @@ export default function PatientHistoryPage() {
       setIsParsingFile(true);
       const reader = new FileReader();
       reader.onload = async (event) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 25000);
         try {
           const fileDataUrl = event.target?.result as string;
           const res = await fetch("/api/sbar-pdf", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ fileDataUrl }),
+            signal: controller.signal,
           });
+          clearTimeout(timer);
 
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
@@ -175,7 +179,17 @@ export default function PatientHistoryPage() {
             setParsedImport(parsed);
           }
         } catch (err: any) {
-          setImportError(err.message || "Failed to extract data from PDF.");
+          clearTimeout(timer);
+          if (err.name === "AbortError") {
+            setImportError(
+              localize(
+                "PDF processing timed out. Please copy and paste the report text into the box below or upload a JSON SBAR export.",
+                "PDF प्रोसेसिंग में समय अधिक लग गया। कृपया रिपोर्ट टेक्स्ट नीचे पेस्ट करें या JSON SBAR अपलोड करें।"
+              )
+            );
+          } else {
+            setImportError(err.message || "Failed to extract data from PDF.");
+          }
         } finally {
           setIsParsingFile(false);
         }
