@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { ActiveProfileProvider } from "./context/ActiveProfileContext";
 import AuthGate from "@/components/AuthGate";
 import FloatingChatbot from "@/components/FloatingChatbot";
+import EmergencyButton from "@/components/EmergencyButton";
 
 export const metadata = {
   title: "RoboDoctor AI",
@@ -30,6 +31,7 @@ export default function RootLayout({
               <Suspense fallback={children}>
                 <AuthGate>{children}</AuthGate>
               </Suspense>
+              <EmergencyButton />
               <FloatingChatbot />
             </ActiveProfileProvider>
           </AuthProvider>

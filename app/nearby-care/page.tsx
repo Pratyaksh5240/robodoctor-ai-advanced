@@ -102,7 +102,7 @@ export default function NearbyCarePage() {
 
   const buildMapsLink = (query: string) => {
     if (!coords) {
-      return "#";
+      return `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
     }
 
     return `https://www.google.com/maps/search/${encodeURIComponent(
@@ -188,11 +188,12 @@ export default function NearbyCarePage() {
               href={buildMapsLink(card.query)}
               target="_blank"
               rel="noreferrer"
-              className={`rounded-[28px] border p-6 transition hover:scale-[1.01] ${card.color} ${
-                coords ? "" : "pointer-events-none opacity-60"
-              }`}
+              className={`rounded-[28px] border p-6 transition hover:scale-[1.02] active:scale-98 cursor-pointer ${card.color} shadow-lg`}
             >
-              <p className="text-2xl font-bold">{card.title}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold">{card.title}</p>
+                <span className="text-xl">↗</span>
+              </div>
               <p className="mt-3 text-sm text-[var(--muted)]">{copy.openMaps}</p>
             </a>
           ))}

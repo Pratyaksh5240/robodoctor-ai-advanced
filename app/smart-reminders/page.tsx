@@ -88,13 +88,18 @@ export default function SmartRemindersPage() {
     setBusy(true);
     setStatus("");
 
+    const effectiveGoal = goal.trim() || (medicationList.length > 0 ? "Medication and wellness schedule" : "Daily vital signs check, medicine adherence, and hydration");
+    if (!goal.trim()) {
+      setGoal(effectiveGoal);
+    }
+
     try {
       const result = await postJson<ReminderSuggestionOutput>(
         "/api/ai-health-assistant/reminders",
         {
-          goal,
-          medications: medicationList,
-          scheduleNotes,
+          goal: effectiveGoal,
+          medications: medicationList.length > 0 ? medicationList : ["Morning Blood Pressure Medicine", "Evening Walk", "Hydration Water Break"],
+          scheduleNotes: scheduleNotes.trim() || "Pair reminders with meals and bedtime.",
         }
       );
 

@@ -34,6 +34,8 @@ function MedicineReminderContent() {
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [permissionState, setPermissionState] = useState<PermissionState>("default");
   const [statusMsg, setStatusMsg] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const [reminders, setReminders] = useState<Reminder[]>(() => {
     if (typeof window === "undefined") {
@@ -320,30 +322,91 @@ function MedicineReminderContent() {
         {/* Main Grid */}
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           {/* Form Section */}
-          <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
-            <h2 className="text-2xl font-bold">{localize("New reminder", "नया रिमाइंडर")}</h2>
+          <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">{localize("New reminder", "नया रिमाइंडर")}</h2>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/30">
+                {localize("Smart Scheduler", "स्मार्ट शेड्यूलर")}
+              </span>
+            </div>
+
+            {/* Quick 1-Click Reminder Presets */}
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-[var(--muted)] mb-2 uppercase tracking-wider">
+                {localize("⚡ Quick 1-Click Presets", "⚡ त्वरित 1-क्लिक प्रीसेट्स")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { name: "Metformin 500mg", defaultTime: "08:00", label: "💊 Metformin (8 AM)" },
+                  { name: "Blood Pressure Check", defaultTime: "09:00", label: "🩺 BP Check (9 AM)" },
+                  { name: "Drink Water Break", defaultTime: "11:00", label: "💧 Drink Water (11 AM)" },
+                  { name: "Atorvastatin 20mg", defaultTime: "21:00", label: "🌙 Night Med (9 PM)" },
+                  { name: "Evening Walk (30 mins)", defaultTime: "18:00", label: "🚶 Evening Walk (6 PM)" },
+                ].map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => {
+                      const newReminder: Reminder = {
+                        id: Date.now(),
+                        title: preset.name,
+                        time: preset.defaultTime,
+                        done: false,
+                        notificationEnabled: true,
+                      };
+                      setReminders((current) => [newReminder, ...current]);
+                      setFormError(null);
+                      setSuccessNotice(localize(`Added: ${preset.name} at ${preset.defaultTime}`, `जोड़ा गया: ${preset.name} (${preset.defaultTime})`));
+                      setTimeout(() => setSuccessNotice(null), 4000);
+                      if (permissionState !== "granted") {
+                        handleEnableNotifications();
+                      }
+                    }}
+                    className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/25 transition cursor-pointer"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {formError && (
+              <div className="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300">
+                ⚠️ {formError}
+              </div>
+            )}
+
+            {successNotice && (
+              <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+                ✅ {successNotice}
+              </div>
+            )}
+
             <div className="mt-5 grid gap-4">
               <label className="block">
                 <span className="mb-2 block text-sm text-[var(--muted)]">
-                  {localize("Task or medicine name", "काम या दवा का नाम")}
+                  {localize("Task or medicine name", "काम या दवा का नाम")} *
                 </span>
                 <input
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm"
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    if (formError) setFormError(null);
+                  }}
+                  className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none"
                   placeholder={localize("Example: Morning BP medicine", "जैसे: सुबह BP दवा")}
                 />
               </label>
 
               <label className="block">
                 <span className="mb-2 block text-sm text-[var(--muted)]">
-                  {localize("Time", "समय")}
+                  {localize("Time (Defaults to current time if unselected)", "समय (खाली छोड़ने पर वर्तमान समय सेट होगा)")}
                 </span>
                 <input
                   value={time}
                   onChange={(event) => setTime(event.target.value)}
                   type="time"
-                  className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm"
+                  className="w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none"
                 />
               </label>
 
@@ -362,14 +425,24 @@ function MedicineReminderContent() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!title.trim() || !time) {
+                  if (!title.trim()) {
+                    setFormError(localize("Please enter a medicine or task name.", "कृपया दवा या कार्य का नाम दर्ज करें।"));
                     return;
+                  }
+
+                  // If user didn't select a time, default to current local hour:minute
+                  let reminderTime = time;
+                  if (!reminderTime) {
+                    const now = new Date();
+                    const hh = String(now.getHours()).padStart(2, "0");
+                    const mm = String(now.getMinutes()).padStart(2, "0");
+                    reminderTime = `${hh}:${mm}`;
                   }
 
                   const newReminder: Reminder = {
                     id: Date.now(),
                     title: title.trim(),
-                    time,
+                    time: reminderTime,
                     done: false,
                     notificationEnabled,
                   };
@@ -377,12 +450,15 @@ function MedicineReminderContent() {
                   setReminders((current) => [newReminder, ...current]);
                   setTitle("");
                   setTime("");
+                  setFormError(null);
+                  setSuccessNotice(localize("Reminder added successfully!", "रिमाइंडर सफलतापूर्वक जोड़ा गया!"));
+                  setTimeout(() => setSuccessNotice(null), 4000);
 
                   if (notificationEnabled && permissionState !== "granted") {
                     handleEnableNotifications();
                   }
                 }}
-                className="rounded-full bg-emerald-400 px-6 py-3 font-semibold text-slate-950 hover:bg-emerald-300 transition"
+                className="rounded-full bg-emerald-400 px-6 py-3.5 font-bold text-slate-950 hover:bg-emerald-300 transition cursor-pointer shadow-lg active:scale-95"
               >
                 {localize("Add reminder", "रिमाइंडर जोड़ें")}
               </button>

@@ -19,6 +19,8 @@ export default function EmergencyContactsPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [phone, setPhone] = useState("");
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [contacts, setContacts] = useState<Contact[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -61,40 +63,100 @@ export default function EmergencyContactsPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6">
+          <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-xl">
             <h2 className="text-2xl font-bold">
               {localize("Add new contact", "नया संपर्क जोड़ें")}
             </h2>
+
+            {/* Quick 1-Click National Helplines */}
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-[var(--muted)] mb-2 uppercase tracking-wider">
+                {localize("⚡ Quick Add Helplines", "⚡ त्वरित हेल्पलाइन जोड़ें")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { name: "National Ambulance", role: "Ambulance", phone: "108", label: "🚑 Ambulance (108)" },
+                  { name: "All Emergency Services", role: "Emergency / Police", phone: "112", label: "🚨 All Emergency (112)" },
+                  { name: "National Health Helpline", role: "Govt Helpline", phone: "1075", label: "🏥 Health Helpline (1075)" },
+                ].map((preset) => (
+                  <button
+                    key={preset.phone}
+                    type="button"
+                    onClick={() => {
+                      if (contacts.some((c) => c.phone === preset.phone)) {
+                        setErrorNotice(localize("This helpline is already in your contacts.", "यह हेल्पलाइन पहले से आपके संपर्कों में है।"));
+                        setTimeout(() => setErrorNotice(null), 3000);
+                        return;
+                      }
+                      setContacts((current) => [
+                        {
+                          id: Date.now(),
+                          name: preset.name,
+                          role: preset.role,
+                          phone: preset.phone,
+                        },
+                        ...current,
+                      ]);
+                      setSuccessNotice(localize(`Added ${preset.name} (${preset.phone})`, `${preset.name} जोड़ा गया`));
+                      setTimeout(() => setSuccessNotice(null), 4000);
+                    }}
+                    className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition cursor-pointer"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {errorNotice && (
+              <div className="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300">
+                ⚠️ {errorNotice}
+              </div>
+            )}
+
+            {successNotice && (
+              <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+                ✅ {successNotice}
+              </div>
+            )}
+
             <div className="mt-5 grid gap-4">
               <input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={localize("Name", "नाम")}
-                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errorNotice) setErrorNotice(null);
+                }}
+                placeholder={localize("Name (e.g. Dr. Rajesh Sharma, Father)", "नाम (जैसे: डॉ. राजेश शर्मा, पिता)")}
+                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm focus:border-rose-400 focus:outline-none"
               />
               <input
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder={localize("Role or relation", "रिश्ता या भूमिका")}
-                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3"
+                placeholder={localize("Role or relation (e.g. Cardiologist, Mother)", "रिश्ता या भूमिका (जैसे: हृदय रोग विशेषज्ञ, माता)")}
+                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm focus:border-rose-400 focus:outline-none"
               />
               <input
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (errorNotice) setErrorNotice(null);
+                }}
                 placeholder={localize("Phone number", "फोन नंबर")}
-                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3"
+                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm focus:border-rose-400 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => {
                   if (!name.trim() || !phone.trim()) {
+                    setErrorNotice(localize("Please enter both a contact name and phone number.", "कृपया संपर्क का नाम और फोन नंबर दोनों दर्ज करें।"));
                     return;
                   }
                   setContacts((current) => [
                     {
                       id: Date.now(),
                       name: name.trim(),
-                      role: role.trim(),
+                      role: role.trim() || localize("Emergency contact", "आपात संपर्क"),
                       phone: phone.trim(),
                     },
                     ...current,
@@ -102,8 +164,11 @@ export default function EmergencyContactsPage() {
                   setName("");
                   setRole("");
                   setPhone("");
+                  setErrorNotice(null);
+                  setSuccessNotice(localize("Contact saved successfully!", "संपर्क सफलतापूर्वक सहेजा गया!"));
+                  setTimeout(() => setSuccessNotice(null), 4000);
                 }}
-                className="rounded-full bg-rose-400 px-6 py-3 font-semibold text-slate-950"
+                className="rounded-full bg-rose-500 px-6 py-3.5 font-bold text-white hover:bg-rose-600 transition cursor-pointer shadow-lg active:scale-95"
               >
                 {localize("Save contact", "संपर्क सेव करें")}
               </button>

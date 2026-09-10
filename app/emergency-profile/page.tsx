@@ -58,6 +58,7 @@ function EmergencyProfileContent() {
   const [contactName, setContactName] = useState("");
   const [contactRelation, setContactRelation] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [contactFormError, setContactFormError] = useState<string | null>(null);
 
   // Load Profile
   const loadProfile = async () => {
@@ -180,7 +181,10 @@ function EmergencyProfileContent() {
   };
 
   const addContact = () => {
-    if (!contactName.trim() || !contactPhone.trim()) return;
+    if (!contactName.trim() || !contactPhone.trim()) {
+      setContactFormError(localize("Please enter both contact name and phone number.", "कृपया संपर्क का नाम और फोन नंबर दोनों दर्ज करें।"));
+      return;
+    }
     const newC: IEmergencyContact = {
       id: `c-${Date.now()}`,
       name: contactName.trim(),
@@ -195,6 +199,7 @@ function EmergencyProfileContent() {
     setContactName("");
     setContactRelation("");
     setContactPhone("");
+    setContactFormError(null);
   };
 
   const removeContact = (id: string) => {
@@ -621,11 +626,25 @@ function EmergencyProfileContent() {
               <label className="block text-xs font-bold text-slate-300">
                 {localize("Add Emergency Contact", "आपातकालीन संपर्क जोड़ें")}
               </label>
+              {contactFormError && (
+                <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-300">
+                  ⚠️ {contactFormError}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   type="text"
                   value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
+                  onChange={(e) => {
+                    setContactName(e.target.value);
+                    if (contactFormError) setContactFormError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addContact();
+                    }
+                  }}
                   placeholder={localize("Name", "नाम")}
                   className="rounded-xl border border-slate-700 bg-slate-950 p-2 text-xs text-white"
                 />

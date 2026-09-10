@@ -91,10 +91,5 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return (
-    <>
-      {children}
-      <EmergencyButton />
-    </>
-  );
+  return <>{children}</>;
 }

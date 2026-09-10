@@ -497,6 +497,38 @@ export default function SkinCheckPage() {
     }
   };
 
+  const loadSampleSkinImage = (sampleType: "rash" | "eczema") => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 400;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = sampleType === "rash" ? "#e8beac" : "#deb8a0";
+      ctx.fillRect(0, 0, 400, 400);
+      ctx.fillStyle = sampleType === "rash" ? "rgba(220, 60, 60, 0.45)" : "rgba(180, 100, 70, 0.45)";
+      ctx.beginPath();
+      ctx.arc(200, 200, 75, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = sampleType === "rash" ? "rgba(200, 30, 30, 0.6)" : "rgba(160, 80, 50, 0.6)";
+      for (let i = 0; i < 25; i++) {
+        const x = 160 + (i * 17) % 80;
+        const y = 160 + (i * 23) % 80;
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+      setImageDataUrl(dataUrl);
+      setPreviewUrl(dataUrl);
+      setImageWarning("");
+      if (sampleType === "rash") {
+        setForm((prev) => ({ ...prev, bodyPart: "arm", itching: true, redness: true, durationDays: 3 }));
+      } else {
+        setForm((prev) => ({ ...prev, bodyPart: "leg", itching: true, scalyOrDry: true, durationDays: 14 }));
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#163047_0%,#08111d_45%,#04070c_100%)] text-white px-6 py-8 md:px-12">
       <div className="max-w-7xl mx-auto">
@@ -566,16 +598,32 @@ export default function SkinCheckPage() {
                   {localize("Upload skin photo", "फोटो अपलोड या कैमरा कैप्चर")}
                 </label>
                 <div className="rounded-3xl border border-dashed border-cyan-400/40 bg-slate-950/60 p-5">
-                  <div className="flex flex-wrap gap-3">
-                    <label className="inline-flex cursor-pointer items-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="inline-flex cursor-pointer items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/20 transition">
                       <input
                         type="file"
                         accept="image/*"
                         onChange={onImageChange}
                         className="hidden"
                       />
-                      {localize("Upload photo", "फोटो अपलोड करें")}
+                      📷 {localize("Upload Photo", "फोटो अपलोड करें")}
                     </label>
+
+                    <button
+                      type="button"
+                      onClick={() => loadSampleSkinImage("rash")}
+                      className="rounded-full border border-rose-400/40 bg-rose-500/10 px-3.5 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition cursor-pointer"
+                    >
+                      🧪 {localize("Try Sample Rash", "सैंपल दाने आज़माएँ")}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => loadSampleSkinImage("eczema")}
+                      className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3.5 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
+                    >
+                      🧪 {localize("Try Sample Dry Patch", "सैंपल सूखी त्वचा आज़माएँ")}
+                    </button>
                   </div>
                   <p className="mt-3 text-xs text-slate-400">
                     {localize(
@@ -688,11 +736,25 @@ export default function SkinCheckPage() {
 
             <div className="mt-6 flex flex-wrap gap-4">
               <button
-                onClick={runAnalysis}
-                disabled={!imageDataUrl || isAnalyzing}
-                className="rounded-full bg-cyan-400 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                onClick={() => {
+                  if (!imageDataUrl) {
+                    loadSampleSkinImage("rash");
+                  } else {
+                    runAnalysis();
+                  }
+                }}
+                disabled={isAnalyzing}
+                className="rounded-full bg-cyan-400 px-6 py-3.5 font-bold text-slate-950 hover:bg-cyan-300 disabled:opacity-50 transition cursor-pointer shadow-lg active:scale-95 flex items-center gap-2"
               >
-                {isAnalyzing ? localize("Analyzing...", "विश्लेषण हो रहा है...") : localize("Analyze Skin Issue", "त्वचा समस्या का विश्लेषण करें")}
+                <span>🔍</span>
+                <span>
+                  {isAnalyzing
+                    ? localize("Analyzing Skin Issue...", "विश्लेषण हो रहा है...")
+                    : !imageDataUrl
+                    ? localize("Analyze Skin (Uses Sample Rash)", "त्वचा का विश्लेषण करें")
+                    : localize("Analyze Skin Issue", "त्वचा समस्या का विश्लेषण करें")}
+                </span>
               </button>
               <button
                 onClick={() => {
