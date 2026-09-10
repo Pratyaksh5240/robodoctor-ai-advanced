@@ -38,6 +38,7 @@ export default function ExportReportPage() {
   const [userProfile, setUserProfile] = useState<UserProfileRecord | null>(null);
   const [conditions, setConditions] = useState<PatientConditionRecord[]>([]);
   const [familyHistory, setFamilyHistory] = useState<FamilyHistoryRecord[]>([]);
+  const [adherenceSummary, setAdherenceSummary] = useState<SbarReportData["medicationAdherenceSummary"] | null>(null);
 
   const [exportMode, setExportMode] = useState<SbarExportMode>("vitals_only");
   const [selectedHealthIndex, setSelectedHealthIndex] = useState(0);
@@ -60,6 +61,28 @@ export default function ExportReportPage() {
           getConditions(targetId),
           getFamilyHistory(targetId),
         ]);
+
+        let adhSummary: SbarReportData["medicationAdherenceSummary"] | null = null;
+        try {
+          const resAdh = await fetch(`/api/medication-adherence?userId=${encodeURIComponent(targetId)}`);
+          if (resAdh.ok) {
+            const dataAdh = await resAdh.json();
+            if (dataAdh.summary) {
+              adhSummary = {
+                totalDoses: dataAdh.summary.dosesTotal,
+                takenDoses: dataAdh.summary.dosesTaken,
+                adherenceRate: dataAdh.summary.thirtyDayRate,
+                currentStreak: dataAdh.summary.currentStreak,
+                dateRange: "Past 30 Days Compliance",
+                selfReportedDisclaimer:
+                  "Patient self-reported medication adherence logs. May reflect self-reporting inaccuracies. Clinical verification recommended.",
+              };
+              setAdherenceSummary(adhSummary);
+            }
+          }
+        } catch (adhErr) {
+          console.warn("Failed to fetch adherence summary for SBAR export:", adhErr);
+        }
 
         setHealthReports(health);
         setSkinReports(skin);
@@ -106,7 +129,8 @@ export default function ExportReportPage() {
             currentUser?.displayName || undefined,
             initialMode,
             conds,
-            fam
+            fam,
+            adhSummary
           )
         );
       } catch (err) {
@@ -115,6 +139,7 @@ export default function ExportReportPage() {
         setLoading(false);
       }
     });
+
 
     return () => unsubscribe();
   }, []);
@@ -129,7 +154,8 @@ export default function ExportReportPage() {
         user?.displayName || undefined,
         newMode,
         conditions,
-        familyHistory
+        familyHistory,
+        adherenceSummary
       )
     );
   };
@@ -144,7 +170,8 @@ export default function ExportReportPage() {
         user?.displayName || undefined,
         exportMode,
         conditions,
-        familyHistory
+        familyHistory,
+        adherenceSummary
       )
     );
   };
@@ -159,10 +186,12 @@ export default function ExportReportPage() {
         user?.displayName || undefined,
         exportMode,
         conditions,
-        familyHistory
+        familyHistory,
+        adherenceSummary
       )
     );
   };
+
 
   const handlePrint = () => {
     window.print();
@@ -876,7 +905,64 @@ export default function ExportReportPage() {
                     )}
                   </div>
                 )}
+
+                {/* Medication Adherence Summary Section */}
+                {report.medicationAdherenceSummary && (
+                  <div className="bg-slate-950/80 print:bg-slate-50 p-4 rounded-xl border border-slate-800 print:border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-cyan-300 print:text-blue-800 flex items-center gap-1.5">
+                        <span>💊</span>
+                        <span>Medication Adherence & Daily Dose Compliance Audit:</span>
+                      </span>
+                      <span className="font-mono text-slate-400 print:text-slate-600">
+                        {report.medicationAdherenceSummary.dateRange}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Compliance Rate</span>
+                        <span className="text-sm font-bold text-emerald-400 print:text-emerald-700 mt-0.5 block">
+                          {report.medicationAdherenceSummary.adherenceRate}%
+                        </span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Doses Taken</span>
+                        <span className="text-sm font-bold text-cyan-400 print:text-blue-700 mt-0.5 block">
+                          {report.medicationAdherenceSummary.takenDoses} / {report.medicationAdherenceSummary.totalDoses}
+                        </span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Active Streak</span>
+                        <span className="text-sm font-bold text-amber-400 print:text-amber-700 mt-0.5 block">
+                          {report.medicationAdherenceSummary.currentStreak} Days
+                        </span>
+                      </div>
+                      <div className="bg-slate-900 print:bg-white p-2.5 rounded-lg border border-slate-800 print:border-slate-300">
+                        <span className="text-[10px] text-slate-400 print:text-slate-500 font-semibold block">Adherence Triage</span>
+                        <span
+                          className={`text-sm font-bold mt-0.5 block ${
+                            report.medicationAdherenceSummary.adherenceRate >= 80
+                              ? "text-emerald-400 print:text-emerald-700"
+                              : "text-rose-400 print:text-rose-700"
+                          }`}
+                        >
+                          {report.medicationAdherenceSummary.adherenceRate >= 80
+                            ? "Optimal Compliance"
+                            : "Sub-optimal / Review"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Self-reported disclaimer notice */}
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 print:text-amber-900 text-[11px] leading-relaxed">
+                      <span className="font-bold">⚠️ Self-Reported Data Notice: </span>
+                      {report.medicationAdherenceSummary.selfReportedDisclaimer}
+                    </div>
+                  </div>
+                )}
               </section>
+
 
               {/* SBAR Section 3: Assessment */}
               <section className="space-y-3">

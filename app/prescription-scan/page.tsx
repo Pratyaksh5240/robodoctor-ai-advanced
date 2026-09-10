@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, Suspense, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ProfileSwitcher from "@/components/ProfileSwitcher";
 import MedicalDisclaimer from "@/components/MedicalDisclaimer";
 import FeatureGuide from "@/components/FeatureGuide";
 import { useLocalize } from "@/lib/useLocalize";
+import { useAuth } from "@/components/AuthProvider";
+import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { ScannedMedicineItem } from "@/app/api/prescription-scan/route";
 
 type SelectableItem = ScannedMedicineItem & {
@@ -18,6 +21,8 @@ type SelectableItem = ScannedMedicineItem & {
 function PrescriptionScanContent() {
   const router = useRouter();
   const localize = useLocalize();
+  const { user } = useAuth();
+  const { activeProfileId, dependents } = useActiveProfile();
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
@@ -28,6 +33,24 @@ function PrescriptionScanContent() {
   const [rawNotes, setRawNotes] = useState<string>("");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [source, setSource] = useState<string>("");
+
+  // Confirmation Modal State
+  const [confirmingItem, setConfirmingItem] = useState<SelectableItem | null>(null);
+  const [targetPatientId, setTargetPatientId] = useState<string>("myself");
+  const [confirmedTitle, setConfirmedTitle] = useState("");
+  const [confirmedGeneric, setConfirmedGeneric] = useState("");
+  const [confirmedDosage, setConfirmedDosage] = useState("");
+  const [confirmedForm, setConfirmedForm] = useState("tablet");
+  const [confirmedInstructions, setConfirmedInstructions] = useState("");
+  const [confirmedFrequency, setConfirmedFrequency] = useState("");
+  const [confirmedTimes, setConfirmedTimes] = useState<string[]>(["09:00"]);
+  const [confirmedDoctor, setConfirmedDoctor] = useState("");
+  const [confirmedStartDate, setConfirmedStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [courseDurationDays, setCourseDurationDays] = useState<string>("7");
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [scheduleSuccessNotice, setScheduleSuccessNotice] = useState<string | null>(null);
+  const [customTimeInput, setCustomTimeInput] = useState("14:00");
+
 
   const runScan = async (dataUrl: string) => {
     setIsScanning(true);
@@ -171,14 +194,111 @@ function PrescriptionScanContent() {
     router.push(`/medicine-checker?meds=${names}`);
   };
 
-  const handleSendToReminder = (item: SelectableItem) => {
-    const params = new URLSearchParams({
-      medName: item.name,
-      dosage: item.dosageGuess || "",
-      frequency: item.frequencyGuess || "",
-    });
-    router.push(`/medicine-reminder?${params.toString()}`);
+  const handleOpenConfirmation = (item: SelectableItem) => {
+    setConfirmingItem(item);
+    setConfirmedTitle(item.name);
+    setConfirmedGeneric(item.purpose || "");
+    setConfirmedDosage(item.dosageGuess || "");
+    setConfirmedForm("tablet");
+    setConfirmedInstructions(item.whenToEat || "Take after meals with water");
+    setConfirmedFrequency(item.frequencyGuess || "Once daily");
+
+    // Infer daily times from frequency hints
+    const fLower = (item.frequencyGuess || "").toLowerCase();
+    if (fLower.includes("1-0-1") || fLower.includes("twice") || fLower.includes("b.i.d")) {
+      setConfirmedTimes(["08:00", "20:00"]);
+    } else if (fLower.includes("1-1-1") || fLower.includes("thrice") || fLower.includes("t.i.d")) {
+      setConfirmedTimes(["08:00", "14:00", "20:00"]);
+    } else if (fLower.includes("night") || fLower.includes("bed") || fLower.includes("0-0-1") || fLower.includes("h.s")) {
+      setConfirmedTimes(["21:00"]);
+    } else {
+      setConfirmedTimes(["09:00"]);
+    }
+
+    setTargetPatientId(activeProfileId || "myself");
+    setConfirmedDoctor("");
+    setConfirmedStartDate(new Date().toISOString().slice(0, 10));
+    setCourseDurationDays("7");
   };
+
+  const handleAddTime = (timeStr: string) => {
+    if (!confirmedTimes.includes(timeStr)) {
+      setConfirmedTimes([...confirmedTimes, timeStr].sort());
+    }
+  };
+
+  const handleRemoveTime = (timeStr: string) => {
+    if (confirmedTimes.length > 1) {
+      setConfirmedTimes(confirmedTimes.filter((t) => t !== timeStr));
+    }
+  };
+
+  const handleConfirmAndSaveSchedule = async () => {
+    if (!confirmingItem || !confirmedTitle.trim()) return;
+
+    setIsSavingSchedule(true);
+    try {
+      const reminderId = Date.now();
+      const primaryTime = confirmedTimes[0] || "09:00";
+      let endDateStr: string | undefined = undefined;
+
+      if (courseDurationDays && courseDurationDays !== "chronic") {
+        const days = parseInt(courseDurationDays, 10);
+        if (!isNaN(days) && days > 0) {
+          const endD = new Date(confirmedStartDate);
+          endD.setDate(endD.getDate() + days);
+          endDateStr = endD.toISOString().slice(0, 10);
+        }
+      }
+
+      const reminderPayload = {
+        id: String(reminderId),
+        userId: user?.uid || "guest",
+        dependentId: targetPatientId || "myself",
+        title: confirmedTitle.trim(),
+        genericName: confirmedGeneric.trim() || undefined,
+        dosage: confirmedDosage.trim() || undefined,
+        form: confirmedForm,
+        instructions: confirmedInstructions.trim() || undefined,
+        frequency: confirmedFrequency.trim() || undefined,
+        times: confirmedTimes,
+        time: primaryTime,
+        prescribingDoctor: confirmedDoctor.trim() || undefined,
+        startDate: confirmedStartDate,
+        endDate: endDateStr,
+        notificationEnabled: true,
+        done: false,
+        status: "active",
+        source: "prescription_scan",
+      };
+
+      const res = await fetch("/api/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.uid || "guest",
+          dependentId: targetPatientId || "myself",
+          reminder: reminderPayload,
+        }),
+      });
+
+      if (res.ok) {
+        setScheduleSuccessNotice(
+          localize(
+            "Medication schedule confirmed and saved! Added to daily reminders and adherence checklist.",
+            "दवा शेड्यूल की पुष्टि व बचत सफल! दैनिक रिमाइंडर और अनुपालन चेकलिस्ट में जोड़ा गया।"
+          )
+        );
+        setTimeout(() => setScheduleSuccessNotice(null), 8000);
+        setConfirmingItem(null);
+      }
+    } catch (err) {
+      console.error("Failed to save confirmed medication schedule:", err);
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-[var(--background)] px-6 py-10 text-[var(--foreground)] md:px-12">
@@ -517,15 +637,15 @@ function PrescriptionScanContent() {
                       {item.selected && (
                         <div className="mt-4 flex items-center justify-between pt-2 border-t border-slate-800">
                           <span className="text-[11px] text-slate-400">
-                            ✓ {localize("Ready for reminder & interaction check", "रिमाइंडर और सुरक्षा जांच के लिए तैयार")}
+                            ✓ {localize("Ready for confirmation & schedule", "समीक्षा व शेड्यूल के लिए तैयार")}
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleSendToReminder(item)}
-                            className="rounded-xl border border-lime-400/30 bg-lime-500/10 px-3 py-1.5 text-xs text-lime-400 hover:bg-lime-500/20 transition flex items-center gap-1.5 font-bold"
+                            onClick={() => handleOpenConfirmation(item)}
+                            className="rounded-xl border border-lime-400/40 bg-lime-500/10 px-3.5 py-2 text-xs text-lime-400 hover:bg-lime-500/20 transition flex items-center gap-1.5 font-bold cursor-pointer"
                           >
-                            <span>⏰</span>
-                            <span>{localize("Create Reminder", "रिमाइंडर बनाएं")}</span>
+                            <span>🗓️</span>
+                            <span>{localize("Review & Schedule", "समीक्षा व शेड्यूल")}</span>
                           </button>
                         </div>
                       )}
@@ -535,14 +655,26 @@ function PrescriptionScanContent() {
 
                 {/* Bulk Actions */}
                 <div className="pt-2 border-t border-[color:var(--border)]">
-                  <button
-                    type="button"
-                    onClick={handleSendToInteractionChecker}
-                    disabled={selectedItems.length === 0}
-                    className="w-full rounded-2xl bg-cyan-500 py-3 font-bold text-black hover:bg-cyan-400 disabled:opacity-50 transition"
-                  >
-                    🔍 {localize("Check Interactions for {count} Selected", "चयनित {count} दवाओं के इंटरेक्शन जांचें", { count: selectedItems.length })}
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenConfirmation(selectedItems[0])}
+                      disabled={selectedItems.length === 0}
+                      className="w-full rounded-2xl bg-emerald-400 py-3 font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                    >
+                      <span>🗓️</span>
+                      <span>{localize("Review & Schedule Selected", "चयनित दवा का शेड्यूल बनाएं")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendToInteractionChecker}
+                      disabled={selectedItems.length === 0}
+                      className="w-full rounded-2xl bg-cyan-500 py-3 font-bold text-black hover:bg-cyan-400 disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>🔍</span>
+                      <span>{localize("Check Interactions ({count})", "इंटरेक्शन जांचें ({count})", { count: selectedItems.length })}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -550,9 +682,324 @@ function PrescriptionScanContent() {
         </div>
       </div>
 
+      {/* Success Notification Banner */}
+      {scheduleSuccessNotice && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
+          <div className="rounded-2xl border border-emerald-500/50 bg-slate-950 p-4 shadow-2xl flex items-center justify-between gap-4 text-emerald-300 text-xs sm:text-sm font-semibold">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">✅</span>
+              <span>{scheduleSuccessNotice}</span>
+            </div>
+            <Link
+              href="/medication-adherence"
+              className="rounded-xl bg-emerald-400 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-emerald-300 whitespace-nowrap"
+            >
+              {localize("Open Adherence ↗", "चेकलिस्ट खोलें ↗")}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation & Schedule Generation Modal */}
+      <AnimatePresence>
+        {confirmingItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl rounded-3xl border border-slate-700 bg-slate-900 p-6 md:p-8 shadow-2xl my-8 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-slate-800 pb-4 mb-5">
+                <div>
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-cyan-400 font-bold">
+                    <span>📋</span>
+                    <span>{localize("Prescription Verification Step", "प्रिस्क्रिप्शन सत्यापन चरण")}</span>
+                  </div>
+                  <h3 className="text-2xl font-black text-white mt-1">
+                    {localize("Review & Confirm Medication Schedule", "दवा शेड्यूल की समीक्षा व पुष्टि")}
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] mt-1">
+                    {localize(
+                      "Never silently added: Verify medicine details and schedule times against your doctor prescription.",
+                      "कभी भी चुपचाप नहीं जोड़ा जाता: अपने डॉक्टर के पर्चे से दवा विवरण और समय की पुष्टि करें।"
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingItem(null)}
+                  className="rounded-full bg-slate-800 p-2 text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Clinical Verification Disclaimer */}
+              <div className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 leading-relaxed">
+                <span className="font-bold">⚠️ {localize("Clinical Verification Notice:", "क्लीनिकल सत्यापन निर्देश:")}</span>{" "}
+                {localize(
+                  "AI vision can misinterpret handwritten prescriber notes. Ensure the salt, dosage, and frequency below strictly match your physical prescription.",
+                  "एआई विज़न हाथ से लिखे नोटों में गलती कर सकता है। सुनिश्चित करें कि दवा का नाम, खुराक और समय पर्चे से मेल खाते हैं।"
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {/* Target Patient Profile */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    {localize("Select Patient / Dependent Profile", "रोगी / आश्रित प्रोफ़ाइल चुनें")}
+                  </label>
+                  <select
+                    value={targetPatientId}
+                    onChange={(e) => setTargetPatientId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs font-semibold text-white focus:border-cyan-400 focus:outline-none"
+                  >
+                    <option value="myself">
+                      👤 {localize("Myself", "स्वयं")} ({user?.displayName || localize("Account Owner", "खाता धारक")})
+                    </option>
+                    {dependents.map((dep) => (
+                      <option key={dep.id} value={dep.id}>
+                        👥 {dep.name} ({dep.relationship})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Medicine Title & Generic Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {localize("Medicine Name & Brand", "दवा का नाम / ब्रांड")}
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmedTitle}
+                      onChange={(e) => setConfirmedTitle(e.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                      placeholder={localize("e.g. Dolo 650", "उदा. डोलो 650")}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {localize("Generic / Salt / Purpose", "सॉल्ट / जेनेरिक नाम")}
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmedGeneric}
+                      onChange={(e) => setConfirmedGeneric(e.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                      placeholder={localize("e.g. Paracetamol", "उदा. पैरासिटामोल")}
+                    />
+                  </div>
+                </div>
+
+                {/* Form & Dosage */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {localize("Dosage / Strength", "खुराक / ताकत")}
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmedDosage}
+                      onChange={(e) => setConfirmedDosage(e.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                      placeholder={localize("e.g. 500mg, 10ml, 1 puff", "उदा. 500mg, 10ml")}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {localize("Medication Form", "दवा का रूप")}
+                    </label>
+                    <select
+                      value={confirmedForm}
+                      onChange={(e) => setConfirmedForm(e.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs font-semibold text-white focus:border-cyan-400 focus:outline-none"
+                    >
+                      <option value="tablet">💊 {localize("Tablet", "गोली / टैबलेट")}</option>
+                      <option value="capsule">💊 {localize("Capsule", "कैप्सूल")}</option>
+                      <option value="syrup">🧪 {localize("Syrup / Liquid", "सिरप / तरल")}</option>
+                      <option value="injection">💉 {localize("Injection", "इंजेक्शन")}</option>
+                      <option value="inhaler">🌬️ {localize("Inhaler", "इन्हेलर")}</option>
+                      <option value="drops">💧 {localize("Drops", "ड्रॉप्स")}</option>
+                      <option value="cream">🧴 {localize("Cream / Ointment", "क्रीम / ऑइंटमेंट")}</option>
+                      <option value="other">📦 {localize("Other", "अन्य")}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Administration Instructions */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    {localize("Instructions & Timing Advice", "निर्देश व सेवन का समय")}
+                  </label>
+                  <input
+                    type="text"
+                    value={confirmedInstructions}
+                    onChange={(e) => setConfirmedInstructions(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    placeholder={localize("e.g. Take after breakfast with a glass of water", "उदा. नाश्ते के बाद पानी के साथ लें")}
+                  />
+                </div>
+
+                {/* Frequency & Reminder Times */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    {localize("Daily Reminder Times (Schedule)", "दैनिक रिमाइंडर का समय")}
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    {confirmedTimes.map((tm) => (
+                      <span
+                        key={tm}
+                        className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-mono font-bold text-cyan-300 flex items-center gap-1.5"
+                      >
+                        🕒 {tm}
+                        {confirmedTimes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTime(tm)}
+                            className="hover:text-rose-400 text-xs ml-1"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-[11px] text-[var(--muted)]">{localize("Quick Add:", "जल्दी जोड़ें:")}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTime("08:00")}
+                      className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                    >
+                      + 08:00 ({localize("Morning", "सुबह")})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTime("14:00")}
+                      className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                    >
+                      + 14:00 ({localize("Afternoon", "दोपहर")})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTime("20:00")}
+                      className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                    >
+                      + 20:00 ({localize("Evening", "शाम")})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTime("22:00")}
+                      className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                    >
+                      + 22:00 ({localize("Bedtime", "रात")})
+                    </button>
+
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <input
+                        type="time"
+                        value={customTimeInput}
+                        onChange={(e) => setCustomTimeInput(e.target.value)}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddTime(customTimeInput)}
+                        className="rounded-lg bg-slate-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-slate-600"
+                      >
+                        {localize("Add", "जोड़ें")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Course Duration & Start Date */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {localize("Start Date", "शुरुआती तारीख")}
+                    </label>
+                    <input
+                      type="date"
+                      value={confirmedStartDate}
+                      onChange={(e) => setConfirmedStartDate(e.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {localize("Course Duration", "दवा की अवधि")}
+                    </label>
+                    <select
+                      value={courseDurationDays}
+                      onChange={(e) => setCourseDurationDays(e.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs font-semibold text-white focus:border-cyan-400 focus:outline-none"
+                    >
+                      <option value="3">3 {localize("Days", "दिन")}</option>
+                      <option value="5">5 {localize("Days", "दिन")}</option>
+                      <option value="7">7 {localize("Days (1 Week)", "दिन (1 सप्ताह)")}</option>
+                      <option value="10">10 {localize("Days", "दिन")}</option>
+                      <option value="14">14 {localize("Days (2 Weeks)", "दिन (2 सप्ताह)")}</option>
+                      <option value="30">30 {localize("Days (1 Month)", "दिन (1 महीना)")}</option>
+                      <option value="chronic">{localize("Ongoing / Chronic Maintenance", "निरंतर / क्रॉनिक देखभाल")}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Prescribing Doctor */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    {localize("Prescribing Doctor / Hospital (Optional)", "डॉक्टर / अस्पताल का नाम (वैकल्पिक)")}
+                  </label>
+                  <input
+                    type="text"
+                    value={confirmedDoctor}
+                    onChange={(e) => setConfirmedDoctor(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    placeholder={localize("e.g. Dr. A. Sharma, City Clinic", "उदा. डॉ. ए. शर्मा")}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Action Buttons */}
+              <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingItem(null)}
+                  className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white transition"
+                >
+                  {localize("Cancel", "रद्द करें")}
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingSchedule || !confirmedTitle.trim()}
+                  onClick={handleConfirmAndSaveSchedule}
+                  className="rounded-xl bg-emerald-400 px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50 shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 cursor-pointer"
+                >
+                  {isSavingSchedule ? (
+                    <span>{localize("Saving...", "सहेज रहे हैं...")}</span>
+                  ) : (
+                    <>
+                      <span>✓</span>
+                      <span>{localize("Confirm & Save Medication Schedule", "शेड्यूल की पुष्टि करें व सहेजें")}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <MedicalDisclaimer />
     </div>
   );
+
 
   function handleSendToInteractionChecker() {
     if (selectedItems.length === 0) return;

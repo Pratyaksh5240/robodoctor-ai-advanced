@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Reminder from "@/lib/models/Reminder";
+import { getSessionUser, checkProfileAccess, logAuditEvent } from "@/lib/serverAuth";
 
 export async function GET(req: Request) {
   try {
@@ -10,6 +11,19 @@ export async function GET(req: Request) {
 
     if (!userId || userId === "guest") {
       return NextResponse.json({ reminders: [] });
+    }
+
+    const sessionUser = await getSessionUser(req);
+    const access = await checkProfileAccess({
+      sessionUser,
+      targetUserId: userId,
+      targetProfileId: dependentId,
+      category: "medications",
+      action: "view",
+    });
+
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason || "Unauthorized" }, { status: 403 });
     }
 
     const conn = await connectToDatabase();
@@ -33,17 +47,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing userId or reminder" }, { status: 400 });
     }
 
+    const targetDependentId = dependentId || "myself";
+    const sessionUser = await getSessionUser(req);
+    const access = await checkProfileAccess({
+      sessionUser,
+      targetUserId: userId,
+      targetProfileId: targetDependentId,
+      category: "medications",
+      action: "edit",
+    });
+
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason || "Unauthorized" }, { status: 403 });
+    }
+
     const conn = await connectToDatabase();
     if (!conn) {
       return NextResponse.json({ success: true, savedToMongo: false });
     }
 
-    const targetDependentId = dependentId || "myself";
     const updated = await Reminder.findOneAndUpdate(
       { id: String(reminder.id), userId },
       { ...reminder, id: String(reminder.id), userId, dependentId: targetDependentId },
       { upsert: true, new: true }
     );
+
+    if (sessionUser) {
+      void logAuditEvent({
+        actorUserId: sessionUser.uid,
+        actorName: sessionUser.displayName,
+        actorEmail: sessionUser.email,
+        targetUserId: userId,
+        targetProfileId: targetDependentId,
+        category: "medications",
+        action: "create",
+        detail: `Saved reminder for '${reminder.title}' at ${reminder.time || (reminder.times && reminder.times[0]) || "scheduled time"}`,
+      });
+    }
 
     return NextResponse.json({ success: true, reminder: updated, savedToMongo: true });
   } catch (err) {
@@ -57,14 +97,41 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const userId = searchParams.get("userId");
+    const dependentId = searchParams.get("dependentId") || "myself";
 
     if (!id || !userId) {
       return NextResponse.json({ error: "Missing id or userId" }, { status: 400 });
     }
 
+    const sessionUser = await getSessionUser(req);
+    const access = await checkProfileAccess({
+      sessionUser,
+      targetUserId: userId,
+      targetProfileId: dependentId,
+      category: "medications",
+      action: "edit",
+    });
+
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason || "Unauthorized" }, { status: 403 });
+    }
+
     const conn = await connectToDatabase();
     if (conn) {
       await Reminder.deleteOne({ id, userId });
+    }
+
+    if (sessionUser) {
+      void logAuditEvent({
+        actorUserId: sessionUser.uid,
+        actorName: sessionUser.displayName,
+        actorEmail: sessionUser.email,
+        targetUserId: userId,
+        targetProfileId: dependentId,
+        category: "medications",
+        action: "delete",
+        detail: `Deleted medication reminder ID ${id}`,
+      });
     }
 
     return NextResponse.json({ success: true });
@@ -73,3 +140,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Failed to delete reminder" }, { status: 500 });
   }
 }
+

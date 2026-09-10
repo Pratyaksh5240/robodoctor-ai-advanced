@@ -18,6 +18,14 @@ function getBotReply(input: string, language: Language) {
     language === "hi" ? hi : translateUi(en, language);
   const text = input.toLowerCase();
 
+  // Check "how are you" & wellness inquiries
+  if (/\b(how\s+(r|are)\s*(u|you)|how\s+do\s+you\s+do|how('s|s)\s+it\s+going|kaise\s+ho|kya\s+haal|kaisa\s+hai|aap\s+kaise)\b/i.test(text)) {
+    return localize(
+      "Hello! I am doing great, thank you for asking! 😊 I'm RoboDoctor AI, your 24/7 personal health assistant. How are you feeling today? Are you experiencing any symptoms, or do you have a question about medications or vitals?",
+      "नमस्ते! मैं बहुत अच्छा हूँ, पूछने के लिए धन्यवाद! 😊 मैं RoboDoctor AI, आपका 24/7 स्वास्थ्य सहायक हूँ। आज आप कैसा महसूस कर रहे हैं? क्या आप कोई लक्षण अनुभव कर रहे हैं, या दवाओं/वाइटल्स के बारे में कोई सवाल है?"
+    );
+  }
+
   // Check greetings
   if (/^(h[el]+o+|h+i+|h+e+y+|greetings|namaste|hola|bonjour|good\s*(morning|afternoon|evening))/i.test(text.trim())) {
     return localize(
@@ -94,6 +102,14 @@ function getEnhancedBotReply(input: string, language: Language) {
     language === "hi" ? hi : translateUi(en, language);
 
   const text = input.toLowerCase();
+
+  // Check "how are you" & wellness inquiries
+  if (/\b(how\s+(r|are)\s*(u|you)|how\s+do\s+you\s+do|how('s|s)\s+it\s+going|kaise\s+ho|kya\s+haal|kaisa\s+hai|aap\s+kaise)\b/i.test(text)) {
+    return localize(
+      "Hello! I am doing great, thank you for asking! 😊 I'm RoboDoctor AI, your 24/7 personal health assistant. How are you feeling today? Are you experiencing any symptoms, or do you have a question about medications or vitals?",
+      "नमस्ते! मैं बहुत अच्छा हूँ, पूछने के लिए धन्यवाद! 😊 मैं RoboDoctor AI, आपका 24/7 स्वास्थ्य सहायक हूँ। आज आप कैसा महसूस कर रहे हैं? क्या आप कोई लक्षण अनुभव कर रहे हैं, या दवाओं/वाइटल्स के बारे में कोई सवाल है?"
+    );
+  }
 
   // Check greetings
   if (/^(h[el]+o+|h+i+|h+e+y+|greetings|namaste|hola|bonjour|good\s*(morning|afternoon|evening))/i.test(text.trim())) {

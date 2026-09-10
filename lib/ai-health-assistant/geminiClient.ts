@@ -56,7 +56,19 @@ export async function generateWithGemini(
     throw new Error("GEMINI_API_KEY is missing.");
   }
 
-  const model = input.model ?? config.geminiModel;
+  const candidateModels = Array.from(
+    new Set(
+      [
+        input.model,
+        config.geminiModel,
+        "gemini-3.5-flash",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+      ].filter(Boolean) as string[]
+    )
+  );
+
   const body = {
     contents: input.messages.map((message) => ({
       role: mapRole(message.role),
@@ -74,34 +86,45 @@ export async function generateWithGemini(
     },
   };
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.geminiApiKey}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+  let lastError = "";
+
+  for (const model of candidateModels) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.geminiApiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!response.ok) {
+        lastError = `Gemini model ${model} returned (${response.status}): ${await response.text()}`;
+        // If 401 unauthenticated, further model retries with the same key won't help
+        if (response.status === 401 || response.status === 403) {
+          break;
+        }
+        continue;
+      }
+
+      const raw = await response.json();
+      const text = extractTextFromResponse(raw);
+
+      if (text) {
+        return {
+          provider: "gemini",
+          model,
+          text,
+          raw,
+        };
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : "Network error";
     }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Gemini request failed (${response.status}): ${await response.text()}`
-    );
   }
 
-  const raw = await response.json();
-  const text = extractTextFromResponse(raw);
-
-  if (!text) {
-    throw new Error("Gemini did not return any text output.");
-  }
-
-  return {
-    provider: "gemini",
-    model,
-    text,
-    raw,
-  };
+  throw new Error(`Gemini request failed: ${lastError || "All models failed"}`);
 }

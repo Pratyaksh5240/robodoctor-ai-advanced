@@ -42,6 +42,16 @@ export default function PatientHistoryPage() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
+  // Adherence tracking summary state
+  const [adherenceData, setAdherenceData] = useState<{
+    todayRate: number;
+    sevenDayRate: number;
+    thirtyDayRate: number;
+    currentStreak: number;
+    dosesTaken: number;
+    dosesTotal: number;
+  } | null>(null);
+
   // Synthesize SBAR clinical data for direct export
   const sbarReport: SbarReportData = useMemo(() => {
     return mapRecordsToSbar(
@@ -58,9 +68,20 @@ export default function PatientHistoryPage() {
       activeProfile?.name || user?.displayName || "Patient Record",
       "history_only",
       conditions,
-      null
+      null,
+      adherenceData
+        ? {
+            totalDoses: adherenceData.dosesTotal,
+            takenDoses: adherenceData.dosesTaken,
+            adherenceRate: adherenceData.thirtyDayRate,
+            currentStreak: adherenceData.currentStreak,
+            dateRange: "Past 30 Days",
+            selfReportedDisclaimer:
+              "Patient self-reported medication adherence logs. May reflect self-reporting inaccuracies. Clinical verification recommended.",
+          }
+        : null
     );
-  }, [conditions, activeProfile, user]);
+  }, [conditions, activeProfile, user, adherenceData]);
 
   // New condition form
   const [condName, setCondName] = useState("");
@@ -85,12 +106,28 @@ export default function PatientHistoryPage() {
     try {
       const records = await getConditions(user?.uid || "guest", activeProfileId);
       setConditions(records);
+
+      // Also fetch adherence summary for active patient
+      try {
+        const uParam = encodeURIComponent(user?.uid || "guest");
+        const dParam = encodeURIComponent(activeProfileId || "myself");
+        const res = await fetch(`/api/medication-adherence?userId=${uParam}&dependentId=${dParam}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.summary) {
+            setAdherenceData(data.summary);
+          }
+        }
+      } catch (adhErr) {
+        console.warn("Failed to fetch adherence summary in patient history:", adhErr);
+      }
     } catch (e) {
       console.error("Failed to load patient conditions:", e);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadData();
@@ -600,7 +637,86 @@ export default function PatientHistoryPage() {
           </div>
         )}
 
+        {/* Dedicated Medication Adherence History & Compliance Card */}
+        <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-cyan-950/30 p-6 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💊</span>
+                <h3 className="text-lg font-bold text-white">
+                  {localize("Medication Adherence & Daily Dose Compliance", "दवा अनुपालन व दैनिक खुराक ट्रैकिंग")}
+                </h3>
+              </div>
+              <p className="text-xs text-[var(--muted)] mt-1">
+                {localize(
+                  "Day-to-day dose records tracked distinctly from chronic condition diagnosis milestones",
+                  "पुरानी बीमारी के मील के पत्थरों से अलग दैनिक दवा सेवन का रिकॉर्ड"
+                )}
+              </p>
+            </div>
+
+            <Link
+              href="/medication-adherence"
+              className="inline-flex items-center gap-2 rounded-2xl bg-cyan-500 px-5 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan-400 shadow-md shadow-cyan-500/20 transition self-start sm:self-auto"
+            >
+              <span>🗓️</span>
+              <span>{localize("Open Adherence Checklist", "दवा चेकलिस्ट खोलें")}</span>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3.5 text-center">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold block">
+                {localize("Today's Compliance", "आज का अनुपालन")}
+              </span>
+              <span className="text-2xl font-black text-cyan-300 mt-1 block">
+                {adherenceData ? `${adherenceData.todayRate}%` : "—"}
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3.5 text-center">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold block">
+                {localize("7-Day Compliance", "7-दिवसीय अनुपालन")}
+              </span>
+              <span className="text-2xl font-black text-emerald-300 mt-1 block">
+                {adherenceData ? `${adherenceData.sevenDayRate}%` : "—"}
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3.5 text-center">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold block">
+                {localize("30-Day Long-term", "30-दिवसीय दीर्घकालिक")}
+              </span>
+              <span className="text-2xl font-black text-indigo-300 mt-1 block">
+                {adherenceData ? `${adherenceData.thirtyDayRate}%` : "—"}
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3.5 text-center">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold block">
+                {localize("Adherence Streak", "निरंतरता स्ट्रिक")}
+              </span>
+              <span className="text-2xl font-black text-amber-300 mt-1 block">
+                {adherenceData ? `${adherenceData.currentStreak} d` : "0 d"}
+              </span>
+            </div>
+          </div>
+
+          {/* Self-reported disclaimer */}
+          <div className="rounded-xl border border-white/5 bg-slate-950/40 p-3 text-[11px] text-slate-400 flex items-start gap-2">
+            <span className="text-sm">ℹ️</span>
+            <span>
+              <strong className="text-slate-200">{localize("Self-Reported Data Notice:", "स्व-रिपोर्ट डेटा सूचना:")}</strong>{" "}
+              {localize(
+                "Medication adherence data is self-reported by the patient or caregiver and may reflect reporting inaccuracies. Clinical verification with your physician or pharmacist is recommended.",
+                "दवा अनुपालन डेटा मरीज या देखभालकर्ता द्वारा स्व-रिपोर्ट किया जाता है। डॉक्टर या फार्मासिस्ट से क्लीनिकल सत्यापन की सलाह दी जाती है।"
+              )}
+            </span>
+          </div>
+        </div>
+
         {/* Conditions List & Longitudinal Timeline */}
+
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">

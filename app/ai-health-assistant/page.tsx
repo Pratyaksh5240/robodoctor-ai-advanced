@@ -59,10 +59,10 @@ async function postJson<T>(url: string, body: unknown) {
 
 function sourceLabel(provider: string, model: string, fallbackUsed: boolean) {
   if (fallbackUsed || provider === "fallback") {
-    return "Rule-based fallback";
+    return "🩺 RoboDoctor Clinical Intelligence Engine (Offline Mode)";
   }
 
-  return `${provider.toUpperCase()} • ${model}`;
+  return `✨ ${provider.toUpperCase()} • ${model}`;
 }
 
 export default function AIHealthAssistantPage() {
@@ -365,6 +365,26 @@ export default function AIHealthAssistantPage() {
               ))}
             </div>
 
+            {chatState?.followUpQuestions && chatState.followUpQuestions.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-4">
+                <p className="text-xs font-semibold text-cyan-300 uppercase tracking-wider mb-2.5">
+                  💬 {localize("Suggested Follow-up Questions (Click to Ask):", "सुझाए गए फॉलो-अप प्रश्न (पूछने के लिए क्लिक करें):")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {chatState.followUpQuestions.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => void handleSend(q)}
+                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 hover:bg-cyan-400/20 px-3.5 py-1.5 text-xs text-cyan-100 transition cursor-pointer text-left"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <form
               onSubmit={(event: FormEvent) => {
                 event.preventDefault();
@@ -413,6 +433,20 @@ export default function AIHealthAssistantPage() {
                     )}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {chatState?.redFlags && chatState.redFlags.length > 0 && (
+              <div className="mt-4 rounded-3xl border border-rose-500/30 bg-rose-950/30 p-5 text-sm text-rose-200">
+                <div className="flex items-center gap-2 font-bold text-rose-300">
+                  <span className="text-lg">🚨</span>
+                  <span>{localize("Emergency Red Flags to Watch:", "आपातकालीन रेड फ्लैग चेतावनियां:")}</span>
+                </div>
+                <ul className="mt-2.5 list-disc list-inside space-y-1 text-xs text-rose-200/90 leading-relaxed">
+                  {chatState.redFlags.map((flag) => (
+                    <li key={flag}>{flag}</li>
+                  ))}
+                </ul>
               </div>
             )}
           </section>

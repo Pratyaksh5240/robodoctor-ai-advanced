@@ -57,6 +57,22 @@ export interface SbarReportData {
     notes?: string;
   }>;
   familyHistoryPatterns?: string[];
+  // Medication Adherence Summary (Feature: Adherence Tracking)
+  medicationAdherenceSummary?: {
+    totalDoses: number;
+    takenDoses: number;
+    adherenceRate: number;
+    currentStreak: number;
+    dateRange: string;
+    records?: Array<{
+      medication: string;
+      scheduledTime: string;
+      status: string;
+      date: string;
+      reason?: string;
+    }>;
+    selfReportedDisclaimer: string;
+  };
   // Assessment
   overallRiskLevel: "low" | "moderate" | "high" | "urgent";
   riskScore: number;
@@ -66,6 +82,7 @@ export interface SbarReportData {
   precautions: string[];
   recommendedFollowUp: string;
 }
+
 
 export function generateSampleSbarData(): SbarReportData {
   const now = new Date();
@@ -184,6 +201,20 @@ export function generateSampleSbarData(): SbarReportData {
     ],
     recommendedFollowUp:
       "Arrange a primary doctor or dermatologist appointment within 1 to 2 weeks for comprehensive physical exam.",
+    medicationAdherenceSummary: {
+      totalDoses: 28,
+      takenDoses: 26,
+      adherenceRate: 93,
+      currentStreak: 6,
+      dateRange: "Past 30 Days",
+      records: [
+        { medication: "Amlodipine 5mg", scheduledTime: "08:00", status: "taken", date: "Today" },
+        { medication: "Metformin 500mg", scheduledTime: "09:00", status: "taken", date: "Today" },
+        { medication: "Atorvastatin 20mg", scheduledTime: "21:00", status: "pending", date: "Today" },
+      ],
+      selfReportedDisclaimer:
+        "Patient self-reported medication adherence logs. May reflect self-reporting inaccuracies. Clinical verification recommended.",
+    },
   };
 }
 
@@ -202,10 +233,13 @@ export function mapRecordsToSbar(
   fallbackName?: string,
   mode: SbarExportMode = "vitals_only",
   conditions?: PatientConditionRecord[] | null,
-  familyHistory?: FamilyHistoryRecord[] | null
+  familyHistory?: FamilyHistoryRecord[] | null,
+  adherenceSummary?: SbarReportData["medicationAdherenceSummary"] | null
 ): SbarReportData {
-  // If literally no records exist across all 4 modules, return sample template
-  const hasAnyRecord =
+  const result: SbarReportData = (() => {
+    // If literally no records exist across all 4 modules, return sample template
+    const hasAnyRecord =
+
     Boolean(healthReport) ||
     Boolean(skinReport) ||
     (Boolean(conditions) && (conditions?.length ?? 0) > 0) ||
@@ -763,4 +797,12 @@ export function mapRecordsToSbar(
     precautions,
     recommendedFollowUp,
   };
+  })();
+
+  if (adherenceSummary) {
+    result.medicationAdherenceSummary = adherenceSummary;
+  }
+
+  return result;
 }
+
