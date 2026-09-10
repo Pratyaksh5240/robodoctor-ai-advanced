@@ -454,18 +454,18 @@ export default function HealthCheck() {
         </div>
       </div>
 
-      {/* High-Accuracy CAD Diagnostic Screener Announcement Banner */}
+      {/* CAD Diagnostic Screener Announcement Banner */}
       <div className="mb-6 overflow-hidden rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/40 via-slate-900 to-rose-950/40 p-4 sm:p-5 shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-bold border border-red-500/30">
-              <span>NEW: 88.52% High-Accuracy Diagnostic Screener</span>
+              <span>NEW: Angiographic CAD Diagnostic Screener</span>
             </div>
             <h3 className="text-base font-bold text-white">
               Looking for Angiographic Coronary Artery Disease (CAD) Diagnostic Screening?
             </h3>
             <p className="text-xs sm:text-sm text-slate-300">
-              Evaluate present coronary artery stenosis (&gt;50% narrowing) based on the gold-standard Cleveland Clinic benchmark (88.52% accuracy, 95.24% ROC-AUC, 92.86% clinical sensitivity).
+              Evaluate present coronary artery stenosis (&gt;50% narrowing) using validated stress ECG and fluoroscopy markers.
             </p>
           </div>
           <Link
@@ -690,8 +690,8 @@ export default function HealthCheck() {
               </h3>
               <p className="text-xs text-[var(--muted)] mt-1">
                 {localize(
-                  "Provide smoking status, cholesterol, or medication history to refine Framingham 10-year risk accuracy.",
-                  "Framingham 10-year risk सटीकता को रिफाइन करने के लिए धूम्रपान, कोलेस्ट्रॉल या दवा का इतिहास दर्ज करें।"
+                  "Provide smoking status, cholesterol, or medication history to refine Framingham 10-year risk assessment.",
+                  "Framingham 10-year risk मूल्यांकन को रिफाइन करने के लिए धूम्रपान, कोलेस्ट्रॉल या दवा का इतिहास दर्ज करें।"
                 )}
               </p>
             </div>
@@ -890,11 +890,6 @@ export default function HealthCheck() {
                 {result.source === "rules_fallback" && (
                   <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-0.5 text-xs text-amber-300 font-medium">
                     ⚠️ {localize("Using baseline estimate (ML service offline)", "बेसिक अनुमान प्रयुक्त (ML सर्विस ऑफलाइन)")}
-                  </span>
-                )}
-                {result.modelAccuracy && (
-                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-0.5 text-xs font-semibold text-emerald-300 font-mono">
-                    📊 {result.modelAccuracy}
                   </span>
                 )}
                 {result.screening_result && (

@@ -175,21 +175,21 @@ export default function CadCheckPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Title & Accuracy Benchmark Banner */}
+        {/* Hero Title & Clinical Benchmark Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-950 via-slate-900 to-rose-950 text-white p-6 sm:p-8 shadow-xl border border-red-900/40">
           <div className="relative z-10 max-w-3xl space-y-3">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 text-xs font-semibold border border-red-500/30">
               <span>{localize("Gold-Standard Cleveland Angiographic Benchmark", "गोल्ड-स्टैंडर्ड क्लीवलैंड एंजियोग्राफिक बेंचमार्क")}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
-              <span>{localize("88.52% Validated Accuracy", "88.52% प्रमाणित सटीकता")}</span>
+              <span>{localize("Clinical Diagnostic Screener", "क्लिनिकल डायग्नोस्टिक स्क्रीनर")}</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
               {localize("Coronary Artery Disease (CAD) Diagnostic Screening", "कोरोनरी आर्टरी डिजीज (CAD) डायग्नोस्टिक स्क्रीनिंग")}
             </h1>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
               {localize(
-                "Trained on clinically verified cardiac catheterization outcomes (fluoroscopy and coronary angiography). Detects present hemodynamically significant stenosis (>50% arterial luminal narrowing) with 88.52% accuracy, 95.24% ROC-AUC, and 92.86% clinical sensitivity.",
-                "क्लिनिकली सत्यापित कार्डियक कैथीeterization परिणामों (फ्लोरोस्कोपी और कोरोनरी एंजियोग्राफी) पर प्रशिक्षित। 88.52% सटीकता, 95.24% ROC-AUC और 92.86% नैदानिक संवेदनशीलता के साथ वर्तमान हेमोडायनामिक रूप से महत्वपूर्ण स्टेनोसिस (>50% धमनी संकुचन) का पता लगाता है।"
+                "Trained on clinically verified cardiac catheterization outcomes (fluoroscopy and coronary angiography) to screen for hemodynamically significant stenosis (>50% arterial luminal narrowing).",
+                "क्लिनिकली सत्यापित कार्डियक कैथीeterization परिणामों (फ्लोरोस्कोपी और कोरोनरी एंजियोग्राफी) पर प्रशिक्षित, जो वर्तमान हेमोडायनामिक रूप से महत्वपूर्ण स्टेनोसिस (>50% धमनी संकुचन) की जांच करता है।"
               )}
             </p>
 
@@ -197,36 +197,38 @@ export default function CadCheckPage() {
             <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
                 <div className="text-xs text-slate-400 uppercase font-medium">
-                  {localize("Test Accuracy", "परीक्षण सटीकता")}
+                  {localize("Target", "लक्षित स्थिति")}
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-emerald-400">88.52%</div>
+                <div className="text-lg sm:text-xl font-black text-emerald-400">&gt;50% Stenosis</div>
                 <div className="text-[10px] text-slate-400">
-                  {localize("Held-out cohort (54/61)", "होल्ड-आउट कोहोर्ट (54/61)")}
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
-                <div className="text-xs text-slate-400 uppercase font-medium">ROC-AUC</div>
-                <div className="text-xl sm:text-2xl font-black text-blue-400">95.24%</div>
-                <div className="text-[10px] text-slate-400">
-                  {localize("Near-perfect separation", "उत्कृष्ट वर्गीकरण")}
+                  {localize("Arterial narrowing", "धमनी संकुचन")}
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
                 <div className="text-xs text-slate-400 uppercase font-medium">
-                  {localize("CAD Sensitivity", "सीएडी संवेदनशीलता")}
+                  {localize("Biomarkers", "बायोमार्कर्स")}
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-rose-400">92.86%</div>
+                <div className="text-lg sm:text-xl font-black text-blue-400">13 Markers</div>
                 <div className="text-[10px] text-slate-400">
-                  {localize("26 of 28 CAD caught", "28 में से 26 सीएडी पहचाने")}
+                  {localize("ECG & fluoroscopy", "ईसीजी व फ्लोरोस्कोपी")}
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
                 <div className="text-xs text-slate-400 uppercase font-medium">
-                  {localize("Ensemble", "एंसेम्बल")}
+                  {localize("Architecture", "आर्किटेक्चर")}
                 </div>
-                <div className="text-base sm:text-lg font-bold text-amber-300 mt-1">RF + GB + LR</div>
+                <div className="text-lg sm:text-xl font-black text-rose-400">Soft-Voting</div>
                 <div className="text-[10px] text-slate-400">
-                  {localize("Calibrated soft voting", "कैलिब्रेटेड सॉफ्ट वोटिंग")}
+                  {localize("Multi-model ensemble", "मल्टी-मॉडल एंसेम्बल")}
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 backdrop-blur border border-white/10 text-center">
+                <div className="text-xs text-slate-400 uppercase font-medium">
+                  {localize("Cohort", "कोहोर्ट")}
+                </div>
+                <div className="text-base sm:text-lg font-bold text-amber-300 mt-1">Cleveland Clinic</div>
+                <div className="text-[10px] text-slate-400">
+                  {localize("Angiography validated", "एंजियोग्राफी सत्यापित")}
                 </div>
               </div>
             </div>
@@ -238,8 +240,8 @@ export default function CadCheckPage() {
           badge={localize("Angiographic CAD Screening", "एंजियोग्राफिक सीएडी स्क्रीनिंग")}
           title={localize("How to Screen for Coronary Artery Disease", "कोरोनरी आर्टरी डिजीज की जांच कैसे करें")}
           purpose={localize(
-            "This diagnostic tool assesses your probability of significant coronary artery narrowing (>50% blockage) using clinically validated stress-test and angiography markers (88.52% accuracy).",
-            "यह नैदानिक ​​उपकरण नैदानिक ​​रूप से मान्य स्ट्रेस-टेस्ट और एंजियोग्राफी मार्करों (88.52% सटीकता) का उपयोग करके महत्वपूर्ण कोरोनरी धमनी संकुचन (>50% रुकावट) की संभावना का आकलन करता है।"
+            "This diagnostic tool assesses your probability of significant coronary artery narrowing (>50% blockage) using clinically validated stress-test and angiography markers.",
+            "यह नैदानिक ​​उपकरण नैदानिक ​​रूप से मान्य स्ट्रेस-टेस्ट और एंजियोग्राफी मार्करों का उपयोग करके महत्वपूर्ण कोरोनरी धमनी संकुचन (>50% रुकावट) की संभावना का आकलन करता है।"
           )}
           inputs={[
             localize("Patient Demographics: Age and biological sex", "रोगी जनसांख्यिकी: उम्र और जैविक लिंग"),
@@ -567,7 +569,7 @@ export default function CadCheckPage() {
                     <span>{localize("Evaluating Coronary Angiography Markers...", "कोरोनरी एंजियोग्राफी संकेतकों का मूल्यांकन हो रहा है...")}</span>
                   </span>
                 ) : (
-                  localize("Execute CAD Diagnostic Screening (88.52% Accuracy)", "सीएडी डायग्नोस्टिक स्क्रीनिंग निष्पादित करें (88.52% सटीकता)")
+                  localize("Execute CAD Diagnostic Screening", "सीएडी डायग्नोस्टिक स्क्रीनिंग निष्पादित करें")
                 )}
               </button>
             </form>
@@ -708,7 +710,7 @@ export default function CadCheckPage() {
                 </p>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-left text-xs space-y-2">
                   <div className="font-semibold text-slate-700 dark:text-slate-300">
-                    {localize("Why Angiographic CAD achieves 88.52% Accuracy:", "एंजियोग्राफिक सीएडी 88.52% सटीकता क्यों प्राप्त करता है:")}
+                    {localize("Clinical Advantage of Angiographic CAD Screening:", "एंजियोग्राफिक सीएडी स्क्रीनिंग का नैदानिक लाभ:")}
                   </div>
                   <p className="text-slate-500 dark:text-slate-400">
                     {localize(
