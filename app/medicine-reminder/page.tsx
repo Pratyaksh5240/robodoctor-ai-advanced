@@ -21,6 +21,11 @@ import {
   PermissionState,
   Reminder,
 } from "@/lib/notificationScheduler";
+import {
+  saveLocalDoseLog,
+  REMINDERS_UPDATED_EVENT,
+  ADHERENCE_UPDATED_EVENT,
+} from "@/lib/adherenceStorage";
 
 function MedicineReminderContent() {
   const { language } = useLanguage();
@@ -99,6 +104,8 @@ function MedicineReminderContent() {
   // Save reminders to localStorage and MongoDB API
   useEffect(() => {
     localStorage.setItem("robodoctor-reminders", JSON.stringify(reminders));
+    window.dispatchEvent(new Event(REMINDERS_UPDATED_EVENT));
+    window.dispatchEvent(new Event(ADHERENCE_UPDATED_EVENT));
 
     if (user && !user.uid.startsWith("user_guest_")) {
       reminders.forEach(async (r) => {
@@ -118,6 +125,27 @@ function MedicineReminderContent() {
       });
     }
   }, [reminders, user, activeProfileId]);
+
+  // Listen to cross-component sync events (e.g. from adherence checklist)
+  useEffect(() => {
+    const handleSync = () => {
+      const saved = localStorage.getItem("robodoctor-reminders");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as Reminder[];
+          setReminders(parsed);
+        } catch {}
+      }
+    };
+    window.addEventListener(REMINDERS_UPDATED_EVENT, handleSync);
+    window.addEventListener(ADHERENCE_UPDATED_EVENT, handleSync);
+    window.addEventListener("storage", handleSync);
+    return () => {
+      window.removeEventListener(REMINDERS_UPDATED_EVENT, handleSync);
+      window.removeEventListener(ADHERENCE_UPDATED_EVENT, handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, []);
 
   // Initial Permission Check, SW Registration & Web Push Subscription
   useEffect(() => {
@@ -518,34 +546,55 @@ function MedicineReminderContent() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              const newDone = !reminder.done;
+                              const todayStr = new Date().toISOString().slice(0, 10);
+                              saveLocalDoseLog(
+                                reminder.id,
+                                todayStr,
+                                reminder.time || "09:00",
+                                newDone ? "taken" : "pending",
+                                {
+                                  recordedBy: user?.displayName || user?.email || "Patient",
+                                }
+                              );
                               setReminders((current) =>
                                 current.map((item) =>
                                   item.id === reminder.id
-                                    ? { ...item, done: !item.done }
+                                    ? { ...item, done: newDone }
                                     : item
                                 )
-                              )
-                            }
+                              );
+                            }}
                             className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                               reminder.done
-                                ? "bg-emerald-400 text-slate-950"
-                                : "border border-[color:var(--border)] bg-[color:var(--surface)] hover:opacity-90"
+                                ? "bg-emerald-400 text-slate-950 font-bold"
+                                : "border border-[color:var(--border)] bg-[color:var(--surface)] hover:opacity-90 font-medium"
                             }`}
                           >
                             {reminder.done
-                              ? localize("Done", "पूरा")
+                              ? localize("✓ Done", "✓ पूरा")
                               : localize("Mark done", "मार्क करें")}
                           </button>
 
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              if (user && !user.uid.startsWith("user_guest_")) {
+                                void fetch(
+                                  `/api/reminders?id=${encodeURIComponent(
+                                    String(reminder.id)
+                                  )}&userId=${encodeURIComponent(user.uid)}&dependentId=${encodeURIComponent(
+                                    activeProfileId || "myself"
+                                  )}`,
+                                  { method: "DELETE" }
+                                ).catch(() => {});
+                              }
                               setReminders((current) =>
                                 current.filter((item) => item.id !== reminder.id)
-                              )
-                            }
-                            className="rounded-full border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200 hover:bg-rose-500/20 transition"
+                              );
+                            }}
+                            className="rounded-full border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200 hover:bg-rose-500/20 transition cursor-pointer"
                           >
                             {localize("Delete", "हटाएं")}
                           </button>

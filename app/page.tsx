@@ -12,6 +12,11 @@ import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import ProfileSwitcher, { openAddFamilyMemberModal } from "@/components/ProfileSwitcher";
 import { getVitalsStreak, VitalsStreak } from "@/lib/streakService";
+import {
+  getTodayAdherenceMetrics,
+  REMINDERS_UPDATED_EVENT,
+  ADHERENCE_UPDATED_EVENT,
+} from "@/lib/adherenceStorage";
 
 export const bodyCareCards = [
   {
@@ -239,42 +244,70 @@ export default function Home() {
     streak: number;
   } | null>(null);
 
+  const refreshTodayAdherence = () => {
+    // 1. Immediately read local adherence metrics (reminders + dose logs)
+    const local = getTodayAdherenceMetrics(activeProfileId);
+    setTodayAdherence(local);
+
+    // 2. Query server API if user or guest session is present
+    const uid = user?.uid || (guestMode ? "guest" : null);
+    if (uid) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const depParam = activeProfileId || "myself";
+      fetch(`/api/medication-adherence?userId=${encodeURIComponent(uid)}&dependentId=${encodeURIComponent(depParam)}&date=${todayStr}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.summary) {
+            setTodayAdherence((prev) => {
+              const prevTaken = prev?.taken ?? local.taken;
+              const prevTotal = prev?.total ?? local.total;
+              const prevStreak = prev?.streak ?? local.streak;
+              return {
+                taken: Math.max(prevTaken, data.summary.dosesTaken || 0),
+                total: Math.max(prevTotal, data.summary.dosesTotal || 0),
+                streak: Math.max(prevStreak, data.summary.currentStreak || 0),
+              };
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
-    if (!user) {
+    refreshTodayAdherence();
+
+    if (user) {
+      getVitalsStreak(user.uid, activeProfileId).then((streakData) => {
+        setVitalsStreak(streakData);
+        const today = new Date().toISOString().slice(0, 10);
+        const dismissedToday = localStorage.getItem(`nudge-dismissed-${today}`);
+
+        if (!dismissedToday && streakData.lastLoggedDate !== today) {
+          setShowNudge(true);
+        } else {
+          setShowNudge(false);
+        }
+      });
+    } else {
       setShowNudge(false);
-      setTodayAdherence(null);
-      return;
     }
 
-    getVitalsStreak(user.uid, activeProfileId).then((streakData) => {
-      setVitalsStreak(streakData);
-      const today = new Date().toISOString().slice(0, 10);
-      const dismissedToday = localStorage.getItem(`nudge-dismissed-${today}`);
+    const handleSync = () => {
+      refreshTodayAdherence();
+    };
 
-      if (!dismissedToday && streakData.lastLoggedDate !== today) {
-        setShowNudge(true);
-      } else {
-        setShowNudge(false);
-      }
-    });
+    window.addEventListener(REMINDERS_UPDATED_EVENT, handleSync);
+    window.addEventListener(ADHERENCE_UPDATED_EVENT, handleSync);
+    window.addEventListener("storage", handleSync);
 
-    // Fetch Today's medication adherence
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const depParam = activeProfileId || "myself";
-    fetch(`/api/medication-adherence?userId=${user.uid}&dependentId=${depParam}&date=${todayStr}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.summary) {
-          setTodayAdherence({
-            taken: data.summary.dosesTaken || 0,
-            total: data.summary.dosesTotal || 0,
-            streak: data.summary.currentStreak || 0,
-          });
-        }
-      })
-      .catch(() => {});
-  }, [user, activeProfileId]);
+    return () => {
+      window.removeEventListener(REMINDERS_UPDATED_EVENT, handleSync);
+      window.removeEventListener(ADHERENCE_UPDATED_EVENT, handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
+  }, [user, guestMode, activeProfileId]);
 
   const handleDismissNudge = () => {
     setShowNudge(false);
@@ -519,7 +552,7 @@ export default function Home() {
         </section>
 
         {/* Today's Health Dashboard Panel */}
-        {mounted && (user || guestMode) && (
+        {mounted && (user || guestMode || (todayAdherence && todayAdherence.total > 0)) && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}

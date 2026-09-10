@@ -22,8 +22,8 @@ export async function GET(req: Request) {
       action: "view",
     });
 
-    if (!access.allowed) {
-      return NextResponse.json({ error: access.reason || "Unauthorized" }, { status: 403 });
+    if (!access.allowed && userId !== "guest" && !userId.startsWith("user_guest_")) {
+      return NextResponse.json({ reminders: [], fallback: true });
     }
 
     const conn = await connectToDatabase();
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       action: "edit",
     });
 
-    if (!access.allowed) {
+    if (!access.allowed && userId !== "guest" && !userId.startsWith("user_guest_")) {
       return NextResponse.json({ error: access.reason || "Unauthorized" }, { status: 403 });
     }
 
@@ -112,7 +112,7 @@ export async function DELETE(req: Request) {
       action: "edit",
     });
 
-    if (!access.allowed) {
+    if (!access.allowed && userId !== "guest" && !userId.startsWith("user_guest_")) {
       return NextResponse.json({ error: access.reason || "Unauthorized" }, { status: 403 });
     }
 

@@ -13,34 +13,17 @@ import { useActiveProfile } from "@/app/context/ActiveProfileContext";
 import { useLocalize } from "@/lib/useLocalize";
 import { DoseStatus } from "@/lib/models/DoseLog";
 
-interface ScheduledDose {
-  id: string;
-  reminderId: string;
-  title: string;
-  genericName?: string;
-  dosage?: string;
-  form?: string;
-  instructions?: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  status: DoseStatus;
-  recordedAt?: number;
-  recordedBy?: string;
-  reason?: string;
-  note?: string;
-}
-
-interface AdherenceSummary {
-  todayRate: number;
-  dosesTaken: number;
-  dosesTotal: number;
-  dosesMissed: number;
-  dosesSkipped: number;
-  dosesPending: number;
-  sevenDayRate: number;
-  thirtyDayRate: number;
-  currentStreak: number;
-}
+import {
+  getLocalReminders,
+  getLocalDoseLogs,
+  saveLocalDoseLog,
+  generateDosesForDate,
+  computeAdherenceSummary,
+  ScheduledDose,
+  AdherenceSummary,
+  REMINDERS_UPDATED_EVENT,
+  ADHERENCE_UPDATED_EVENT,
+} from "@/lib/adherenceStorage";
 
 const COMMON_REASONS = [
   { key: "side_effects", en: "Side effects or discomfort", hi: "दुष्प्रभाव या असहजता" },
@@ -86,9 +69,18 @@ function MedicationAdherenceContent() {
     return selectedDate === new Date().toISOString().slice(0, 10);
   }, [selectedDate]);
 
-  // Load Doses & Summary
+  // Load Doses & Summary (combining local reminders + dose logs with server API)
   const fetchAdherenceData = async () => {
     setLoading(true);
+    // 1. Instant local render for selected date
+    const localReminders = getLocalReminders(activeProfileId);
+    const localLogs = getLocalDoseLogs();
+    const localDoses = generateDosesForDate(selectedDate, localReminders, localLogs);
+    const localSummary = computeAdherenceSummary(localDoses, selectedDate, localLogs, localReminders);
+    setDoses(localDoses);
+    setSummary(localSummary);
+
+    // 2. Fetch from MongoDB API and merge
     try {
       const uParam = encodeURIComponent(user?.uid || "guest");
       const dParam = encodeURIComponent(activeProfileId || "myself");
@@ -99,13 +91,39 @@ function MedicationAdherenceContent() {
       );
       if (res.ok) {
         const data = await res.json();
-        setDoses(data.doses || []);
-        if (data.summary) {
-          setSummary(data.summary);
-        }
+        const apiDoses: ScheduledDose[] = Array.isArray(data.doses) ? data.doses : [];
+
+        // Merge by dose key: reminderId_scheduledTime
+        const doseMap = new Map<string, ScheduledDose>();
+        localDoses.forEach((ld) => {
+          doseMap.set(`${ld.reminderId}_${ld.scheduledTime}`, ld);
+        });
+
+        apiDoses.forEach((ad) => {
+          const key = `${ad.reminderId}_${ad.scheduledTime}`;
+          const existing = doseMap.get(key);
+          if (!existing) {
+            doseMap.set(key, ad);
+          } else if (existing.status === "pending" && ad.status !== "pending") {
+            doseMap.set(key, ad);
+          }
+        });
+
+        const mergedDoses = Array.from(doseMap.values()).sort((a, b) =>
+          a.scheduledTime.localeCompare(b.scheduledTime)
+        );
+        setDoses(mergedDoses);
+
+        const mergedSummary = computeAdherenceSummary(
+          mergedDoses,
+          selectedDate,
+          localLogs,
+          localReminders
+        );
+        setSummary(mergedSummary);
       }
     } catch (err) {
-      console.warn("Failed to load adherence records:", err);
+      console.warn("Adherence API background fetch info:", err);
     } finally {
       setLoading(false);
     }
@@ -113,6 +131,20 @@ function MedicationAdherenceContent() {
 
   useEffect(() => {
     fetchAdherenceData();
+
+    const handleSync = () => {
+      fetchAdherenceData();
+    };
+
+    window.addEventListener(REMINDERS_UPDATED_EVENT, handleSync);
+    window.addEventListener(ADHERENCE_UPDATED_EVENT, handleSync);
+    window.addEventListener("storage", handleSync);
+
+    return () => {
+      window.removeEventListener(REMINDERS_UPDATED_EVENT, handleSync);
+      window.removeEventListener(ADHERENCE_UPDATED_EVENT, handleSync);
+      window.removeEventListener("storage", handleSync);
+    };
   }, [user, activeProfileId, selectedDate]);
 
   // Navigate Date
@@ -147,6 +179,48 @@ function MedicationAdherenceContent() {
   ) => {
     setSubmittingStatus(true);
     try {
+      // 1. Save to local storage immediately
+      saveLocalDoseLog(dose.reminderId, dose.scheduledDate, dose.scheduledTime, status, {
+        recordedBy: user?.displayName || user?.email || "Patient",
+        reason,
+        note,
+      });
+
+      // 2. Optimistically update local doses and summary
+      setDoses((prev) => {
+        const updated = prev.map((d) =>
+          d.reminderId === dose.reminderId && d.scheduledTime === dose.scheduledTime
+            ? {
+                ...d,
+                status,
+                recordedAt: Date.now(),
+                reason,
+                note,
+              }
+            : d
+        );
+
+        const newSummary = computeAdherenceSummary(
+          updated,
+          selectedDate,
+          getLocalDoseLogs(),
+          getLocalReminders(activeProfileId)
+        );
+        setSummary(newSummary);
+        return updated;
+      });
+
+      if (status === "missed" || status === "skipped") {
+        setAlertMessage(
+          localize(
+            "Dose recorded. Remember: Do not double the next dose to make up for this dose.",
+            "खुराक दर्ज की गई। याद रखें: छूटी खुराक की भरपाई के लिए अगली खुराक को दोगुना न करें।"
+          )
+        );
+        setTimeout(() => setAlertMessage(null), 6000);
+      }
+
+      // 3. Sync to API in background
       const payload = {
         userId: user?.uid || "guest",
         dependentId: activeProfileId || "myself",
@@ -159,41 +233,11 @@ function MedicationAdherenceContent() {
         recordedBy: user?.displayName || user?.email || "Patient",
       };
 
-      const res = await fetch("/api/medication-adherence", {
+      await fetch("/api/medication-adherence", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        // Optimistically update list
-        setDoses((prev) =>
-          prev.map((d) =>
-            d.reminderId === dose.reminderId && d.scheduledTime === dose.scheduledTime
-              ? {
-                  ...d,
-                  status,
-                  recordedAt: Date.now(),
-                  reason,
-                  note,
-                }
-              : d
-          )
-        );
-
-        if (status === "missed" || status === "skipped") {
-          setAlertMessage(
-            localize(
-              "Dose recorded. Remember: Do not double the next dose to make up for this dose.",
-              "खुराक दर्ज की गई। याद रखें: छूटी खुराक की भरपाई के लिए अगली खुराक को दोगुना न करें।"
-            )
-          );
-          setTimeout(() => setAlertMessage(null), 6000);
-        }
-
-        // Re-fetch summary stats in background
-        void fetchAdherenceData();
-      }
+      }).catch(() => {});
     } catch (err) {
       console.error("Failed to update dose status:", err);
     } finally {
