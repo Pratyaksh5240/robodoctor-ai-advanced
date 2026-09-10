@@ -77,15 +77,6 @@ export const bodyCareCards = [
     href: "/yoga-videos",
     accent: "from-fuchsia-400/30 to-cyan-400/30",
   },
-  {
-    key: "aiassistant",
-    titleEn: "AI Health Assistant",
-    titleHi: "एआई स्वास्थ्य सहायक",
-    descriptionEn: "Multimodal AI assistant for clinical questions, lab explanations, and conversational triage.",
-    descriptionHi: "क्लिनिकल प्रश्नों, लैब व्याख्या और संवादात्मक ट्रायज के लिए मल्टीमॉडल एआई सहायक।",
-    href: "/ai-health-assistant",
-    accent: "from-emerald-400/30 to-teal-500/30",
-  },
 ];
 
 export const everydayTrackingCards = [
@@ -115,15 +106,6 @@ export const everydayTrackingCards = [
     descriptionHi: "दवा, पानी, वॉक, BP और शुगर-चेक रिमाइंडर वेब पुश नोटिफिकेशन के साथ सेव करें।",
     href: "/medicine-reminder",
     accent: "from-emerald-400/30 to-lime-400/30",
-  },
-  {
-    key: "familyhealth",
-    titleEn: "Family Health Sharing",
-    titleHi: "पारिवारिक स्वास्थ्य साझाकरण",
-    descriptionEn: "Managed dependents vs linked adult accounts, 10-category granular permission matrix, and audit logging.",
-    descriptionHi: "आश्रित और जुड़े वयस्क सदस्य, 10-श्रेणी अनुमति मैट्रिक्स और सुरक्षा ऑडिट लॉग।",
-    href: "/family-health",
-    accent: "from-teal-400/30 to-blue-500/30",
   },
   {
     key: "drugchecker",
@@ -256,14 +238,12 @@ export default function Home() {
     total: number;
     streak: number;
   } | null>(null);
-  const [familyCount, setFamilyCount] = useState<number>(0);
 
   useEffect(() => {
     setMounted(true);
     if (!user) {
       setShowNudge(false);
       setTodayAdherence(null);
-      setFamilyCount(0);
       return;
     }
 
@@ -291,18 +271,6 @@ export default function Home() {
             total: data.summary.dosesTotal || 0,
             streak: data.summary.currentStreak || 0,
           });
-        }
-      })
-      .catch(() => {});
-
-    // Fetch Family Group members count
-    fetch(`/api/family-health?userId=${user.uid}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.groups && data.groups.length > 0) {
-          const grp = data.groups[0];
-          const membersTotal = (grp.members?.length || 0) + (grp.dependents?.length || 0);
-          setFamilyCount(membersTotal);
         }
       })
       .catch(() => {});
@@ -601,22 +569,6 @@ export default function Home() {
                   </div>
                 </Link>
 
-                {/* Family Sharing Pill */}
-                <Link
-                  href="/family-health"
-                  className="flex items-center gap-3 rounded-2xl border border-blue-500/30 bg-blue-950/30 px-4 py-2.5 hover:bg-blue-900/40 transition group"
-                >
-                  <div className="text-2xl">👨‍👩‍👧‍👦</div>
-                  <div>
-                    <div className="text-xs text-blue-300/80 font-medium">
-                      {localize("Family Health", "पारिवारिक स्वास्थ्य")}
-                    </div>
-                    <div className="text-sm font-bold text-blue-300">
-                      {familyCount > 0 ? `${familyCount} ${localize("Members", "सदस्य")}` : localize("Manage Circle", "सर्कल प्रबंधित करें")}
-                    </div>
-                  </div>
-                </Link>
-
                 {/* Emergency SOS Button */}
                 <Link
                   href="/emergency-profile"
@@ -762,15 +714,15 @@ export default function Home() {
         <section className="mt-14">
           <div className="mb-6">
             <span className="inline-block rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-400 border border-emerald-500/20 mb-2">
-              {localize("Daily Routines & Family", "दैनिक दिनचर्या और परिवार")}
+              {localize("Daily Routines & Habits", "दैनिक दिनचर्या और आदतें")}
             </span>
             <h2 className="text-3xl font-extrabold text-[var(--foreground)]">
               {localize("Everyday Health & Tracking", "रोजमर्रा स्वास्थ्य और ट्रैकिंग")}
             </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
               {localize(
-                "Medication adherence checklists, prescription scanning, smart reminders, family health sharing, and clinical PDF exports.",
-                "दवा अनुपालन चेकलिस्ट, प्रिस्क्रिप्शन स्कैनर, स्मार्ट रिमाइंडर, पारिवारिक स्वास्थ्य साझाकरण और डॉक्टर PDF निर्यात।"
+                "Medication adherence checklists, prescription scanning, smart reminders, and clinical PDF exports.",
+                "दवा अनुपालन चेकलिस्ट, प्रिस्क्रिप्शन स्कैनर, स्मार्ट रिमाइंडर और डॉक्टर PDF निर्यात।"
               )}
             </p>
           </div>
