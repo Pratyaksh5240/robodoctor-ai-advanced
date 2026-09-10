@@ -64,12 +64,24 @@ function PrescriptionScanContent() {
         body: JSON.stringify({ imageDataUrl: dataUrl }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to scan prescription.");
+      const rawText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(
+          localize(
+            "AI Vision analysis encountered a temporary format issue. Please ensure the photo is clear and try again.",
+            "AI विज़न विश्लेषण में त्रुटि आई। कृपया सुनिश्चित करें कि फोटो स्पष्ट है और पुनः प्रयास करें।"
+          )
+        );
       }
 
-      const scannedItems: SelectableItem[] = (data.medicines || []).map(
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to scan prescription.");
+      }
+
+      const scannedItems: SelectableItem[] = (data?.medicines || []).map(
         (m: ScannedMedicineItem, idx: number) => ({
           ...m,
           id: `med-${idx}-${Date.now()}`,
@@ -78,8 +90,8 @@ function PrescriptionScanContent() {
       );
 
       setItems(scannedItems);
-      setRawNotes(data.rawNotes || "");
-      setSource(data.source || "");
+      setRawNotes(data?.rawNotes || "");
+      setSource(data?.source || "");
     } catch (err: any) {
       setStatusMsg(
         err.message ||

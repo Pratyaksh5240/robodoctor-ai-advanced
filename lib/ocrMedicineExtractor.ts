@@ -51,6 +51,31 @@ function normalizeOcrText(text: string): string {
 }
 
 const CLINICAL_DRUG_RULES: ClinicalDrugRule[] = [
+  // --- EAR DROPS, DROPS & TOPICAL REMEDIES ---
+  {
+    id: "mycowax",
+    canonicalName: "Mycowax Ear Drops (Paradichlorobenzene, Benzocaine, Chlorbutol & Turpentine Oil)",
+    aliases: [
+      "mycowax",
+      "myco wax",
+      "mycowax ear drops",
+      "paradichlorobenzene",
+      "benzocaine",
+      "chlorbutol",
+      "turpentine oil",
+      "waxolve",
+      "clearwax",
+      "otorex",
+      "soluwax",
+      "ear drops",
+    ],
+    defaultDosage: "2 to 3 Drops in affected ear",
+    defaultFrequency: "2 to 3 times daily for 3 to 4 days",
+    whenToEat: "DO NOT SWALLOW. Tilt head sideways and instill 2-3 drops into the ear canal. Keep head tilted for 2-3 minutes. Light cotton plug may be placed.",
+    howMuchToEat: "Instill 2 to 3 drops into the affected ear. Do not use for more than 5 consecutive days without clinical review.",
+    harmOveruse: "For topical ear canal use only. Overuse or applying to a perforated (torn) eardrum can cause severe pain, chemical burning, and inner ear damage. Do not use if ear is actively draining fluid or bleeding.",
+    purpose: "Ceruminolytic ear drops: softens, dissolves, and clears impacted ear wax, relieving ear blockage, fullness, and discomfort.",
+  },
   // --- POPULAR OTC PAIN & HEADACHE RELIEVERS ---
   {
     id: "saridon",
