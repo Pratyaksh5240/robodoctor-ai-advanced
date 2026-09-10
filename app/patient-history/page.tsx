@@ -138,11 +138,41 @@ export default function PatientHistoryPage() {
     if (!file) return;
     setImportError(null);
 
+    // Client-side file size check (8MB limit)
+    if (file.size > 8 * 1024 * 1024) {
+      setImportError(
+        localize(
+          "File is too large (maximum 8MB). Please choose a smaller PDF or copy and paste the report text into the box below.",
+          "फाइल बहुत बड़ी है (अधिकतम 8MB)। कृपया 8MB से छोटी फाइल चुनें या टेक्स्ट नीचे पेस्ट करें।"
+        )
+      );
+      return;
+    }
+
+    if (file.size === 0) {
+      setImportError(
+        localize(
+          "The selected file is empty. Please select a valid clinical file.",
+          "चुनी गई फाइल खाली है। कृपया एक मान्य क्लिनिकल फाइल चुनें।"
+        )
+      );
+      return;
+    }
+
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
     if (isPdf) {
       setIsParsingFile(true);
       const reader = new FileReader();
+      reader.onerror = () => {
+        setIsParsingFile(false);
+        setImportError(
+          localize(
+            "Failed to read file from your device. Please try again or paste the text directly.",
+            "डिवाइस से फाइल पढ़ने में विफल। कृपया पुनः प्रयास करें या टेक्स्ट पेस्ट करें।"
+          )
+        );
+      };
       reader.onload = async (event) => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 25000);
@@ -157,8 +187,31 @@ export default function PatientHistoryPage() {
           clearTimeout(timer);
 
           if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `Server responded with ${res.status}`);
+            let errorMsg = "";
+            try {
+              const text = await res.text();
+              try {
+                const json = JSON.parse(text);
+                errorMsg = json.error || json.details || "";
+              } catch {
+                if (text.includes("Payload Too Large") || res.status === 413) {
+                  errorMsg = localize(
+                    "The PDF file is too large. Please upload a file under 8MB or copy and paste the text into the box below.",
+                    "PDF फाइल बहुत बड़ी है। कृपया 8MB से छोटी फाइल चुनें या टेक्स्ट पेस्ट करें।"
+                  );
+                }
+              }
+            } catch {
+              // Ignore text extraction errors
+            }
+
+            if (!errorMsg) {
+              errorMsg = localize(
+                "Unable to extract clinical text from this PDF. Please ensure the PDF has readable text, or paste your report into the box below.",
+                "इस PDF से क्लिनिकल टेक्स्ट नहीं निकाला जा सका। कृपया रिपोर्ट टेक्स्ट नीचे बॉक्स में पेस्ट करें।"
+              );
+            }
+            throw new Error(errorMsg);
           }
 
           const data = await res.json();
@@ -197,6 +250,14 @@ export default function PatientHistoryPage() {
       reader.readAsDataURL(file);
     } else {
       const reader = new FileReader();
+      reader.onerror = () => {
+        setImportError(
+          localize(
+            "Failed to read file from your device. Please try again.",
+            "डिवाइस से फाइल पढ़ने में विफल।"
+          )
+        );
+      };
       reader.onload = (event) => {
         try {
           const raw = event.target?.result as string;

@@ -1,12 +1,21 @@
 export function dataUrlToInlineData(dataUrl: string) {
-  const match = dataUrl.trim().match(/^data:(.+?);base64,(.+)$/);
+  const trimmed = (dataUrl || "").trim();
+  const commaIdx = trimmed.indexOf(",");
 
-  if (!match) {
-    throw new Error("Uploaded file must be provided as a base64 data URL.");
+  if (commaIdx !== -1) {
+    const header = trimmed.slice(0, commaIdx);
+    const dataPart = trimmed.slice(commaIdx + 1).replace(/\s+/g, "");
+    const mimeMatch = header.match(/data:([^;]+)/i);
+    const mimeType = mimeMatch ? mimeMatch[1].trim() : "application/octet-stream";
+    return {
+      mimeType,
+      data: dataPart,
+    };
   }
 
+  // Raw base64 string without data: header
   return {
-    mimeType: match[1],
-    data: match[2],
+    mimeType: "application/octet-stream",
+    data: trimmed.replace(/\s+/g, ""),
   };
 }
