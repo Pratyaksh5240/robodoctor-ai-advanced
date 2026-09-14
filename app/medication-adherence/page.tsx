@@ -17,6 +17,8 @@ import {
   getLocalReminders,
   getLocalDoseLogs,
   saveLocalDoseLog,
+  resetDateAdherence,
+  simulateAdvanceDate,
   generateDosesForDate,
   computeAdherenceSummary,
   ScheduledDose,
@@ -64,10 +66,6 @@ function MedicationAdherenceContent() {
   const [customNote, setCustomNote] = useState("");
   const [submittingStatus, setSubmittingStatus] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-
-  const isToday = useMemo(() => {
-    return selectedDate === new Date().toISOString().slice(0, 10);
-  }, [selectedDate]);
 
   // Load Doses & Summary (combining local reminders + dose logs with server API)
   const fetchAdherenceData = async () => {
@@ -147,15 +145,96 @@ function MedicationAdherenceContent() {
     };
   }, [user, activeProfileId, selectedDate]);
 
+  // Midnight / Daily Rollover Detector
+  const [todayCalendarDate, setTodayCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dayRolloverNotice, setDayRolloverNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkRollover = () => {
+      const nowCalendarDate = new Date().toISOString().slice(0, 10);
+      if (nowCalendarDate !== todayCalendarDate) {
+        setTodayCalendarDate(nowCalendarDate);
+        setSelectedDate(nowCalendarDate);
+        setDayRolloverNotice(
+          localize(
+            "☀️ Good morning! Today's new daily medication checklist is ready.",
+            "☀️ सुप्रभात! आज की नई दैनिक दवा चेकलिस्ट तैयार है।"
+          )
+        );
+        setTimeout(() => setDayRolloverNotice(null), 8000);
+      }
+    };
+
+    const interval = setInterval(checkRollover, 10000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkRollover();
+      }
+    };
+    window.addEventListener("focus", checkRollover);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", checkRollover);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [todayCalendarDate, localize]);
+
+  const isToday = useMemo(() => {
+    return selectedDate === todayCalendarDate;
+  }, [selectedDate, todayCalendarDate]);
+
+  const isTomorrow = useMemo(() => {
+    return selectedDate === simulateAdvanceDate(todayCalendarDate, 1);
+  }, [selectedDate, todayCalendarDate]);
+
+  const isYesterday = useMemo(() => {
+    return selectedDate === simulateAdvanceDate(todayCalendarDate, -1);
+  }, [selectedDate, todayCalendarDate]);
+
   // Navigate Date
   const handleDateShift = (deltaDays: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + deltaDays);
-    setSelectedDate(d.toISOString().slice(0, 10));
+    setSelectedDate((prev) => simulateAdvanceDate(prev, deltaDays));
   };
 
   const handleSetToday = () => {
-    setSelectedDate(new Date().toISOString().slice(0, 10));
+    setSelectedDate(todayCalendarDate);
+  };
+
+  const handleSetYesterday = () => {
+    setSelectedDate(simulateAdvanceDate(todayCalendarDate, -1));
+  };
+
+  const handleSetTomorrow = () => {
+    setSelectedDate(simulateAdvanceDate(todayCalendarDate, 1));
+  };
+
+  const handleSimulateNextDay = () => {
+    setSelectedDate((prev) => simulateAdvanceDate(prev, 1));
+    setAlertMessage(
+      localize(
+        "⏩ Advanced to next day! Today's doses are fresh and pending, while past days remain saved in history.",
+        "⏩ अगले दिन पर पहुंचे! आज की खुराक नई और लंबित हैं, जबकि पिछले दिन सुरक्षित हैं।"
+      )
+    );
+    setTimeout(() => setAlertMessage(null), 6000);
+  };
+
+  const handleResetCurrentDate = () => {
+    resetDateAdherence(selectedDate, activeProfileId);
+    fetchAdherenceData();
+    setAlertMessage(
+      localize(
+        `🔄 Reset checklist for ${selectedDate}. All doses marked as pending.`,
+        `🔄 ${selectedDate} की चेकलिस्ट रीसेट की गई। सभी खुराक लंबित स्थिति में हैं।`
+      )
+    );
+    setTimeout(() => setAlertMessage(null), 5000);
+  };
+
+  const handleUndoStatus = async (dose: ScheduledDose) => {
+    await submitStatusChange(dose, "pending", undefined, undefined);
   };
 
   // Direct Quick Status Update (for Taken / Taken Late)
@@ -372,19 +451,30 @@ function MedicationAdherenceContent() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => handleDateShift(-1)}
-              className="rounded-xl border border-white/10 bg-slate-800/80 px-3.5 py-2 text-sm font-semibold hover:bg-slate-700 transition"
+              className="rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm font-semibold hover:bg-slate-700 transition"
               title={localize("Previous Day", "पिछला दिन")}
             >
               ◀
             </button>
             <button
               type="button"
+              onClick={handleSetYesterday}
+              className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                isYesterday
+                  ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30"
+                  : "border border-white/10 bg-slate-800/80 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {localize("Yesterday", "कल (बीता)")}
+            </button>
+            <button
+              type="button"
               onClick={handleSetToday}
-              className={`rounded-xl px-4 py-2 text-xs font-extrabold transition ${
+              className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
                 isToday
                   ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30"
                   : "border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20"
@@ -394,8 +484,19 @@ function MedicationAdherenceContent() {
             </button>
             <button
               type="button"
+              onClick={handleSetTomorrow}
+              className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                isTomorrow
+                  ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30"
+                  : "border border-white/10 bg-slate-800/80 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {localize("Tomorrow", "कल (आने वाला)")}
+            </button>
+            <button
+              type="button"
               onClick={() => handleDateShift(1)}
-              className="rounded-xl border border-white/10 bg-slate-800/80 px-3.5 py-2 text-sm font-semibold hover:bg-slate-700 transition"
+              className="rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-sm font-semibold hover:bg-slate-700 transition"
               title={localize("Next Day", "अगला दिन")}
             >
               ▶
@@ -409,6 +510,83 @@ function MedicationAdherenceContent() {
             />
           </div>
         </div>
+
+        {/* Real-World Daily Lifecycle & Testing Simulation Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-slate-900/80 via-cyan-950/20 to-slate-900/80 p-4 text-xs shadow-md">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">
+              {isToday ? "☀️" : selectedDate > todayCalendarDate ? "📅" : "📜"}
+            </span>
+            <div>
+              <p className="font-bold text-white flex items-center gap-2">
+                <span>
+                  {isToday
+                    ? localize("Today's Daily Medication Routine", "आज की दैनिक दवा दिनचर्या")
+                    : selectedDate > todayCalendarDate
+                    ? localize(`Upcoming Schedule: ${selectedDate}`, `आगामी शेड्यूल: ${selectedDate}`)
+                    : localize(`Archived Medication Record: ${selectedDate}`, `संग्रहीत दवा रिकॉर्ड: ${selectedDate}`)}
+                </span>
+                {isToday && (
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 border border-emerald-500/30">
+                    {localize("Active Today", "आज सक्रिय")}
+                  </span>
+                )}
+              </p>
+              <p className="text-[11px] text-[var(--muted)]">
+                {isToday
+                  ? localize(
+                      "Mark each medicine when taken. When midnight passes or tomorrow comes, your checklist automatically refreshes fresh for the new day!",
+                      "दवा लेने पर मार्क करें। आधी रात बीतने या कल आने पर आपकी चेकलिस्ट नए दिन के लिए स्वतः ताज़ा हो जाएगी!"
+                    )
+                  : selectedDate > todayCalendarDate
+                  ? localize(
+                      "This upcoming day will start with a fresh, uncompleted checklist when the calendar day arrives.",
+                      "कैलेंडर दिन आने पर यह दिन पूरी तरह से नई और खाली चेकलिस्ट के साथ शुरू होगा।"
+                    )
+                  : localize(
+                      "Past doses are safely preserved in your longitudinal medical history for doctor review.",
+                      "डॉक्टर समीक्षा हेतु पुरानी खुराकें आपके दीर्घकालिक इतिहास में सुरक्षित हैं।"
+                    )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSimulateNextDay}
+              className="rounded-xl border border-amber-500/40 bg-amber-500/15 px-3.5 py-2 font-bold text-amber-300 hover:bg-amber-500/25 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title={localize("Simulate advancing to tomorrow to test fresh daily rollover", "अगले दिन का अनुभव करने के लिए आगे बढ़ें")}
+            >
+              <span>⏩</span>
+              <span>{localize("Simulate Next Day", "अगला दिन टेस्ट करें")}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetCurrentDate}
+              className="rounded-xl border border-slate-700 bg-slate-800/90 px-3 py-2 font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-1 cursor-pointer"
+              title={localize("Reset this day's doses back to pending", "इस तारीख की सभी खुराक को रीसेट करें")}
+            >
+              <span>🔄</span>
+              <span>{localize("Reset Day", "दिन रीसेट करें")}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Midnight Daily Rollover Welcome Notice */}
+        {dayRolloverNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-cyan-500/40 bg-cyan-500/15 p-4 text-sm font-bold text-cyan-300 flex items-center justify-between"
+          >
+            <span>{dayRolloverNotice}</span>
+            <button onClick={() => setDayRolloverNotice(null)} className="text-xs underline text-cyan-400">
+              ✕
+            </button>
+          </motion.div>
+        )}
 
         {/* Missed Dose Warning Alert */}
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs md:text-sm text-amber-200">
@@ -568,144 +746,227 @@ function MedicationAdherenceContent() {
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    {group.items.map((dose) => (
-                      <div
-                        key={dose.id}
-                        className={`rounded-3xl border p-5 transition shadow-lg backdrop-blur-sm ${
-                          dose.status === "taken"
-                            ? "border-emerald-500/40 bg-slate-900/80"
-                            : dose.status === "taken_late"
-                            ? "border-teal-500/40 bg-slate-900/80"
-                            : dose.status === "missed"
-                            ? "border-rose-500/40 bg-slate-900/80"
-                            : dose.status === "skipped"
-                            ? "border-amber-500/40 bg-slate-900/80"
-                            : "border-[color:var(--border)] bg-slate-900/50"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex items-start gap-3">
-                            <span className="text-2xl">{getFormIcon(dose.form)}</span>
-                            <div>
-                              <h4 className="font-extrabold text-base text-white">{dose.title}</h4>
-                              {dose.genericName && (
-                                <p className="text-xs text-cyan-400 font-medium">{dose.genericName}</p>
-                              )}
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-                                {dose.dosage && <span>{dose.dosage}</span>}
-                                <span>•</span>
-                                <span className="font-bold text-white">🕒 {dose.scheduledTime}</span>
+                    {group.items.map((dose) => {
+                      const isTaken = dose.status === "taken" || dose.status === "taken_late";
+                      const isMissed = dose.status === "missed";
+                      const isSkipped = dose.status === "skipped";
+
+                      return (
+                        <div
+                          key={dose.id}
+                          className={`rounded-3xl border p-5 transition shadow-lg backdrop-blur-sm ${
+                            isTaken
+                              ? "border-emerald-500/40 bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-emerald-950/30"
+                              : isMissed
+                              ? "border-rose-500/40 bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-rose-950/25"
+                              : isSkipped
+                              ? "border-amber-500/40 bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-amber-950/25"
+                              : "border-[color:var(--border)] bg-slate-900/60 hover:border-cyan-500/40"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="flex items-start gap-3">
+                              <span className="text-2xl">{getFormIcon(dose.form)}</span>
+                              <div>
+                                <h4 className="font-extrabold text-base text-white">{dose.title}</h4>
+                                {dose.genericName && (
+                                  <p className="text-xs text-cyan-400 font-medium">{dose.genericName}</p>
+                                )}
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                                  {dose.dosage && <span>{dose.dosage}</span>}
+                                  <span>•</span>
+                                  <span className="font-bold text-white">🕒 {dose.scheduledTime}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Status Badge */}
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ${
-                              dose.status === "taken"
-                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                : dose.status === "taken_late"
-                                ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
-                                : dose.status === "missed"
-                                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                                : dose.status === "skipped"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                : "bg-slate-800 text-slate-400 border border-slate-700"
-                            }`}
-                          >
-                            {dose.status === "taken" && `✓ ${localize("Taken", "ली गई")}`}
-                            {dose.status === "taken_late" && `🕒 ${localize("Taken Late", "देर से ली")}`}
-                            {dose.status === "missed" && `✕ ${localize("Missed", "छूट गई")}`}
-                            {dose.status === "skipped" && `↷ ${localize("Skipped", "छोड़ दी")}`}
-                            {dose.status === "pending" && `⌛ ${localize("Pending", "लंबित")}`}
-                          </span>
-                        </div>
-
-                        {/* Instructions */}
-                        {dose.instructions && (
-                          <p className="text-xs text-slate-300 bg-slate-950/40 rounded-xl p-2.5 mb-3 border border-white/5">
-                            📌 {dose.instructions}
-                          </p>
-                        )}
-
-                        {/* Reason / Note display */}
-                        {(dose.reason || dose.note) && (
-                          <div className="text-[11px] text-amber-300/90 bg-amber-500/10 rounded-xl p-2.5 mb-3 border border-amber-500/20">
-                            {dose.reason && <p className="font-semibold">⚠️ {dose.reason}</p>}
-                            {dose.note && <p className="mt-0.5 text-slate-300">{dose.note}</p>}
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatus(dose, "taken")}
-                              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                            {/* Status Badge */}
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1 ${
                                 dose.status === "taken"
-                                  ? "bg-emerald-500 text-slate-950"
-                                  : "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20"
+                                  : dose.status === "taken_late"
+                                  ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
+                                  : dose.status === "missed"
+                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                                  : dose.status === "skipped"
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                  : "bg-slate-800 text-slate-400 border border-slate-700"
                               }`}
                             >
-                              <span>✓</span>
-                              <span>{localize("Taken", "ली गई")}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatus(dose, "taken_late")}
-                              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                                dose.status === "taken_late"
-                                  ? "bg-teal-500 text-slate-950"
-                                  : "border border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20"
-                              }`}
-                            >
-                              <span>🕒</span>
-                              <span>{localize("Late", "देर से")}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatus(dose, "missed")}
-                              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                                dose.status === "missed"
-                                  ? "bg-rose-500 text-white"
-                                  : "border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
-                              }`}
-                            >
-                              <span>✕</span>
-                              <span>{localize("Missed", "छूट गई")}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleQuickStatus(dose, "skipped")}
-                              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                                dose.status === "skipped"
-                                  ? "bg-amber-500 text-slate-950"
-                                  : "border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
-                              }`}
-                            >
-                              <span>↷</span>
-                              <span>{localize("Skipped", "छोड़ दी")}</span>
-                            </button>
+                              {dose.status === "taken" && `✓ ${localize("Taken", "ली गई")}`}
+                              {dose.status === "taken_late" && `🕒 ${localize("Taken Late", "देर से ली")}`}
+                              {dose.status === "missed" && `✕ ${localize("Missed", "छूट गई")}`}
+                              {dose.status === "skipped" && `↷ ${localize("Skipped", "छोड़ दी")}`}
+                              {dose.status === "pending" && `⌛ ${localize("Pending", "लंबित")}`}
+                            </span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveModalDose({ dose, targetStatus: dose.status });
-                              setSelectedReason(dose.reason || "");
-                              setCustomNote(dose.note || "");
-                            }}
-                            className="text-[11px] text-[var(--muted)] hover:text-cyan-400 underline transition cursor-pointer"
-                          >
-                            {localize("Add Reason / Note", "कारण / नोट जोड़ें")}
-                          </button>
+                          {/* Instructions */}
+                          {dose.instructions && (
+                            <p className="text-xs text-slate-300 bg-slate-950/40 rounded-xl p-2.5 mb-3 border border-white/5">
+                              📌 {dose.instructions}
+                            </p>
+                          )}
+
+                          {/* Reason / Note display */}
+                          {(dose.reason || dose.note) && (
+                            <div className="text-[11px] text-amber-300/90 bg-amber-500/10 rounded-xl p-2.5 mb-3 border border-amber-500/20">
+                              {dose.reason && <p className="font-semibold">⚠️ {dose.reason}</p>}
+                              {dose.note && <p className="mt-0.5 text-slate-300">{dose.note}</p>}
+                            </div>
+                          )}
+
+                          {/* Action Area: Real-World Life Cycle State Display */}
+                          {isTaken ? (
+                            /* Celebratory Taken State with clean Undo action */
+                            <div className="mt-4 pt-3 border-t border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-sm border border-emerald-500/30">
+                                  ✓
+                                </span>
+                                <div>
+                                  <p className="text-xs font-bold text-emerald-300">
+                                    {dose.status === "taken"
+                                      ? localize("Dose Taken Successfully", "खुराक सफलतापूर्वक ली गई")
+                                      : localize("Dose Taken Late", "खुराक देर से ली गई")}
+                                  </p>
+                                  <p className="text-[11px] text-slate-400">
+                                    {dose.recordedAt
+                                      ? `${localize("Recorded at", "दर्ज किया गया")} ${new Date(
+                                          dose.recordedAt
+                                        ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                      : `${localize("Scheduled at", "निर्धारित समय")} ${dose.scheduledTime}`}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUndoStatus(dose)}
+                                  className="rounded-xl border border-slate-700 bg-slate-800/90 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+                                  title={localize("Revert this dose back to pending", "इस खुराक को वापस लंबित करें")}
+                                >
+                                  ↩ {localize("Undo", "वापस लें")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveModalDose({ dose, targetStatus: dose.status });
+                                    setSelectedReason(dose.reason || "");
+                                    setCustomNote(dose.note || "");
+                                  }}
+                                  className="text-[11px] text-[var(--muted)] hover:text-cyan-400 underline transition cursor-pointer"
+                                >
+                                  {localize("Note", "नोट")}
+                                </button>
+                              </div>
+                            </div>
+                          ) : isMissed || isSkipped ? (
+                            /* Missed / Skipped State with Quick Re-Take and Undo */
+                            <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold border ${
+                                    isMissed
+                                      ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                                      : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                  }`}
+                                >
+                                  {isMissed ? "✕" : "↷"}
+                                </span>
+                                <div>
+                                  <p
+                                    className={`text-xs font-bold ${
+                                      isMissed ? "text-rose-300" : "text-amber-300"
+                                    }`}
+                                  >
+                                    {isMissed
+                                      ? localize("Marked as Missed", "छूटी हुई दर्ज")
+                                      : localize("Marked as Skipped", "छोड़ दी गई दर्ज")}
+                                  </p>
+                                  {dose.reason && (
+                                    <p className="text-[11px] text-slate-400">{dose.reason}</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStatus(dose, "taken")}
+                                  className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1"
+                                >
+                                  <span>✓</span>
+                                  <span>{localize("Take Now", "अब लें")}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUndoStatus(dose)}
+                                  className="rounded-xl border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+                                >
+                                  ↩ {localize("Undo", "वापस")}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Pending State: Prominent Primary Call-to-Action */
+                            <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStatus(dose, "taken")}
+                                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/25 cursor-pointer"
+                                >
+                                  <span className="text-sm">✓</span>
+                                  <span>{localize("Mark as Taken", "ली गई मार्क करें")}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStatus(dose, "taken_late")}
+                                  className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-xs font-bold text-teal-300 hover:bg-teal-500/20 transition flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>🕒</span>
+                                  <span>{localize("Late", "देर से")}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStatus(dose, "missed")}
+                                  className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 transition flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>✕</span>
+                                  <span>{localize("Missed", "छूट गई")}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStatus(dose, "skipped")}
+                                  className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>↷</span>
+                                  <span>{localize("Skipped", "छोड़ दी")}</span>
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveModalDose({ dose, targetStatus: dose.status });
+                                  setSelectedReason(dose.reason || "");
+                                  setCustomNote(dose.note || "");
+                                }}
+                                className="text-[11px] text-[var(--muted)] hover:text-cyan-400 underline transition cursor-pointer"
+                              >
+                                {localize("Add Reason / Note", "कारण / नोट जोड़ें")}
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );

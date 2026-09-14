@@ -5,6 +5,7 @@ export type Reminder = {
   title: string;
   time: string; // "HH:MM" e.g. "08:00"
   done: boolean;
+  lastDoneDate?: string;
   notificationEnabled?: boolean;
   voiceEnabled?: boolean;
   lastNotifiedOccurrence?: string;
@@ -190,7 +191,8 @@ export function checkAndTriggerReminders(reminders: Reminder[]): Reminder[] {
 
   let updated = false;
   const nextReminders = reminders.map((item) => {
-    if (item.done || item.notificationEnabled === false) {
+    const isDoneToday = item.lastDoneDate === currentDateStr || (item.done && item.lastDoneDate === currentDateStr);
+    if (isDoneToday || item.notificationEnabled === false) {
       return item;
     }
 

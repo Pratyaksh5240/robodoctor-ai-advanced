@@ -547,8 +547,11 @@ function MedicineReminderContent() {
                           <button
                             type="button"
                             onClick={() => {
-                              const newDone = !reminder.done;
                               const todayStr = new Date().toISOString().slice(0, 10);
+                              const isDoneToday =
+                                reminder.lastDoneDate === todayStr ||
+                                (reminder.done && (!reminder.lastDoneDate || reminder.lastDoneDate === todayStr));
+                              const newDone = !isDoneToday;
                               saveLocalDoseLog(
                                 reminder.id,
                                 todayStr,
@@ -561,19 +564,21 @@ function MedicineReminderContent() {
                               setReminders((current) =>
                                 current.map((item) =>
                                   item.id === reminder.id
-                                    ? { ...item, done: newDone }
+                                    ? { ...item, done: newDone, lastDoneDate: newDone ? todayStr : undefined }
                                     : item
                                 )
                               );
                             }}
                             className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                              reminder.done
-                                ? "bg-emerald-400 text-slate-950 font-bold"
+                              reminder.lastDoneDate === new Date().toISOString().slice(0, 10) ||
+                              (reminder.done && (!reminder.lastDoneDate || reminder.lastDoneDate === new Date().toISOString().slice(0, 10)))
+                                ? "bg-emerald-400 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
                                 : "border border-[color:var(--border)] bg-[color:var(--surface)] hover:opacity-90 font-medium"
                             }`}
                           >
-                            {reminder.done
-                              ? localize("✓ Done", "✓ पूरा")
+                            {reminder.lastDoneDate === new Date().toISOString().slice(0, 10) ||
+                            (reminder.done && (!reminder.lastDoneDate || reminder.lastDoneDate === new Date().toISOString().slice(0, 10)))
+                              ? localize("✓ Done Today", "✓ आज पूरा")
                               : localize("Mark done", "मार्क करें")}
                           </button>
 

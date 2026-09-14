@@ -127,9 +127,8 @@ export async function GET(req: NextRequest) {
           reason = existingLog.reason;
           note = existingLog.note;
         } else {
-          // Backward-compatible fallback: if reminder.done was checked today
-          const todayStr = new Date().toISOString().slice(0, 10);
-          if (dateParam === todayStr && r.done) {
+          // Date-scoped fallback: only consider taken if lastDoneDate matches dateParam
+          if (r.lastDoneDate === dateParam) {
             status = "taken";
           }
         }
@@ -311,13 +310,18 @@ export async function POST(req: NextRequest) {
       { upsert: true, new: true }
     );
 
-    // Sync Reminder.done if updating today's dose
+    // Sync Reminder.lastDoneDate and done status
     const todayStr = new Date().toISOString().slice(0, 10);
-    if (scheduledDate === todayStr) {
-      const isTaken = status === "taken" || status === "taken_late";
+    const isTaken = status === "taken" || status === "taken_late";
+    if (isTaken) {
       await Reminder.findOneAndUpdate(
         { id: String(reminderId), userId },
-        { done: isTaken }
+        { lastDoneDate: scheduledDate, done: scheduledDate === todayStr }
+      ).catch(() => {});
+    } else {
+      await Reminder.findOneAndUpdate(
+        { id: String(reminderId), userId, lastDoneDate: scheduledDate },
+        { $unset: { lastDoneDate: 1 }, done: false }
       ).catch(() => {});
     }
 

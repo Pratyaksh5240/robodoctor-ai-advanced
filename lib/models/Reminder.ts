@@ -9,6 +9,7 @@ export interface IReminder {
   dosage?: string;
   notificationEnabled: boolean;
   done: boolean;
+  lastDoneDate?: string;
   createdAt: number;
   genericName?: string;
   form?: "tablet" | "capsule" | "syrup" | "injection" | "inhaler" | "drops" | "cream" | "other" | string;
@@ -32,6 +33,7 @@ const ReminderSchema = new Schema<IReminder>(
     dosage: { type: String },
     notificationEnabled: { type: Boolean, default: true },
     done: { type: Boolean, default: false },
+    lastDoneDate: { type: String },
     createdAt: { type: Number, default: Date.now },
     genericName: { type: String },
     form: { type: String, default: "tablet" },

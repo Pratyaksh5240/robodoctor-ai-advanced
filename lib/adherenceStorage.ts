@@ -14,6 +14,7 @@ export interface LocalReminder {
   prescribingDoctor?: string;
   notificationEnabled?: boolean;
   done?: boolean;
+  lastDoneDate?: string;
   startDate?: string;
   endDate?: string;
   frequency?: string;
@@ -181,26 +182,88 @@ export function saveLocalDoseLog(
 
     localStorage.setItem(DOSE_LOGS_KEY, JSON.stringify(logs));
 
-    // Two-way synchronization: If recording status for today, sync reminder.done
+    // Two-way date-scoped synchronization: update reminder lastDoneDate and done status
     const todayStr = new Date().toISOString().slice(0, 10);
-    if (scheduledDate === todayStr) {
-      const reminders = getLocalReminders();
-      const reminderIndex = reminders.findIndex(
-        (r) => String(r.id) === String(reminderId)
-      );
+    const reminders = getLocalReminders();
+    const reminderIndex = reminders.findIndex(
+      (r) => String(r.id) === String(reminderId)
+    );
 
-      if (reminderIndex !== -1) {
-        const isTaken = status === "taken" || status === "taken_late";
-        reminders[reminderIndex].done = isTaken;
-        localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
-        window.dispatchEvent(new Event(REMINDERS_UPDATED_EVENT));
+    if (reminderIndex !== -1) {
+      const isTaken = status === "taken" || status === "taken_late";
+      if (isTaken) {
+        reminders[reminderIndex].lastDoneDate = scheduledDate;
+        reminders[reminderIndex].done = (scheduledDate === todayStr);
+      } else {
+        // If reverting or marking missed/skipped, clear lastDoneDate if it belonged to this date
+        if (reminders[reminderIndex].lastDoneDate === scheduledDate) {
+          delete reminders[reminderIndex].lastDoneDate;
+          reminders[reminderIndex].done = false;
+        }
       }
+      localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
+      window.dispatchEvent(new Event(REMINDERS_UPDATED_EVENT));
     }
 
     window.dispatchEvent(new Event(ADHERENCE_UPDATED_EVENT));
   } catch (err) {
     console.warn("Failed to save local dose log:", err);
   }
+}
+
+/**
+ * Reset all logged doses for a given date back to pending.
+ * Essential for restarting a day's checklist or testing daily rollover cycles.
+ */
+export function resetDateAdherence(
+  dateStr: string,
+  dependentId?: string | null
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const logs = getLocalDoseLogs();
+    let modified = false;
+
+    Object.keys(logs).forEach((key) => {
+      if (logs[key].scheduledDate === dateStr) {
+        delete logs[key];
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      localStorage.setItem(DOSE_LOGS_KEY, JSON.stringify(logs));
+    }
+
+    // Reset reminders whose lastDoneDate was this date
+    const reminders = getLocalReminders(dependentId);
+    let remModified = false;
+    reminders.forEach((r) => {
+      if (r.lastDoneDate === dateStr) {
+        delete r.lastDoneDate;
+        r.done = false;
+        remModified = true;
+      }
+    });
+
+    if (remModified) {
+      localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
+      window.dispatchEvent(new Event(REMINDERS_UPDATED_EVENT));
+    }
+
+    window.dispatchEvent(new Event(ADHERENCE_UPDATED_EVENT));
+  } catch (err) {
+    console.warn("Failed to reset date adherence:", err);
+  }
+}
+
+/**
+ * Helper to compute next or previous calendar date (YYYY-MM-DD)
+ */
+export function simulateAdvanceDate(dateStr: string, days = 1): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
@@ -212,7 +275,6 @@ export function generateDosesForDate(
   doseLogs?: Record<string, LocalDoseLog>
 ): ScheduledDose[] {
   const logs = doseLogs || getLocalDoseLogs();
-  const todayStr = new Date().toISOString().slice(0, 10);
   const doses: ScheduledDose[] = [];
 
   reminders.forEach((r) => {
@@ -245,8 +307,9 @@ export function generateDosesForDate(
         reason = existingLog.reason;
         note = existingLog.note;
       } else {
-        // Fallback: If viewing today and reminder card was marked done
-        if (dateStr === todayStr && r.done) {
+        // Date-scoped fallback: only mark taken if reminder's lastDoneDate matches dateStr
+        // Never marks tomorrow or new days as taken from past days!
+        if (r.lastDoneDate === dateStr) {
           status = "taken";
         }
       }
@@ -365,12 +428,14 @@ export function computeAdherenceSummary(
     }
 
     if (i === 0) {
-      // Current target day in progress: credit streak if all taken so far with no missed doses
-      if (st.taken > 0 && st.missed === 0) {
-        currentStreak++;
-      } else if (st.taken === st.total && st.total > 0) {
+      // Current target day in progress:
+      if (st.missed > 0) {
+        break;
+      }
+      if (st.taken > 0) {
         currentStreak++;
       }
+      // If st.taken === 0 and st.missed === 0, target day has just begun, so we continue to count past completed days
     } else {
       // Full past days must have taken all accountable doses
       if (st.taken >= st.total && st.total > 0) {
