@@ -221,6 +221,17 @@ export default function PatientHistoryPage() {
             setImportText(data.rawText);
           }
 
+          // If conditions is empty, adapt any family history entries
+          if (parsed && (!parsed.conditions || parsed.conditions.length === 0) && parsed.familyHistory?.length) {
+            parsed.conditions = parsed.familyHistory.map((f) => ({
+              name: f.condition,
+              status: "managed" as const,
+              diagnosedDate: new Date().toISOString().slice(0, 10),
+              notes: `Hereditary / Family relative: ${f.relation}${f.notes ? ` (${f.notes})` : ""}`,
+              medications: [],
+            }));
+          }
+
           if (!parsed || (!parsed.conditions?.length && !parsed.familyHistory?.length)) {
             setImportError(
               localize(
@@ -263,7 +274,18 @@ export default function PatientHistoryPage() {
           const raw = event.target?.result as string;
           setImportText(raw);
           const parsed = parseSbarFileContent(raw);
-          if (parsed.conditions.length === 0) {
+
+          if (parsed && (!parsed.conditions || parsed.conditions.length === 0) && parsed.familyHistory?.length) {
+            parsed.conditions = parsed.familyHistory.map((f) => ({
+              name: f.condition,
+              status: "managed" as const,
+              diagnosedDate: new Date().toISOString().slice(0, 10),
+              notes: `Hereditary / Family relative: ${f.relation}${f.notes ? ` (${f.notes})` : ""}`,
+              medications: [],
+            }));
+          }
+
+          if (!parsed || (!parsed.conditions?.length && !parsed.familyHistory?.length)) {
             setImportError(
               localize(
                 "No chronic conditions found in file. Please ensure it is a valid SBAR report or text note.",
@@ -294,7 +316,18 @@ export default function PatientHistoryPage() {
     setImportError(null);
     try {
       const parsed = parseSbarFileContent(importText);
-      if (parsed.conditions.length === 0) {
+
+      if (parsed && (!parsed.conditions || parsed.conditions.length === 0) && parsed.familyHistory?.length) {
+        parsed.conditions = parsed.familyHistory.map((f) => ({
+          name: f.condition,
+          status: "managed" as const,
+          diagnosedDate: new Date().toISOString().slice(0, 10),
+          notes: `Hereditary / Family relative: ${f.relation}${f.notes ? ` (${f.notes})` : ""}`,
+          medications: [],
+        }));
+      }
+
+      if (!parsed || (!parsed.conditions?.length && !parsed.familyHistory?.length)) {
         setImportError(localize("No chronic conditions detected in pasted text. Format as SBAR or JSON.", "पेस्ट किए गए टेक्स्ट में कोई स्थिति नहीं मिली।"));
       } else {
         setParsedImport(parsed);
