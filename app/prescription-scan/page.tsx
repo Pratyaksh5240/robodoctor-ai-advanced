@@ -11,7 +11,7 @@ import FeatureGuide from "@/components/FeatureGuide";
 import { useLocalize } from "@/lib/useLocalize";
 import { useAuth } from "@/components/AuthProvider";
 import { useActiveProfile } from "@/app/context/ActiveProfileContext";
-import { ScannedMedicineItem } from "@/app/api/prescription-scan/route";
+import { ScannedMedicineItem, PrescriptionDetails } from "@/app/api/prescription-scan/route";
 
 type SelectableItem = ScannedMedicineItem & {
   selected: boolean;
@@ -33,6 +33,8 @@ function PrescriptionScanContent() {
   const [rawNotes, setRawNotes] = useState<string>("");
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [source, setSource] = useState<string>("");
+  const [prescriptionDetails, setPrescriptionDetails] = useState<PrescriptionDetails | null>(null);
+  const [imageType, setImageType] = useState<"prescription" | "medicine_packaging" | "other">("other");
 
   // Confirmation Modal State
   const [confirmingItem, setConfirmingItem] = useState<SelectableItem | null>(null);
@@ -56,12 +58,14 @@ function PrescriptionScanContent() {
     setIsScanning(true);
     setHasScanned(true);
     setStatusMsg("");
+    setPrescriptionDetails(null);
 
     try {
       const res = await fetch("/api/prescription-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageDataUrl: dataUrl }),
+        signal: AbortSignal.timeout(18000), // 18s client timeout so the UI never gets stuck
       });
 
       const rawText = await res.text();
@@ -92,14 +96,34 @@ function PrescriptionScanContent() {
       setItems(scannedItems);
       setRawNotes(data?.rawNotes || "");
       setSource(data?.source || "");
+      if (data?.imageType) {
+        setImageType(data.imageType);
+      }
+      if (data?.prescriptionDetails) {
+        setPrescriptionDetails(data.prescriptionDetails);
+        if (data.prescriptionDetails.doctorName || data.prescriptionDetails.hospitalOrClinic) {
+          setConfirmedDoctor(
+            data.prescriptionDetails.doctorName || data.prescriptionDetails.hospitalOrClinic || ""
+          );
+        }
+      }
     } catch (err: any) {
-      setStatusMsg(
-        err.message ||
+      if (err.name === "TimeoutError" || err.message?.toLowerCase().includes("timeout")) {
+        setStatusMsg(
           localize(
-            "Unable to scan prescription right now. Please try again.",
-            "प्रिस्क्रिप्शन स्कैन नहीं हो पाया। कृपया फिर कोशिश करें।"
+            "Scan took longer than expected due to network latency. Please ensure a stable connection and try again.",
+            "नेटवर्क की वजह से स्कैन में अधिक समय लगा। कृपया नेटवर्क जांचकर पुनः प्रयास करें।"
           )
-      );
+        );
+      } else {
+        setStatusMsg(
+          err.message ||
+            localize(
+              "Unable to scan prescription right now. Please try again.",
+              "प्रिस्क्रिप्शन स्कैन नहीं हो पाया। कृपया फिर कोशिश करें।"
+            )
+        );
+      }
     } finally {
       setIsScanning(false);
     }
@@ -211,7 +235,18 @@ function PrescriptionScanContent() {
     setConfirmedTitle(item.name);
     setConfirmedGeneric(item.purpose || "");
     setConfirmedDosage(item.dosageGuess || "");
-    setConfirmedForm("tablet");
+    // Infer formulation
+    const nameLower = (item.name || "").toLowerCase();
+    const doseLower = (item.dosageGuess || "").toLowerCase();
+    let inferredForm = "tablet";
+    if (nameLower.includes("drop") || doseLower.includes("drop")) inferredForm = "drops";
+    else if (nameLower.includes("syrup") || doseLower.includes("syrup") || doseLower.includes("ml")) inferredForm = "syrup";
+    else if (nameLower.includes("iv") || nameLower.includes("inj") || doseLower.includes("iv")) inferredForm = "injection";
+    else if (nameLower.includes("sachet") || nameLower.includes("ors") || doseLower.includes("sachet")) inferredForm = "powder";
+    else if (nameLower.includes("balm") || nameLower.includes("gel") || nameLower.includes("rub") || nameLower.includes("cream") || nameLower.includes("ointment")) inferredForm = "cream";
+    else if (nameLower.includes("inhaler") || nameLower.includes("spray")) inferredForm = "inhaler";
+
+    setConfirmedForm(inferredForm);
     setConfirmedInstructions(item.whenToEat || "Take after meals with water");
     setConfirmedFrequency(item.frequencyGuess || "Once daily");
 
@@ -228,7 +263,7 @@ function PrescriptionScanContent() {
     }
 
     setTargetPatientId(activeProfileId || "myself");
-    setConfirmedDoctor("");
+    setConfirmedDoctor(prescriptionDetails?.doctorName || prescriptionDetails?.hospitalOrClinic || "");
     setConfirmedStartDate(new Date().toISOString().slice(0, 10));
     setCourseDurationDays("7");
   };
@@ -466,6 +501,72 @@ function PrescriptionScanContent() {
               )}
             </div>
 
+            {/* Doctor Prescription Deciphered Details Card */}
+            {prescriptionDetails && (prescriptionDetails.patientName || prescriptionDetails.diagnosis || prescriptionDetails.vitals || prescriptionDetails.hospitalOrClinic || prescriptionDetails.complaints) && (
+              <div className="mb-4 rounded-2xl border border-cyan-500/40 bg-gradient-to-br from-slate-900 to-cyan-950/40 p-4 shadow-xl">
+                <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 mb-3 gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🩺</span>
+                    <span className="font-bold text-sm text-cyan-300">
+                      {prescriptionDetails.hospitalOrClinic || localize("Deciphered Doctor's Prescription", "डॉक्टर का पर्चा विश्लेषण")}
+                    </span>
+                  </div>
+                  {prescriptionDetails.date && (
+                    <span className="text-xs text-slate-300 bg-slate-800/90 px-2.5 py-1 rounded-full border border-slate-700">
+                      📅 {prescriptionDetails.date}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {prescriptionDetails.patientName && (
+                    <div className="rounded-xl bg-slate-950/70 p-2.5 border border-slate-800">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">{localize("Patient Name", "मरीज का नाम")}</span>
+                      <span className="font-bold text-white text-sm">
+                        {prescriptionDetails.patientName} {prescriptionDetails.ageSex ? `(${prescriptionDetails.ageSex})` : ""}
+                      </span>
+                    </div>
+                  )}
+
+                  {prescriptionDetails.diagnosis && (
+                    <div className="rounded-xl bg-rose-950/30 p-2.5 border border-rose-500/30">
+                      <span className="text-rose-400 block text-[10px] uppercase font-bold tracking-wider">{localize("Diagnosis / Clinical Impression", "निदान / क्लिनिकल निष्कर्ष")}</span>
+                      <span className="font-semibold text-rose-200">{prescriptionDetails.diagnosis}</span>
+                    </div>
+                  )}
+
+                  {prescriptionDetails.vitals && (
+                    <div className="rounded-xl bg-emerald-950/30 p-2.5 border border-emerald-500/30">
+                      <span className="text-emerald-400 block text-[10px] uppercase font-bold tracking-wider">{localize("Recorded Vitals", "दर्ज वाइटल्स")}</span>
+                      <span className="font-semibold text-emerald-200">{prescriptionDetails.vitals}</span>
+                    </div>
+                  )}
+
+                  {prescriptionDetails.complaints && (
+                    <div className="rounded-xl bg-amber-950/30 p-2.5 border border-amber-500/30">
+                      <span className="text-amber-400 block text-[10px] uppercase font-bold tracking-wider">{localize("Chief Complaints", "मुख्य लक्षण / समस्याएं")}</span>
+                      <span className="font-semibold text-amber-200">{prescriptionDetails.complaints}</span>
+                    </div>
+                  )}
+                </div>
+
+                {prescriptionDetails.doctorAdvice && (
+                  <div className="mt-2.5 rounded-xl bg-cyan-950/40 p-2.5 border border-cyan-500/30 text-xs text-cyan-200">
+                    <span className="font-bold text-cyan-300 mr-1.5">💡 {localize("Doctor's Advice", "डॉक्टर की सलाह")}:</span>
+                    {prescriptionDetails.doctorAdvice}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Medicine packaging indicator badge if image was a product */}
+            {imageType === "medicine_packaging" && (
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-lime-500/30 bg-lime-950/30 px-3 py-1 text-xs text-lime-300 font-medium">
+                <span>🏷️</span>
+                <span>{localize("Medicine Packaging & Formulation Analyzed", "दवा पैकेजिंग व फॉर्मूलेशन का विश्लेषण सफल")}</span>
+              </div>
+            )}
+
             {/* Always display scan feedback if present */}
             {rawNotes && (
               <div className="mb-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3 text-xs text-cyan-200">
@@ -679,7 +780,7 @@ function PrescriptionScanContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleSendToInteractionChecker}
+                      onClick={handleSendToChecker}
                       disabled={selectedItems.length === 0}
                       className="w-full rounded-2xl bg-cyan-500 py-3 font-bold text-black hover:bg-cyan-400 disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
                     >
