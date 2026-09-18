@@ -22,7 +22,7 @@ function getGeminiApiKey(): string | undefined {
   const envKey = process.env.GEMINI_API_KEY?.trim();
   if (envKey) return envKey;
   return Buffer.from(
-    "QVEuQWI4Uk42TElRUVhXTVFMdmo4SFp6RTVMWkQ1OGNIYUhzbEtlVktrdzFWcFJ0UlMwOFE=",
+    "QVEuQWI4Uk42SWM2ZHp6WmZXYkVzSy1GMHRMYmFjdkgzMXNFbzByNlVIaUVpZXpUQkswb2c=",
     "base64"
   ).toString("utf-8");
 }

@@ -61,10 +61,10 @@ export async function generateWithGemini(
       [
         input.model,
         config.geminiModel,
-        "gemini-3.5-flash",
-        "gemini-3.6-flash",
-        "gemini-3.7-flash",
+        "gemini-flash-lite-latest",
+        "gemini-3.1-flash-lite",
         "gemini-flash-latest",
+        "gemini-3.5-flash",
       ].filter(Boolean) as string[]
     )
   );
@@ -97,6 +97,7 @@ export async function generateWithGemini(
           headers: {
             "Content-Type": "application/json",
           },
+          signal: AbortSignal.timeout(8000), // 8s timeout per model to prevent hanging
           body: JSON.stringify(body),
         }
       );
